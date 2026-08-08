@@ -90,7 +90,7 @@ src/
   db/                          ← schema.ts, queries.ts (expo-sqlite)
   healthkit/                   ← permissions.ts, sync.ts
   types/                       ← index.ts (Run, RunType, User interfaces)
-  utils/                       ← format.ts, chart.ts, filters.ts
+  utils/                       ← format.ts, chart.ts, filters.ts, stats.ts
 ```
 
 ### Data Model
@@ -102,10 +102,25 @@ interface RunType {
   hue: number      // oklch hue used for color generation
 }
 
+interface Segment {
+  type: 'warmup' | 'rep' | 'rest' | 'main' | 'cooldown'
+  label: string        // e.g. 'Rep 3', 'Tempo', 'Cooldown'
+  distanceKm: number
+  timeSec: number
+  avgHr: number | null
+}
+
+interface Split {
+  km: number           // 1, 2, … or partial endpoint e.g. 5.5
+  timeSec: number      // time for that km segment
+  avgHr: number | null
+}
+
 interface Run {
   id: string
   healthkitUuid: string   // deduplication key
   typeId: string | null   // null until classified
+  name: string            // default "<TypeName>: <Distance>km", user-editable
   date: string            // 'YYYY-MM-DD'
   distanceKm: number
   timeSec: number
@@ -115,7 +130,28 @@ interface Run {
   cadence: number | null
   source: 'apple_health' | 'strava' | 'garmin'  // Phase 1 only produces 'apple_health'
   notes: string | null
+  segments: Segment[] | null  // null for unstructured runs (easy/long); warmup→reps→cooldown for tempo/interval
+  splits: Split[]             // per-km splits, always present
 }
+```
+
+interface MonthStats {             // computed at runtime by getMonthStats()
+  year: number
+  month: number           // 1–12
+  cutoffDay: number | null // null = full month; set to today.getDate() for mid-month comparison
+  runCount: number
+  totalDistanceKm: number
+  totalTimeSec: number
+  avgPaceSecPerKm: number
+  avgHr: number | null
+}
+```
+
+Dashboard usage:
+```ts
+const today = new Date()
+const aug = getMonthStats(runs, 2026, 8, today.getDate())  // Aug through today
+const jul = getMonthStats(runs, 2026, 7, today.getDate())  // Jul through same day-of-month
 ```
 
 SQLite stores Run + RunType. HealthKit is read-only — never written back to.
