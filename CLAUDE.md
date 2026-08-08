@@ -50,6 +50,14 @@ All colors use oklch. See `FRONTEND_SPEC.md` → Design Tokens for the full tabl
 
 Never run any git commands (git add, git commit, git push, git checkout, etc.). Bar handles all git operations himself. When files are ready to commit, say so and list what changed — nothing more.
 
+## Branch-per-task rule
+
+Every task is done on its own branch. At the start of every session and every new task:
+1. Read `.git/HEAD` to check the current branch (file read, not a git command)
+2. If on `main` or on the wrong branch for the current task, stop and tell Bar which branch to create or switch to before writing any code
+3. Branch names follow the pattern: `feature/<short-task-name>` (e.g. `feature/mock-data`, `feature/app-shell`, `feature/dashboard`)
+4. Never write code until the branch check passes
+
 ## Phases
 
 - **Phase 1 (now)**: iOS, HealthKit, local SQLite, all screens
