@@ -4,7 +4,7 @@ import { colors, fonts } from '../../src/utils/tokens';
 export default function Dashboard() {
   return (
     <View style={styles.container}>
-      <Text style={styles.text}>SURGE</Text>
+      <Text style={styles.text}>Chronodrom</Text>
     </View>
   );
 }

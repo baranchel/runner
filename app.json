@@ -1,16 +1,16 @@
 {
   "expo": {
-    "name": "SURGE",
-    "slug": "surge",
+    "name": "Chronodrom",
+    "slug": "chronodrom",
     "version": "1.0.0",
-    "scheme": "surge",
+    "scheme": "chronodrom",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "dark",
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "com.surge.app"
+      "bundleIdentifier": "com.chronodrom.app"
     },
     "android": {
       "adaptiveIcon": {

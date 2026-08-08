@@ -1,4 +1,4 @@
-# SURGE
+# Chronodrom
 
 iOS running tracker. Reads workouts from Apple HealthKit, lets you classify and compare runs.
 
