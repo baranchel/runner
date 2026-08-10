@@ -1,15 +1,24 @@
-import { View, Text, StyleSheet } from 'react-native';
-import { colors, fonts } from '../../src/utils/tokens';
+import { ScrollView, StyleSheet } from 'react-native'
+import { SafeAreaView } from 'react-native-safe-area-context'
+import SummaryCard from '../../src/components/SummaryCard'
+import { MOCK_RUNS } from '../../src/mockData'
+import { colors, spacing } from '../../src/utils/tokens'
 
 export default function Dashboard() {
   return (
-    <View style={styles.container}>
-      <Text style={styles.text}>Chronodrom</Text>
-    </View>
-  );
+    <SafeAreaView style={s.safe}>
+      <ScrollView contentContainerStyle={s.content}>
+        <SummaryCard
+          runs={MOCK_RUNS}
+          today={new Date()}
+          unit="km"
+        />
+      </ScrollView>
+    </SafeAreaView>
+  )
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.bgApp, alignItems: 'center', justifyContent: 'center' },
-  text:      { color: colors.accent, fontFamily: fonts.body, fontSize: 32, fontWeight: '800' },
-});
+const s = StyleSheet.create({
+  safe:    { flex: 1, backgroundColor: colors.bgApp },
+  content: { padding: spacing.screenH, gap: spacing.gap },
+})
