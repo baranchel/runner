@@ -1,4 +1,4 @@
-# SURGE — Frontend Implementation Spec
+# Chronodrom — Frontend Implementation Spec
 
 Mobile-first running tracker app. Single screen, 420 × 900 px at design time; stretch to device width on real devices.
 
@@ -76,7 +76,7 @@ Load from Google Fonts: `Inter` weights 400/500/600/700/800 + `JetBrains Mono` w
 
 ### Top Nav
 - Height: 58 px, `bg-card`, border-bottom `border-subtle`
-- Left: hamburger (3 × 18 px bars, `oklch(0.90 0.005 285)`, gap 4 px) + SURGE logo (lightning bolt SVG + wordmark at 15 px/800 weight)
+- Left: hamburger (3 × 18 px bars, `oklch(0.90 0.005 285)`, gap 4 px) + Chronodrom logo (icon + wordmark at 15 px/800 weight)
 - Right: avatar circle 30 × 30 px, `accent-dim` bg, shows first initial of user name
 
 ### Bottom Tab Bar
@@ -104,7 +104,7 @@ Shown when the user is not logged in. Centered vertically, 40 px horizontal padd
 
 **Header**
 - Lightning bolt SVG (40 × 40, `accent`)
-- "SURGE" — 22 px / 800
+- "Chronodrom" — 22 px / 800
 - "Every run, decoded." — 12 px, `text-ghost`
 
 **Login form** (default mode)

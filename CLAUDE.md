@@ -1,4 +1,4 @@
-# SURGE — Claude Code Guide
+# Chronodrom — Claude Code Guide
 
 ## Project
 
