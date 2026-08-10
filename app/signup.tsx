@@ -395,7 +395,7 @@ const s = StyleSheet.create({
   modalHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 },
   modalTitle:  { fontSize: 15, fontWeight: '700', color: colors.textPrimary },
   closeBtn:    { width: 24, height: 24, borderRadius: 12, backgroundColor: colors.bgSurface, alignItems: 'center', justifyContent: 'center' },
-  closeBtnText:{ fontSize: 11, color: colors.textSecondary, fontWeight: '700' },
+  closeBtnText:{ fontSize: 11, color: colors.danger, fontWeight: '700' },
 
   // Hint modal
   overlay:   { flex: 1, backgroundColor: 'rgba(0,0,0,0.55)', justifyContent: 'center', alignItems: 'center', paddingHorizontal: 40 },
