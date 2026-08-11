@@ -47,6 +47,15 @@ export interface MonthStats {
   avgHr: number | null
 }
 
+export interface PeriodStats {
+  totalDistanceKm: number
+  totalTimeSec: number
+  runCount: number
+  avgDistanceKm: number
+  avgTimeSec: number
+  avgPaceSecPerKm: number
+}
+
 export interface User {
   name: string
   email: string
