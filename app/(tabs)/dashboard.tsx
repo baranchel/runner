@@ -46,24 +46,26 @@ function WeeklyGrid() {
       <Text style={s.sectionLabel}>THIS WEEK</Text>
       <View style={s.gridRow}>
         {stats.slice(0, 2).map(({ label, value, icon, color }) => (
-          <View key={label} style={s.statCard}>
+          <TouchableOpacity key={label} style={s.statCard} activeOpacity={0.7}>
             <View style={s.statLabelRow}>
               <Image source={icon} style={[s.statIcon, { tintColor: color }]} />
               <Text style={s.statLabel}>{label}</Text>
+              <Text style={s.statChevron}>›</Text>
             </View>
             <Text style={s.statValue}>{value}</Text>
-          </View>
+          </TouchableOpacity>
         ))}
       </View>
       <View style={[s.gridRow, { marginTop: 10 }]}>
         {stats.slice(2).map(({ label, value, icon, color }) => (
-          <View key={label} style={s.statCard}>
+          <TouchableOpacity key={label} style={s.statCard} activeOpacity={0.7}>
             <View style={s.statLabelRow}>
               <Image source={icon} style={[s.statIcon, { tintColor: color }]} />
               <Text style={s.statLabel}>{label}</Text>
+              <Text style={s.statChevron}>›</Text>
             </View>
             <Text style={s.statValue}>{value}</Text>
-          </View>
+          </TouchableOpacity>
         ))}
       </View>
     </View>
@@ -162,7 +164,13 @@ const s = StyleSheet.create({
   statLabelRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
     gap: 4,
+  },
+  statChevron: {
+    fontSize: 14,
+    color: colors.textGhost,
+    marginLeft: 'auto',
   },
   statIcon: {
     width: 12,
