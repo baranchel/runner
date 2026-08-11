@@ -30,6 +30,11 @@ export const colors = {
   danger:         '#d74f49',   // oklch(0.62 0.17 25)
   hrLine:         '#d74f49',   // oklch(0.62 0.17 25)
   elevLine:       '#3bac68',   // oklch(0.68 0.14 155)
+
+  iconGold:    '#e8a900',   // distance icon tint
+  iconTeal:    '#00a6b8',   // time icon tint
+  iconOrange:  '#dc6600',   // pace, calories icon tint
+  iconSky:     '#6db8e8',   // weather icon tint
 } as const
 
 // Run type color — oklch(0.66 0.17 <hue>) per hue value.
