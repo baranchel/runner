@@ -17,3 +17,10 @@ export function fmtDistance(km: number, unit: 'km' | 'mi'): string {
   const suffix = unit === 'mi' ? ' mi' : ' km'
   return `${Math.round(val * 10) / 10}${suffix}`
 }
+
+const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
+
+export function fmtDate(iso: string): string {
+  const [, m, d] = iso.split('-').map(Number)
+  return `${MONTHS[m - 1]} ${d}`
+}

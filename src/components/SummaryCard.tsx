@@ -142,11 +142,6 @@ export default function SummaryCard({ runs, today, unit }: SummaryCardProps) {
 
   return (
     <View style={s.card}>
-      <View style={s.header}>
-        <Text style={s.headerLeft}>LAST 30 DAYS</Text>
-        {hasPrev && <Text style={s.headerRight}>vs prev 30 days</Text>}
-      </View>
-
       <View style={s.columns}>
         <StatCol
           topIcon={require('../../assets/distance.png')}
@@ -201,23 +196,6 @@ const s = StyleSheet.create({
     borderRadius: spacing.radius,
     padding: 18,
     paddingBottom: 10,
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  headerLeft: {
-    fontFamily: fonts.body,
-    fontSize: 12,
-    color: colors.textDim,
-    letterSpacing: 0.6,
-  },
-  headerRight: {
-    fontFamily: fonts.body,
-    fontSize: 11,
-    color: colors.textFaint,
   },
   columns: {
     flexDirection: 'row',
