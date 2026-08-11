@@ -29,7 +29,7 @@ export const MOCK_RUNS: Run[] = [
     date: '2026-07-01',
     distanceKm: 6.0,
     timeSec: 2280,   // 38:00 · 6:20/km
-    avgHr: 134, maxHr: 152, elevGain: 42, cadence: 168,
+    avgHr: 134, maxHr: 152, minHr: 124, elevGain: 42, cadence: 168,
     source: 'apple_health',
     notes: null,
     segments: null,
@@ -41,6 +41,8 @@ export const MOCK_RUNS: Run[] = [
       { km: 5, timeSec: 377, avgHr: 136 },
       { km: 6, timeSec: 380, avgHr: 137 },
     ],
+    weather: { tempC: 24, humidity: 58 },
+    zones: [0, 420, 1240, 620, 0],
   },
 
   {
@@ -51,7 +53,7 @@ export const MOCK_RUNS: Run[] = [
     date: '2026-07-06',
     distanceKm: 7.0,
     timeSec: 2870,   // 47:50 · 6:50/km — progression #1
-    avgHr: 140, maxHr: 161, elevGain: 78, cadence: 166,
+    avgHr: 140, maxHr: 161, minHr: 130, elevGain: 78, cadence: 166,
     source: 'apple_health',
     notes: null,
     segments: null,
@@ -64,6 +66,8 @@ export const MOCK_RUNS: Run[] = [
       { km: 6, timeSec: 408, avgHr: 143 },
       { km: 7, timeSec: 410, avgHr: 144 },
     ],
+    weather: { tempC: 26, humidity: 62 },
+    zones: [0, 580, 1560, 730, 0],
   },
 
   {
@@ -74,7 +78,7 @@ export const MOCK_RUNS: Run[] = [
     date: '2026-07-09',
     distanceKm: 9.0,
     timeSec: 2820,   // 47:00 · 2km warmup + 6km @4:45/km + 1km cooldown
-    avgHr: 150, maxHr: 173, elevGain: 55, cadence: 174,
+    avgHr: 150, maxHr: 173, minHr: 140, elevGain: 55, cadence: 174,
     source: 'apple_health',
     notes: '2km warmup · 6km @4:45/km · 1km cooldown',
     segments: [
@@ -94,6 +98,8 @@ export const MOCK_RUNS: Run[] = [
       { km: 8, timeSec: 285, avgHr: 162 },
       { km: 9, timeSec: 392, avgHr: 130 },
     ],
+    weather: { tempC: 28, humidity: 65 },
+    zones: [0, 0, 720, 1620, 480],
   },
 
   {
@@ -104,7 +110,7 @@ export const MOCK_RUNS: Run[] = [
     date: '2026-07-13',
     distanceKm: 9.0,
     timeSec: 3690,   // 61:30 · 6:50/km — progression #2
-    avgHr: 142, maxHr: 163, elevGain: 92, cadence: 165,
+    avgHr: 142, maxHr: 163, minHr: 132, elevGain: 92, cadence: 165,
     source: 'apple_health',
     notes: null,
     segments: null,
@@ -119,6 +125,8 @@ export const MOCK_RUNS: Run[] = [
       { km: 8, timeSec: 408, avgHr: 146 },
       { km: 9, timeSec: 412, avgHr: 147 },
     ],
+    weather: { tempC: 27, humidity: 60 },
+    zones: [0, 740, 1960, 990, 0],
   },
 
   {
@@ -130,7 +138,7 @@ export const MOCK_RUNS: Run[] = [
     date: '2026-07-16',
     distanceKm: 8.0,
     timeSec: 2748,   // 45:48 · reps @92s each
-    avgHr: 148, maxHr: 183, elevGain: 58, cadence: 177,
+    avgHr: 148, maxHr: 183, minHr: 138, elevGain: 58, cadence: 177,
     source: 'apple_health',
     notes: '2km warmup · 8×400m (92s rep / 90s rest) · 1.6km cooldown',
     segments: [
@@ -164,6 +172,8 @@ export const MOCK_RUNS: Run[] = [
       { km: 7, timeSec: 378, avgHr: 131 },
       { km: 8, timeSec: 373, avgHr: 127 },
     ],
+    weather: { tempC: 22, humidity: 55 },
+    zones: [0, 288, 460, 880, 1120],
   },
 
   {
@@ -175,7 +185,7 @@ export const MOCK_RUNS: Run[] = [
     date: '2026-07-20',
     distanceKm: 11.0,
     timeSec: 4565,   // 76:05 · ~6:57/km — progression #3
-    avgHr: 145, maxHr: 169, elevGain: 118, cadence: 165,
+    avgHr: 145, maxHr: 169, minHr: 135, elevGain: 118, cadence: 165,
     source: 'apple_health',
     notes: null,
     segments: null,
@@ -192,6 +202,8 @@ export const MOCK_RUNS: Run[] = [
       { km: 10, timeSec: 415, avgHr: 149 },
       { km: 11, timeSec: 414, avgHr: 150 },
     ],
+    weather: { tempC: 25, humidity: 63 },
+    zones: [0, 920, 2440, 1205, 0],
   },
 
   {
@@ -202,7 +214,7 @@ export const MOCK_RUNS: Run[] = [
     date: '2026-07-23',
     distanceKm: 5.5,
     timeSec: 2090,   // 34:50 · 6:20/km
-    avgHr: 131, maxHr: 149, elevGain: 32, cadence: 167,
+    avgHr: 131, maxHr: 149, minHr: 121, elevGain: 32, cadence: 167,
     source: 'apple_health',
     notes: null,
     segments: null,
@@ -214,6 +226,8 @@ export const MOCK_RUNS: Run[] = [
       { km:  5,  timeSec: 382, avgHr: 133 },
       { km:  5.5, timeSec: 188, avgHr: 132 },
     ],
+    weather: { tempC: 23, humidity: 52 },
+    zones: [0, 410, 1140, 540, 0],
   },
 
   {
@@ -225,7 +239,7 @@ export const MOCK_RUNS: Run[] = [
     date: '2026-07-25',
     distanceKm: 8.0,
     timeSec: 2870,   // 47:50 · reps @100s each
-    avgHr: 151, maxHr: 186, elevGain: 61, cadence: 174,
+    avgHr: 151, maxHr: 186, minHr: 141, elevGain: 61, cadence: 174,
     source: 'apple_health',
     notes: '2km warmup · 8×400m (100s rep / 90s rest) · 1.6km cooldown',
     segments: [
@@ -259,6 +273,8 @@ export const MOCK_RUNS: Run[] = [
       { km: 7, timeSec: 398, avgHr: 133 },
       { km: 8, timeSec: 402, avgHr: 130 },
     ],
+    weather: { tempC: 29, humidity: 68 },
+    zones: [0, 300, 470, 950, 1150],
   },
 
   {
@@ -270,7 +286,7 @@ export const MOCK_RUNS: Run[] = [
     date: '2026-07-27',
     distanceKm: 11.0,
     timeSec: 4455,   // 74:15 · ~6:44/km — progression #4 (same route, better day)
-    avgHr: 141, maxHr: 165, elevGain: 112, cadence: 167,
+    avgHr: 141, maxHr: 165, minHr: 131, elevGain: 112, cadence: 167,
     source: 'apple_health',
     notes: null,
     segments: null,
@@ -287,6 +303,8 @@ export const MOCK_RUNS: Run[] = [
       { km: 10, timeSec: 407, avgHr: 145 },
       { km: 11, timeSec: 403, avgHr: 146 },
     ],
+    weather: { tempC: 24, humidity: 57 },
+    zones: [0, 900, 2360, 1195, 0],
   },
 
   {
@@ -297,7 +315,7 @@ export const MOCK_RUNS: Run[] = [
     date: '2026-07-30',
     distanceKm: 8.0,
     timeSec: 2498,   // 41:38 · 1.5km warmup + 5.5km @4:45/km + 1km cooldown
-    avgHr: 151, maxHr: 174, elevGain: 48, cadence: 175,
+    avgHr: 151, maxHr: 174, minHr: 141, elevGain: 48, cadence: 175,
     source: 'apple_health',
     notes: '1.5km warmup · 5.5km @4:45/km · 1km cooldown',
     segments: [
@@ -316,6 +334,8 @@ export const MOCK_RUNS: Run[] = [
       { km: 7, timeSec: 285, avgHr: 162 },
       { km: 8, timeSec: 390, avgHr: 129 },
     ],
+    weather: { tempC: 27, humidity: 64 },
+    zones: [0, 0, 640, 1438, 420],
   },
 
   // ── August ────────────────────────────────────────────────────────────────
@@ -328,7 +348,7 @@ export const MOCK_RUNS: Run[] = [
     date: '2026-08-03',
     distanceKm: 13.0,
     timeSec: 5330,   // 88:50 · ~6:50/km — progression #5
-    avgHr: 146, maxHr: 170, elevGain: 138, cadence: 165,
+    avgHr: 146, maxHr: 170, minHr: 136, elevGain: 138, cadence: 165,
     source: 'apple_health',
     notes: null,
     segments: null,
@@ -347,6 +367,8 @@ export const MOCK_RUNS: Run[] = [
       { km: 12, timeSec: 412, avgHr: 152 },
       { km: 13, timeSec: 410, avgHr: 153 },
     ],
+    weather: { tempC: 26, humidity: 61 },
+    zones: [0, 1070, 2830, 1430, 0],
   },
 
   {
@@ -357,7 +379,7 @@ export const MOCK_RUNS: Run[] = [
     date: '2026-08-10',
     distanceKm: 6.5,
     timeSec: 2470,   // 41:10 · 6:20/km
-    avgHr: 133, maxHr: 150, elevGain: 38, cadence: 168,
+    avgHr: 133, maxHr: 150, minHr: 123, elevGain: 38, cadence: 168,
     source: 'apple_health',
     notes: null,
     segments: null,
@@ -370,6 +392,8 @@ export const MOCK_RUNS: Run[] = [
       { km:  6,  timeSec: 382, avgHr: 135 },
       { km:  6.5, timeSec: 190, avgHr: 134 },
     ],
+    weather: { tempC: 22, humidity: 49 },
+    zones: [0, 480, 1340, 650, 0],
   },
 
   {
@@ -380,7 +404,7 @@ export const MOCK_RUNS: Run[] = [
     date: '2026-08-17',
     distanceKm: 15.0,
     timeSec: 6150,   // 102:30 · ~6:50/km — progression #6
-    avgHr: 148, maxHr: 173, elevGain: 158, cadence: 164,
+    avgHr: 148, maxHr: 173, minHr: 138, elevGain: 158, cadence: 164,
     source: 'apple_health',
     notes: null,
     segments: null,
@@ -401,6 +425,8 @@ export const MOCK_RUNS: Run[] = [
       { km: 14, timeSec: 410, avgHr: 155 },
       { km: 15, timeSec: 412, avgHr: 157 },
     ],
+    weather: { tempC: 25, humidity: 55 },
+    zones: [0, 1230, 3260, 1660, 0],
   },
 
   {
@@ -411,7 +437,7 @@ export const MOCK_RUNS: Run[] = [
     date: '2026-08-24',
     distanceKm: 10.0,
     timeSec: 3520,   // 58:40 · 2km warmup + 10×400m + 2.5km cooldown
-    avgHr: 149, maxHr: 187, elevGain: 72, cadence: 176,
+    avgHr: 149, maxHr: 187, minHr: 139, elevGain: 72, cadence: 176,
     source: 'apple_health',
     notes: '2km warmup · 10×400m (96s rep / 90s rest) · 2.5km cooldown',
     segments: [
@@ -451,5 +477,7 @@ export const MOCK_RUNS: Run[] = [
       { km:  9, timeSec: 376, avgHr: 130 },
       { km: 10, timeSec: 375, avgHr: 128 },
     ],
+    weather: { tempC: 21, humidity: 47 },
+    zones: [0, 350, 590, 1260, 1320],
   },
 ]
