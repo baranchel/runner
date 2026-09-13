@@ -199,7 +199,12 @@ function ChartsSection({ run, typeColor, unit }: { run: Run; typeColor: string; 
       <View>
         <Text style={s.sectionLabel}>HEART RATE</Text>
         <View style={ch.card}>
-          <HrBarsChart bars={hrBars} />
+          <HrBarsChart
+            bars={hrBars}
+            minHr={run.minHr ?? Math.round(Math.min(...hrBars.map(b => b[0])))}
+            maxHr={run.maxHr ?? Math.round(Math.max(...hrBars.map(b => b[1])))}
+            timeSec={run.timeSec}
+          />
         </View>
       </View>
     </>
@@ -373,6 +378,7 @@ const ch = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.borderDefault,
     borderRadius: spacing.radius,
+    overflow: 'hidden',
   },
 })
 
