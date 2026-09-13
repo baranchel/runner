@@ -1,6 +1,36 @@
 import React, { useRef, useState } from 'react'
 import { PanResponder, View } from 'react-native'
 import { Circle, Line, Path, Polyline, Rect, Svg, Text as SvgText } from 'react-native-svg'
+
+// [lo, hi] bpm pairs, one per time window
+export function HrBarsChart({ bars }: { bars: [number, number][] }) {
+  const allVals = bars.flat()
+  const min = Math.min(...allVals)
+  const max = Math.max(...allVals)
+  const range = max - min || 1
+  const n = bars.length
+  const slotW = 300 / n
+  const barW = Math.max(1, slotW - 1.5)
+  const toY = (v: number) => 90 - ((v - min) / range) * 80
+
+  return (
+    <Svg viewBox="0 0 300 100" width="100%" height={90}>
+      {bars.map(([lo, hi], i) => (
+        <Rect
+          key={i}
+          x={i * slotW + (slotW - barW) / 2}
+          y={toY(hi)}
+          width={barW}
+          height={Math.max(2, toY(lo) - toY(hi))}
+          rx={1}
+          fill={colors.hrLine}
+          fillOpacity={0.85}
+        />
+      ))}
+    </Svg>
+  )
+}
+
 import { buildChartPaths } from '../utils/chart'
 import { colors, fonts } from '../utils/tokens'
 

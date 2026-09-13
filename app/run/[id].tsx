@@ -6,7 +6,7 @@ import type { Run, Segment, Split } from '../../src/types'
 import { fmtDateFull, fmtDistance, fmtDuration, fmtMMSS, fmtPace } from '../../src/utils/format'
 import { colors, fonts, runTypeColor, spacing } from '../../src/utils/tokens'
 import { computePrimaryZone } from '../../src/utils/zones'
-import { Chart } from '../../src/components/Chart'
+import { Chart, HrBarsChart } from '../../src/components/Chart'
 import { genSeries } from '../../src/utils/chart'
 
 const UNIT = 'km' as const
@@ -175,7 +175,14 @@ function ChartsSection({ run, typeColor, unit }: { run: Run; typeColor: string; 
   const avgHr = run.avgHr ?? 140
 
   const paceSeries = genSeries(run.id + 'pace', 16, avgPace, 14, 0)
-  const hrSeries   = genSeries(run.id + 'hr',   16, avgHr - 6, 8, 14)
+
+  const HR_N = 50
+  const hiSeries = genSeries(run.id + 'hrHi', HR_N, avgHr + 5, 7, 6)
+  const loSeries = genSeries(run.id + 'hrLo', HR_N, avgHr - 9, 5, 4)
+  const hrBars = hiSeries.map((hi, i): [number, number] => [
+    Math.min(loSeries[i], hi - 3),
+    hi,
+  ])
 
   return (
     <>
@@ -192,11 +199,7 @@ function ChartsSection({ run, typeColor, unit }: { run: Run; typeColor: string; 
       <View>
         <Text style={s.sectionLabel}>HEART RATE</Text>
         <View style={ch.card}>
-          <Chart
-            series={hrSeries}
-            strokeColor={colors.hrLine}
-            formatValue={(v) => `${Math.round(v)} bpm`}
-          />
+          <HrBarsChart bars={hrBars} />
         </View>
       </View>
     </>
