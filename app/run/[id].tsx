@@ -210,9 +210,8 @@ function SegmentsSection({ run, typeColor, unit }: { run: Run; typeColor: string
           <Text style={[st.cell, st.hdr, { color: colors.iconGold }]}>Dist</Text>
           <Text style={[st.cell, st.hdr, { color: colors.iconOrange }]}>Pace</Text>
           <Text style={[st.cell, st.hdr, { color: colors.iconTeal }]}>Time</Text>
-          <Text style={[st.cell, st.hdr, { color: colors.hrLine }]}>HR</Text>
         </View>
-        {run.segments.map((seg, i) => {
+        {run.segments.slice(0, 5).map((seg, i) => {
           const display = SEGMENT_DISPLAY[seg.type] ?? { label: seg.type, color: () => colors.textMuted }
           const dotColor = display.color(typeColor)
           const pace = seg.distanceKm > 0 ? seg.timeSec / seg.distanceKm : 0
@@ -225,7 +224,6 @@ function SegmentsSection({ run, typeColor, unit }: { run: Run; typeColor: string
               <Text style={[st.cell, st.val, { color: colors.iconGold }]} numberOfLines={1}>{fmtDistance(seg.distanceKm, unit)}</Text>
               <Text style={[st.cell, st.val, { color: colors.iconOrange }]} numberOfLines={1}>{pace > 0 ? fmtPace(pace, unit) : '—'}</Text>
               <Text style={[st.cell, st.val, { color: colors.iconTeal }]} numberOfLines={1}>{fmtMMSS(seg.timeSec)}</Text>
-              <Text style={[st.cell, st.val, { color: colors.hrLine }]} numberOfLines={1}>{seg.avgHr ?? '—'}</Text>
             </View>
           )
         })}
