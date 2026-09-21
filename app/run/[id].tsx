@@ -1,6 +1,6 @@
 import { Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native'
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router'
-import { SafeAreaView } from 'react-native-safe-area-context'
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { MOCK_RUNS, MOCK_RUN_TYPES } from '../../src/mockData'
 import type { Run, Segment, Split } from '../../src/types'
 import { fmtDateFull, fmtDistance, fmtDuration, fmtMMSS, fmtPace } from '../../src/utils/format'
@@ -267,6 +267,7 @@ function MapPlaceholder() {
 export default function RunDetail() {
   const { id } = useLocalSearchParams<{ id: string }>()
   const router = useRouter()
+  const insets = useSafeAreaInsets()
   const run = MOCK_RUNS.find(r => r.id === id)
 
   if (!run) {
@@ -286,11 +287,6 @@ export default function RunDetail() {
           the ‹ Back button remains the way out */}
       <Stack.Screen options={{ gestureEnabled: false }} />
       <ScrollView contentContainerStyle={s.content}>
-        {/* back */}
-        <TouchableOpacity onPress={() => router.back()} style={s.backBtn}>
-          <Text style={s.backText}>‹ Back</Text>
-        </TouchableOpacity>
-
         {/* header */}
         <View style={s.header}>
           <View style={[s.headerBar, { backgroundColor: typeColor }]} />
@@ -314,6 +310,11 @@ export default function RunDetail() {
         <ChartsSection run={run} typeColor={typeColor} unit={UNIT} />
         <MapPlaceholder />
       </ScrollView>
+
+      {/* floating back button — pinned top-left, always visible */}
+      <TouchableOpacity onPress={() => router.back()} style={[s.backFab, { top: insets.top + 12 }]} activeOpacity={0.7}>
+        <Text style={s.backFabIcon}>‹</Text>
+      </TouchableOpacity>
     </SafeAreaView>
   )
 }
@@ -322,10 +323,34 @@ export default function RunDetail() {
 
 const s = StyleSheet.create({
   safe:    { flex: 1, backgroundColor: colors.bgApp },
-  content: { padding: spacing.screenH, gap: spacing.gap },
+  content: { padding: spacing.screenH, paddingTop: 72, gap: spacing.gap },
 
-  backBtn:  { marginBottom: 4 },
-  backText: { fontFamily: fonts.body, fontSize: 12, color: colors.accent },
+  backFab: {
+    position: 'absolute',
+    left: spacing.screenH,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: colors.bgSurface,
+    borderWidth: 1,
+    borderColor: colors.borderStrong,
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 10,
+    shadowColor: '#000',
+    shadowOpacity: 0.4,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 4,
+  },
+  backFabIcon: {
+    fontFamily: fonts.body,
+    fontSize: 28,
+    lineHeight: 30,
+    color: colors.textPrimary,
+    marginTop: -3,
+    marginLeft: -2,
+  },
 
   header:     { flexDirection: 'row', alignItems: 'center', gap: 14 },
   headerBar:  { width: 8, height: 52, borderRadius: 4 },
