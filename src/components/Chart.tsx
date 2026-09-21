@@ -2,51 +2,59 @@ import React, { useRef, useState } from 'react'
 import { PanResponder, View } from 'react-native'
 import { Circle, Line, Path, Polyline, Rect, Svg, Text as SvgText } from 'react-native-svg'
 import { buildChartPaths } from '../utils/chart'
+import { fmtMMSS } from '../utils/format'
 import { colors, fonts } from '../utils/tokens'
+import type { Split } from '../types'
 
-const LABEL_W = 32
-const BAR_Y   = 14
-const BAR_H   = 96
-const TL_H    = 20
-const VW      = 300
-const VH      = BAR_Y + BAR_H + TL_H  // 130
+const R_LABEL = 28   // right-side label column
+const DOT_Y   = 14
+const DOT_H   = 86
+const DOT_TL  = 20
+const DOT_VW  = 300
+const DOT_VH  = DOT_Y + DOT_H + DOT_TL
 
-function fmtMM(sec: number) {
-  const m = Math.floor(sec / 60)
+function fmtElapsed(sec: number) {
+  const h = Math.floor(sec / 3600)
+  const m = Math.floor((sec % 3600) / 60)
   const s = sec % 60
+  if (h > 0) return `${h}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
   return `${m}:${String(s).padStart(2, '0')}`
 }
 
-// [lo, hi] bpm pairs, one per time window
-export function HrBarsChart({
-  bars, minHr, maxHr, timeSec,
-}: {
-  bars: [number, number][]
-  minHr: number
-  maxHr: number
+// HR range bars — each bar spans min→max bpm of a time window
+export function HrRangeBarsChart({ dots, timeSec }: {
+  dots: number[]
   timeSec: number
 }) {
   const [svgWidth, setSvgWidth] = useState(0)
   const [activeIdx, setActiveIdx] = useState<number | null>(null)
   const viewWidth = useRef(0)
 
-  const allVals = bars.flat()
-  const dataMin = Math.min(...allVals)
-  const dataMax = Math.max(...allVals)
+  const plotW = DOT_VW - R_LABEL
+  const dataMin = Math.min(...dots)
+  const dataMax = Math.max(...dots)
   const range = dataMax - dataMin || 1
-  const n = bars.length
-  const barAreaW = VW - LABEL_W
-  const slotW = barAreaW / n
-  const barW = Math.max(1, slotW - 1.5)
-  const toY = (v: number) => BAR_Y + BAR_H - ((v - dataMin) / range) * BAR_H
+  const toY = (v: number) => DOT_Y + DOT_H - ((v - dataMin) / range) * DOT_H
+
+  // bucket readings into range bars
+  const bucket = Math.max(1, Math.ceil(dots.length / 80))
+  const bars: [number, number][] = []
+  for (let i = 0; i < dots.length; i += bucket) {
+    const slice = dots.slice(i, i + bucket)
+    bars.push([Math.min(...slice), Math.max(...slice)])
+  }
+  const m = bars.length
+  const slotW = plotW / m
+  const barW = Math.max(1.5, slotW * 0.6)
+  const barCx = (i: number) => (i + 0.5) * slotW
 
   const tl = [0, Math.round(timeSec / 2), timeSec]
-  const tlX = [LABEL_W, LABEL_W + barAreaW / 2, VW]
+  const tlX = [0, plotW / 2, plotW]
   const tlAnchor = ['start', 'middle', 'end'] as const
 
   const setFromX = (locationX: number) => {
-    const svgX = (locationX / viewWidth.current) * VW
-    const idx = Math.max(0, Math.min(n - 1, Math.floor((svgX - LABEL_W) / slotW)))
+    const pct = (locationX / viewWidth.current)
+    const idx = Math.max(0, Math.min(m - 1, Math.floor(pct * m)))
     setActiveIdx(idx)
   }
 
@@ -61,11 +69,20 @@ export function HrBarsChart({
     }),
   ).current
 
-  const activeLo = activeIdx !== null ? Math.round(bars[activeIdx][0]) : null
-  const activeHi = activeIdx !== null ? Math.round(bars[activeIdx][1]) : null
-  const activeBarCx = activeIdx !== null ? LABEL_W + activeIdx * slotW + slotW / 2 : null
-  // clamp pill so it never overflows (pill ~60 SVG units wide)
-  const pillX = activeBarCx !== null ? Math.max(LABEL_W, Math.min(activeBarCx - 30, VW - 60)) : 0
+  const activeX   = activeIdx !== null ? barCx(activeIdx) : null
+  const activeLo  = activeIdx !== null ? bars[activeIdx][0] : null
+  const activeHi  = activeIdx !== null ? bars[activeIdx][1] : null
+  const FONT = 10
+  const CHAR_W = FONT * 0.6          // monospace glyph advance
+  const label = activeIdx !== null ? `${activeLo}–${activeHi} bpm` : ''
+  const labelW = label.length * CHAR_W
+  const PILL_W = labelW + 12         // pad label
+  const PILL_H = 18
+  const pillX  = activeX !== null ? Math.max(0, Math.min(activeX - PILL_W / 2, plotW - PILL_W)) : 0
+  const pillY  = DOT_Y - 2
+  // manual centering — textAnchor/dominantBaseline are ignored in this rn-svg build
+  const textX  = pillX + (PILL_W - labelW) / 2
+  const textY  = pillY + PILL_H / 2 + FONT * 0.34
 
   return (
     <View
@@ -76,70 +93,140 @@ export function HrBarsChart({
       {...panResponder.panHandlers}
     >
       {svgWidth > 0 && (
-        <Svg viewBox={`0 0 ${VW} ${VH}`} width={svgWidth} height={140}>
+        <Svg viewBox={`0 0 ${DOT_VW} ${DOT_VH}`} width={svgWidth} height={130}>
           {bars.map(([lo, hi], i) => (
             <Rect
               key={i}
-              x={LABEL_W + i * slotW + (slotW - barW) / 2}
+              x={barCx(i) - barW / 2}
               y={toY(hi)}
               width={barW}
               height={Math.max(2, toY(lo) - toY(hi))}
-              rx={1}
+              rx={barW / 2}
               fill={colors.hrLine}
-              fillOpacity={activeIdx === null || activeIdx === i ? 0.85 : 0.3}
+              fillOpacity={activeIdx === null || activeIdx === i ? 0.9 : 0.3}
             />
           ))}
 
           {/* scrubber */}
-          {activeIdx !== null && activeBarCx !== null && (
+          {activeIdx !== null && activeX !== null && (
             <>
               <Line
-                x1={activeBarCx} y1={BAR_Y} x2={activeBarCx} y2={BAR_Y + BAR_H}
+                x1={activeX} y1={DOT_Y} x2={activeX} y2={DOT_Y + DOT_H}
                 stroke="white" strokeOpacity={0.25} strokeWidth={1}
               />
-              <Rect x={pillX} y={BAR_Y - 1} width={60} height={18} rx={4} fill={colors.bgElevated} />
+              <Rect x={pillX} y={pillY} width={PILL_W} height={PILL_H} rx={4} fill={colors.bgElevated} />
               <SvgText
-                x={pillX + 30} y={BAR_Y + 11}
-                textAnchor="middle"
-                fill={colors.textPrimary} fontSize={10} fontFamily={fonts.mono}
+                x={textX} y={textY}
+                fill={colors.textPrimary} fontSize={FONT} fontFamily={fonts.mono}
               >
-                {activeLo}–{activeHi}
+                {label}
               </SvgText>
             </>
           )}
 
-          {/* Y-axis labels — hidden while scrubbing so pill takes over */}
+          {/* right-side min/max aligned to actual data positions */}
           {activeIdx === null && (
             <>
-              <SvgText
-                x={LABEL_W - 4} y={BAR_Y + 9}
-                fill={colors.textMuted} fontSize={9} fontFamily={fonts.mono}
-                textAnchor="end"
+              <SvgText x={DOT_VW - 2} y={toY(dataMax) + 4}
+                textAnchor="end" fill={colors.textMuted} fontSize={9} fontFamily={fonts.mono}
               >
-                {maxHr}
+                {dataMax}
               </SvgText>
-              <SvgText
-                x={LABEL_W - 4} y={BAR_Y + BAR_H}
-                fill={colors.textMuted} fontSize={9} fontFamily={fonts.mono}
-                textAnchor="end"
+              <SvgText x={DOT_VW - 2} y={toY(dataMin) - 2}
+                textAnchor="end" fill={colors.textMuted} fontSize={9} fontFamily={fonts.mono}
               >
-                {minHr}
+                {dataMin}
               </SvgText>
             </>
           )}
 
-          <Line x1={LABEL_W} y1={BAR_Y + BAR_H + 6} x2={VW} y2={BAR_Y + BAR_H + 6}
+          <Line x1={0} y1={DOT_Y + DOT_H + 6} x2={plotW} y2={DOT_Y + DOT_H + 6}
             stroke={colors.borderSubtle} strokeWidth={0.5} />
           {tl.map((t, i) => (
-            <SvgText
-              key={i}
-              x={tlX[i]} y={VH - 2}
+            <SvgText key={i} x={tlX[i]} y={DOT_VH - 2}
               fill={colors.textMuted} fontSize={9} fontFamily={fonts.mono}
               textAnchor={tlAnchor[i]}
             >
-              {fmtMM(t)}
+              {fmtElapsed(t)}
             </SvgText>
           ))}
+        </Svg>
+      )}
+    </View>
+  )
+}
+
+const P_LABEL_W = 38
+const P_BAR_Y   = 8
+const P_BAR_H   = 78
+const P_VW      = 300
+const P_VH      = P_BAR_Y + P_BAR_H + 4
+
+export function PaceBarsChart({ splits, avgPace, strokeColor, unit }: {
+  splits: Split[]
+  avgPace: number
+  strokeColor: string
+  unit: 'km' | 'mi'
+}) {
+  const [svgWidth, setSvgWidth] = useState(0)
+
+  let prevKm = 0
+  const paces = splits.map(s => {
+    const segKm = s.km - prevKm
+    prevKm = s.km
+    return segKm > 0 ? s.timeSec / segKm : avgPace
+  })
+
+  const n = paces.length
+  const minPace = Math.min(...paces)
+  const maxPace = Math.max(...paces)
+  const paceRange = maxPace - minPace || 1
+  const barAreaW = P_VW - P_LABEL_W
+  const slotW = barAreaW / n
+  const barW = Math.max(2, slotW - 2)
+
+  // faster pace (lower sec/km) = taller bar
+  const toBarH = (p: number) => Math.max(2, ((maxPace - p) / paceRange) * P_BAR_H)
+  const toY    = (p: number) => P_BAR_Y + P_BAR_H - toBarH(p)
+  const avgY   = toY(avgPace)
+
+  return (
+    <View onLayout={e => setSvgWidth(e.nativeEvent.layout.width)}>
+      {svgWidth > 0 && (
+        <Svg viewBox={`0 0 ${P_VW} ${P_VH}`} width={svgWidth} height={95}>
+          {paces.map((pace, i) => {
+            const h = toBarH(pace)
+            const opacity = n > 1 ? 0.35 + (i / (n - 1)) * 0.65 : 1
+            return (
+              <Rect
+                key={i}
+                x={P_LABEL_W + i * slotW + (slotW - barW) / 2}
+                y={P_BAR_Y + P_BAR_H - h}
+                width={barW}
+                height={h}
+                rx={2}
+                fill={strokeColor}
+                fillOpacity={opacity}
+              />
+            )
+          })}
+
+          {/* avg dashed line */}
+          <Line
+            x1={P_LABEL_W} y1={avgY} x2={P_VW} y2={avgY}
+            stroke={strokeColor} strokeOpacity={0.5} strokeWidth={1}
+            strokeDasharray="4 3"
+          />
+
+          {/* Y-axis: fastest at top, slowest at bottom */}
+          <SvgText x={P_LABEL_W - 4} y={P_BAR_Y + 8}
+            textAnchor="end" fill={colors.textMuted} fontSize={9} fontFamily={fonts.mono}>
+            {fmtMMSS(minPace)}
+          </SvgText>
+          <SvgText x={P_LABEL_W - 4} y={P_BAR_Y + P_BAR_H}
+            textAnchor="end" fill={colors.textMuted} fontSize={9} fontFamily={fonts.mono}>
+            {fmtMMSS(maxPace)}
+          </SvgText>
         </Svg>
       )}
     </View>

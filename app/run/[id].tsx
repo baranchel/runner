@@ -6,7 +6,7 @@ import type { Run, Segment, Split } from '../../src/types'
 import { fmtDateFull, fmtDistance, fmtDuration, fmtMMSS, fmtPace } from '../../src/utils/format'
 import { colors, fonts, runTypeColor, spacing } from '../../src/utils/tokens'
 import { computePrimaryZone } from '../../src/utils/zones'
-import { Chart, HrBarsChart } from '../../src/components/Chart'
+import { Chart, HrRangeBarsChart, PaceBarsChart } from '../../src/components/Chart'
 import { genSeries } from '../../src/utils/chart'
 
 const UNIT = 'km' as const
@@ -174,35 +174,36 @@ function ChartsSection({ run, typeColor, unit }: { run: Run; typeColor: string; 
   const avgPace = run.timeSec / run.distanceKm
   const avgHr = run.avgHr ?? 140
 
-  const paceSeries = genSeries(run.id + 'pace', 16, avgPace, 14, 0)
-
-  const HR_N = 50
-  const hiSeries = genSeries(run.id + 'hrHi', HR_N, avgHr + 5, 7, 6)
-  const loSeries = genSeries(run.id + 'hrLo', HR_N, avgHr - 9, 5, 4)
-  const hrBars = hiSeries.map((hi, i): [number, number] => [
-    Math.min(loSeries[i], hi - 3),
-    hi,
-  ])
+  const runMinHr = run.minHr ?? (avgHr - 15)
+  const runMaxHr = run.maxHr ?? (avgHr + 15)
+  // normalize the synthetic series to span exactly [minHr, maxHr] so the
+  // chart extremes always match the summary
+  const rawHr = genSeries(run.id + 'hr', 240, avgHr, 4, 6)
+  const rawMin = Math.min(...rawHr)
+  const rawMax = Math.max(...rawHr)
+  const rawRange = rawMax - rawMin || 1
+  const hrDots = rawHr.map(v =>
+    Math.round(runMinHr + ((v - rawMin) / rawRange) * (runMaxHr - runMinHr)),
+  )
 
   return (
     <>
       <View>
         <Text style={s.sectionLabel}>PACE</Text>
         <View style={ch.card}>
-          <Chart
-            series={paceSeries}
+          <PaceBarsChart
+            splits={run.splits}
+            avgPace={avgPace}
             strokeColor={typeColor}
-            formatValue={(v) => fmtPace(v, unit)}
+            unit={unit}
           />
         </View>
       </View>
       <View>
         <Text style={s.sectionLabel}>HEART RATE</Text>
         <View style={ch.card}>
-          <HrBarsChart
-            bars={hrBars}
-            minHr={run.minHr ?? Math.round(Math.min(...hrBars.map(b => b[0])))}
-            maxHr={run.maxHr ?? Math.round(Math.max(...hrBars.map(b => b[1])))}
+          <HrRangeBarsChart
+            dots={hrDots}
             timeSec={run.timeSec}
           />
         </View>
