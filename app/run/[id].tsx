@@ -1,5 +1,5 @@
 import { Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native'
-import { useLocalSearchParams, useRouter } from 'expo-router'
+import { Stack, useLocalSearchParams, useRouter } from 'expo-router'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { MOCK_RUNS, MOCK_RUN_TYPES } from '../../src/mockData'
 import type { Run, Segment, Split } from '../../src/types'
@@ -282,6 +282,9 @@ export default function RunDetail() {
 
   return (
     <SafeAreaView style={s.safe} edges={['top', 'left', 'right']}>
+      {/* disable swipe-back so scrubbing the HR chart doesn't pop the screen;
+          the ‹ Back button remains the way out */}
+      <Stack.Screen options={{ gestureEnabled: false }} />
       <ScrollView contentContainerStyle={s.content}>
         {/* back */}
         <TouchableOpacity onPress={() => router.back()} style={s.backBtn}>

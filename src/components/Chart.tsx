@@ -12,6 +12,7 @@ const DOT_H   = 86
 const DOT_TL  = 20
 const DOT_VW  = 300
 const DOT_VH  = DOT_Y + DOT_H + DOT_TL
+const DOT_RENDER_H = 130   // px height the Svg is rendered at
 
 function fmtElapsed(sec: number) {
   const h = Math.floor(sec / 3600)
@@ -53,8 +54,14 @@ export function HrRangeBarsChart({ dots, timeSec }: {
   const tlAnchor = ['start', 'middle', 'end'] as const
 
   const setFromX = (locationX: number) => {
-    const pct = (locationX / viewWidth.current)
-    const idx = Math.max(0, Math.min(m - 1, Math.floor(pct * m)))
+    const w = viewWidth.current
+    if (!w) return
+    // invert the preserveAspectRatio="meet" transform: content is uniformly
+    // scaled and centered, so undo the scale + horizontal letterbox offset
+    const scale = Math.min(w / DOT_VW, DOT_RENDER_H / DOT_VH)
+    const offsetX = (w - DOT_VW * scale) / 2
+    const vbX = (locationX - offsetX) / scale
+    const idx = Math.max(0, Math.min(m - 1, Math.floor(vbX / slotW)))
     setActiveIdx(idx)
   }
 
@@ -93,7 +100,7 @@ export function HrRangeBarsChart({ dots, timeSec }: {
       {...panResponder.panHandlers}
     >
       {svgWidth > 0 && (
-        <Svg viewBox={`0 0 ${DOT_VW} ${DOT_VH}`} width={svgWidth} height={130}>
+        <Svg viewBox={`0 0 ${DOT_VW} ${DOT_VH}`} width={svgWidth} height={DOT_RENDER_H}>
           {bars.map(([lo, hi], i) => (
             <Rect
               key={i}
