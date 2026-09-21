@@ -8,6 +8,7 @@ import { colors, fonts, runTypeColor, spacing } from '../../src/utils/tokens'
 import { computePrimaryZone } from '../../src/utils/zones'
 import { Chart, HrRangeBarsChart, PaceBarsChart } from '../../src/components/Chart'
 import type { PaceBar, PaceKind } from '../../src/components/Chart'
+import { SplitsTable, tableStyles as st } from '../../src/components/SplitsTable'
 import { genSeries } from '../../src/utils/chart'
 
 const UNIT = 'km' as const
@@ -66,41 +67,6 @@ function MetricCard({ icon, iconColor, label, value, sub }: MetricCardProps) {
       </View>
       <Text style={s.metricValue}>{value}</Text>
       {sub ? <Text style={s.metricSub}>{sub}</Text> : null}
-    </View>
-  )
-}
-
-// ─── Splits Table ─────────────────────────────────────────────────────────────
-
-function SplitsTable({ run, unit }: { run: Run; unit: 'km' | 'mi' }) {
-  let prevKm = 0
-  return (
-    <View>
-      <Text style={s.sectionLabel}>SPLITS</Text>
-      <View style={st.card}>
-        {/* header */}
-        <View style={[st.row, st.headerRow]}>
-          <Text style={[st.cell, st.hdr, { flex: 0.4, color: colors.textDim }]}>#</Text>
-          <Text style={[st.cell, st.hdr, { color: colors.accent }]}>Dist</Text>
-          <Text style={[st.cell, st.hdr, { color: colors.iconOrange }]}>Pace</Text>
-          <Text style={[st.cell, st.hdr, { color: colors.iconTeal }]}>Time</Text>
-          <Text style={[st.cell, st.hdr, { color: colors.hrLine }]}>HR</Text>
-        </View>
-        {run.splits.map((split, i) => {
-          const segKm = split.km - prevKm
-          const pace = segKm > 0 ? split.timeSec / segKm : 0
-          prevKm = split.km
-          return (
-            <View key={i} style={[st.row, i > 0 && st.borderTop]}>
-              <Text style={[st.cell, st.val, { flex: 0.4, color: colors.textMuted }]}>{i + 1}</Text>
-              <Text style={[st.cell, st.val, { color: colors.accent }]}>{fmtDistance(split.km, unit)}</Text>
-              <Text style={[st.cell, st.val, { color: colors.iconOrange }]}>{pace > 0 ? fmtPace(pace, unit) : '—'}</Text>
-              <Text style={[st.cell, st.val, { color: colors.iconTeal }]}>{fmtMMSS(split.timeSec)}</Text>
-              <Text style={[st.cell, st.val, { color: colors.hrLine }]}>{split.avgHr ?? '—'}</Text>
-            </View>
-          )
-        })}
-      </View>
     </View>
   )
 }
@@ -319,8 +285,14 @@ export default function RunDetail() {
         {/* summary */}
         <SummaryGrid run={run} unit={UNIT} />
 
-        {/* splits */}
-        <SplitsTable run={run} unit={UNIT} />
+        {/* splits — tap to open the full splits screen */}
+        <TouchableOpacity activeOpacity={0.7} onPress={() => router.push(`/run/${run.id}/splits`)}>
+          <View style={s.splitsHeader}>
+            <Text style={[s.sectionLabel, { marginBottom: 0 }]}>SPLITS</Text>
+            <Text style={s.splitsChevron}>›</Text>
+          </View>
+          <SplitsTable run={run} unit={UNIT} limit={5} />
+        </TouchableOpacity>
 
         {/* segments */}
         {run.segments && <SegmentsSection run={run} typeColor={typeColor} unit={UNIT} />}
@@ -402,18 +374,10 @@ const s = StyleSheet.create({
     marginBottom: 10,
   },
 
-  notFound: { fontFamily: fonts.body, fontSize: 14, color: colors.textMuted, textAlign: 'center', marginTop: 40 },
-})
+  splitsHeader:  { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 },
+  splitsChevron: { fontFamily: fonts.body, fontSize: 18, color: colors.textGhost },
 
-const st = StyleSheet.create({
-  card:      { backgroundColor: colors.bgChart, borderWidth: 1, borderColor: colors.borderDefault, borderRadius: spacing.radius, overflow: 'hidden' },
-  row:       { flexDirection: 'row' },
-  rowCenter: { alignItems: 'center' },
-  headerRow: { backgroundColor: colors.bgElevated },
-  borderTop: { borderTopWidth: 1, borderTopColor: colors.borderSubtle },
-  cell:      { flex: 1, paddingHorizontal: 10, paddingVertical: 10 },
-  hdr:       { fontFamily: fonts.body, fontSize: 11, color: colors.textDim },
-  val:       { fontFamily: fonts.mono, fontSize: 13, color: colors.textPrimary },
+  notFound: { fontFamily: fonts.body, fontSize: 14, color: colors.textMuted, textAlign: 'center', marginTop: 40 },
 })
 
 const sg = StyleSheet.create({
