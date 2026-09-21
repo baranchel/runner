@@ -189,7 +189,7 @@ const PACE_STYLE: Record<PaceKind, { fill: string; opacity: number }> = {
 }
 const PACE_AVG_COLOR = '#9dc0ff'
 
-export interface PaceBar { pace: number; kind: PaceKind }
+export interface PaceBar { pace: number; kind: PaceKind; dist: number }
 
 export function PaceBarsChart({ bars, avgPace, unit }: {
   bars: PaceBar[]
@@ -204,9 +204,18 @@ export function PaceBarsChart({ bars, avgPace, unit }: {
   const barAreaW = P_VW - P_L_LABEL - P_R_LABEL
   const plotLeft = P_L_LABEL
   const plotRight = P_VW - P_R_LABEL
-  const slotW = barAreaW / n
-  const barW = Math.max(2, slotW - 2)
   const baseY = P_BAR_Y + P_BAR_H
+
+  // bar width reflects split distance: each slot is proportional to its dist
+  const GAP = 2
+  const totalDist = bars.reduce((s, b) => s + (b.dist > 0 ? b.dist : 0), 0) || 1
+  let cum = 0
+  const slots = bars.map(b => {
+    const w = ((b.dist > 0 ? b.dist : 0) / totalDist) * barAreaW
+    const x0 = plotLeft + (cum / totalDist) * barAreaW
+    cum += b.dist > 0 ? b.dist : 0
+    return { x0, w, cx: x0 + w / 2 }
+  })
 
   // fixed axis: 2:00 at yTop, 12:00 at yBot; slope stays linear beyond the
   // band so faster/slower paces spill into the margins, then clamp to the chart
@@ -215,7 +224,7 @@ export function PaceBarsChart({ bars, avgPace, unit }: {
   const paceToY = (p: number) =>
     Math.min(baseY, Math.max(P_BAR_Y, yTop + (p - P_PACE_TOP) * slope))
   const avgY = paceToY(avgPace)
-  const barCx = (i: number) => plotLeft + (i + 0.5) * slotW
+  const barCx = (i: number) => slots[i].cx
 
   // svg height matches the viewBox aspect, so the scale is uniform with no
   // letterbox: viewBox x = touch x * P_VW / width
@@ -223,8 +232,9 @@ export function PaceBarsChart({ bars, avgPace, unit }: {
     const w = viewWidth.current
     if (!w) return
     const vbX = (locationX * P_VW) / w
-    const idx = Math.max(0, Math.min(n - 1, Math.floor((vbX - plotLeft) / slotW)))
-    setActiveIdx(idx)
+    let idx = slots.findIndex(s => vbX < s.x0 + s.w)
+    if (idx < 0) idx = n - 1
+    setActiveIdx(Math.max(0, idx))
   }
 
   const panResponder = useRef(
@@ -278,12 +288,13 @@ export function PaceBarsChart({ bars, avgPace, unit }: {
             const y = paceToY(pace)
             const style = PACE_STYLE[kind]
             const dim = activeIdx !== null && activeIdx !== i
+            const w = Math.max(2, slots[i].w - GAP)
             return (
               <Rect
                 key={i}
-                x={plotLeft + i * slotW + (slotW - barW) / 2}
+                x={slots[i].x0 + (slots[i].w - w) / 2}
                 y={y}
-                width={barW}
+                width={w}
                 height={baseY - y}
                 rx={2}
                 fill={style.fill}

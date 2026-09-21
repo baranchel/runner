@@ -199,11 +199,11 @@ function ChartsSection({ run, typeColor, unit }: { run: Run; typeColor: string; 
   const paceBars: PaceBar[] = run.segments
     ? run.segments
         .filter(seg => seg.distanceKm > 0)
-        .map(seg => ({ pace: seg.timeSec / seg.distanceKm, kind: segKind(seg.type) }))
+        .map(seg => ({ pace: seg.timeSec / seg.distanceKm, kind: segKind(seg.type), dist: seg.distanceKm }))
     : run.splits.map(sp => {
         const segKm = sp.km - pacePrevKm
         pacePrevKm = sp.km
-        return { pace: segKm > 0 ? sp.timeSec / segKm : avgPace, kind: 'work' as const }
+        return { pace: segKm > 0 ? sp.timeSec / segKm : avgPace, kind: 'work' as const, dist: segKm }
       })
 
   return (
