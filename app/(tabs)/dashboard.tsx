@@ -119,23 +119,23 @@ function SummaryCard({ unit }: { unit: 'km' | 'mi' }) {
     <View style={s.summaryCard}>
       <View style={s.summaryColumns}>
         <StatCol
-          topIcon={require('../../assets/distance.png')} topIconColor="#e8a900"
+          topIcon={require('../../assets/distance.png')} topIconColor={colors.iconGold}
           topLabel="Total Distance" topValue={fmtDistance(c.totalDistanceKm, unit)} topDelta={distTopDelta}
-          bottomIcon={require('../../assets/distance.png')} bottomIconColor="#e8a900"
+          bottomIcon={require('../../assets/distance.png')} bottomIconColor={colors.iconGold}
           bottomLabel="Avg Distance" bottomValue={fmtDistance(c.avgDistanceKm, unit)} bottomDelta={distBotDelta}
         />
         <View style={s.colSep} />
         <StatCol
-          topIcon={require('../../assets/time.png')} topIconColor="#00a6b8"
+          topIcon={require('../../assets/time.png')} topIconColor={colors.iconTeal}
           topLabel="Total Time" topValue={fmtDuration(c.totalTimeSec)} topDelta={timeTopDelta}
-          bottomIcon={require('../../assets/time.png')} bottomIconColor="#00a6b8"
+          bottomIcon={require('../../assets/time.png')} bottomIconColor={colors.iconTeal}
           bottomLabel="Avg Time" bottomValue={fmtDuration(c.avgTimeSec)} bottomDelta={timeBotDelta}
         />
         <View style={s.colSep} />
         <StatCol
           topIcon={require('../../assets/counter.png')} topIconColor={colors.accent}
           topLabel="Number of Runs" topValue={String(c.runCount)} topDelta={runsDelta}
-          bottomIcon={require('../../assets/pace.png')} bottomIconColor="#dc6600"
+          bottomIcon={require('../../assets/pace.png')} bottomIconColor={colors.iconOrange}
           bottomLabel="Avg Pace" bottomValue={c.avgPaceSecPerKm > 0 ? fmtPace(c.avgPaceSecPerKm, unit) : '—'} bottomDelta={paceDelta}
         />
       </View>
@@ -151,10 +151,10 @@ function WeeklyGrid() {
   const pace = dist > 0 ? time / dist : 0
 
   const stats = [
-    { label: 'Total Distance',  value: fmtDistance(dist, UNIT),            icon: require('../../assets/distance.png'), color: '#e8a900' },
-    { label: 'Total Time',     value: fmtDuration(time),                   icon: require('../../assets/time.png'),     color: '#00a6b8' },
+    { label: 'Total Distance',  value: fmtDistance(dist, UNIT),            icon: require('../../assets/distance.png'), color: colors.iconGold },
+    { label: 'Total Time',     value: fmtDuration(time),                   icon: require('../../assets/time.png'),     color: colors.iconTeal },
     { label: 'Number of Runs', value: String(WEEK_RUNS.length),            icon: require('../../assets/counter.png'), color: colors.accent },
-    { label: 'Avg Pace',       value: pace > 0 ? fmtPace(pace, UNIT) : '—', icon: require('../../assets/pace.png'), color: '#dc6600' },
+    { label: 'Avg Pace',       value: pace > 0 ? fmtPace(pace, UNIT) : '—', icon: require('../../assets/pace.png'), color: colors.iconOrange },
   ]
 
   return (
@@ -190,7 +190,7 @@ function WeeklyGrid() {
 
 // ─── Recent Runs ──────────────────────────────────────────────────────────────
 
-function RecentRuns({ onSeeAll }: { onSeeAll: () => void }) {
+function RecentRuns({ onSeeAll, router }: { onSeeAll: () => void; router: ReturnType<typeof useRouter> }) {
   return (
     <View>
       <View style={s.rowBetween}>
@@ -205,7 +205,7 @@ function RecentRuns({ onSeeAll }: { onSeeAll: () => void }) {
           const barColor = type ? runTypeColor(type.hue) : colors.textGhost
           const pace = run.timeSec / run.distanceKm
           return (
-            <View key={run.id} style={s.runRow}>
+            <TouchableOpacity key={run.id} style={s.runRow} activeOpacity={0.7} onPress={() => router.push(`/run/${run.id}`)}>
               <View style={[s.typeBar, { backgroundColor: barColor }]} />
               <View style={s.runCenter}>
                 <Text style={s.runType}>{type?.name ?? 'Unclassified'}</Text>
@@ -215,7 +215,7 @@ function RecentRuns({ onSeeAll }: { onSeeAll: () => void }) {
                 </Text>
               </View>
               <Text style={s.chevron}>›</Text>
-            </View>
+            </TouchableOpacity>
           )
         })}
       </View>
@@ -238,7 +238,7 @@ export default function Dashboard() {
           <SummaryCard unit={UNIT} />
         </View>
         <WeeklyGrid />
-        <RecentRuns onSeeAll={() => router.push('/(tabs)/runs')} />
+        <RecentRuns onSeeAll={() => router.push('/(tabs)/runs')} router={router} />
       </ScrollView>
     </SafeAreaView>
   )

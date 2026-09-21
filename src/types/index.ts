@@ -28,12 +28,15 @@ export interface Run {
   timeSec: number
   avgHr: number | null
   maxHr: number | null
+  minHr: number | null          // lowest HR recorded
   elevGain: number | null
   cadence: number | null
   source: 'apple_health' | 'strava' | 'garmin'
   notes: string | null
   segments: Segment[] | null
   splits: Split[]
+  weather: { tempC: number; humidity: number } | null
+  zones: [number, number, number, number, number] | null  // seconds per zone 1–5
 }
 
 export interface MonthStats {

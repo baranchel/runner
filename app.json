@@ -12,12 +12,6 @@
       "supportsTablet": false,
       "bundleIdentifier": "com.chronodrom.app"
     },
-    "android": {
-      "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#1a1625"
-      }
-    },
     "web": {
       "bundler": "metro"
     },
@@ -25,7 +19,9 @@
       "expo-router",
       "expo-font",
       "expo-sqlite",
-      "expo-splash-screen"
+      "expo-splash-screen",
+      "@react-native-community/datetimepicker",
+      "expo-status-bar"
     ]
   }
 }

@@ -24,3 +24,15 @@ export function fmtDate(iso: string): string {
   const [, m, d] = iso.split('-').map(Number)
   return `${MONTHS[m - 1]} ${d}`
 }
+
+export function fmtDateFull(iso: string): string {
+  const [y, m, d] = iso.split('-').map(Number)
+  return `${MONTHS[m - 1]} ${d}, ${y}`
+}
+
+// mm:ss — for split times and segment durations
+export function fmtMMSS(sec: number): string {
+  const m = Math.floor(sec / 60)
+  const s = Math.round(sec % 60)
+  return `${m}:${String(s).padStart(2, '0')}`
+}
