@@ -7,6 +7,7 @@ import { fmtDateFull, fmtDistance, fmtDuration, fmtMMSS, fmtPace } from '../../s
 import { colors, fonts, runTypeColor, spacing } from '../../src/utils/tokens'
 import { computePrimaryZone } from '../../src/utils/zones'
 import { Chart, HrRangeBarsChart, PaceBarsChart } from '../../src/components/Chart'
+import type { PaceBar, PaceKind } from '../../src/components/Chart'
 import { genSeries } from '../../src/utils/chart'
 
 const UNIT = 'km' as const
@@ -24,6 +25,13 @@ const SEGMENT_DISPLAY: Record<string, { label: string; color: (typeColor: string
   rep:      { label: 'Work',      color: (tc) => tc },
   main:     { label: 'Work',      color: (tc) => tc },
   rest:     { label: 'Rest',      color: () => colors.textMuted },
+}
+
+// map segment type → pace-bar visual kind
+function segKind(t: Segment['type']): PaceKind {
+  if (t === 'rest') return 'rest'
+  if (t === 'warmup' || t === 'cooldown') return 'ends'
+  return 'work'
 }
 
 function getPaceRange(splits: Split[]): { fastest: number; slowest: number } | null {
@@ -186,15 +194,26 @@ function ChartsSection({ run, typeColor, unit }: { run: Run; typeColor: string; 
     Math.round(runMinHr + ((v - rawMin) / rawRange) * (runMaxHr - runMinHr)),
   )
 
+  // pace bars follow the intervals (segments) when available, else the km splits
+  let pacePrevKm = 0
+  const paceBars: PaceBar[] = run.segments
+    ? run.segments
+        .filter(seg => seg.distanceKm > 0)
+        .map(seg => ({ pace: seg.timeSec / seg.distanceKm, kind: segKind(seg.type) }))
+    : run.splits.map(sp => {
+        const segKm = sp.km - pacePrevKm
+        pacePrevKm = sp.km
+        return { pace: segKm > 0 ? sp.timeSec / segKm : avgPace, kind: 'work' as const }
+      })
+
   return (
     <>
       <View>
         <Text style={s.sectionLabel}>PACE</Text>
         <View style={ch.card}>
           <PaceBarsChart
-            splits={run.splits}
+            bars={paceBars}
             avgPace={avgPace}
-            strokeColor={typeColor}
             unit={unit}
           />
         </View>

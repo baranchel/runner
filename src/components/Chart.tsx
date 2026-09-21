@@ -2,9 +2,8 @@ import React, { useRef, useState } from 'react'
 import { PanResponder, View } from 'react-native'
 import { Circle, Line, Path, Polyline, Rect, Svg, Text as SvgText } from 'react-native-svg'
 import { buildChartPaths } from '../utils/chart'
-import { fmtMMSS } from '../utils/format'
+import { fmtMMSS, fmtPace } from '../utils/format'
 import { colors, fonts } from '../utils/tokens'
-import type { Split } from '../types'
 
 const R_LABEL = 28   // right-side label column
 const DOT_Y   = 14
@@ -163,77 +162,163 @@ export function HrRangeBarsChart({ dots, timeSec }: {
   )
 }
 
-const P_LABEL_W = 38
-const P_BAR_Y   = 8
-const P_BAR_H   = 78
-const P_VW      = 300
-const P_VH      = P_BAR_Y + P_BAR_H + 4
+const P_L_LABEL    = 34    // left column: pace scale (2:00–12:00)
+const P_R_LABEL    = 30    // right column: avg pace callout
+const P_BAR_Y      = 10
+const P_TOP_MARGIN = 26    // room above 2:00 so faster paces still register
+const P_BOT_MARGIN = 26    // room below 12:00 so slower paces still register
+const P_GRID_H     = 240   // height of the 2:00–12:00 band (bigger = more space between marks)
+const P_BAR_H      = P_TOP_MARGIN + P_GRID_H + P_BOT_MARGIN
+const P_VW         = 300
+const P_VH         = P_BAR_Y + P_BAR_H + 6
 
-export function PaceBarsChart({ splits, avgPace, strokeColor, unit }: {
-  splits: Split[]
+// fixed absolute pace axis: 2:00/km at the top of the band, 12:00/km at the
+// bottom, gridline label every 1:00. Faster pace = taller bar. Paces beyond
+// 2:00/12:00 spill into the top/bottom margins before clamping.
+const P_PACE_TOP = 120   // 2:00 / km
+const P_PACE_BOT = 720   // 12:00 / km
+const P_MARKS: number[] = []
+for (let sec = P_PACE_TOP; sec <= P_PACE_BOT; sec += 60) P_MARKS.push(sec)
+
+// fixed blue palette — work bars bold, rest brighter, warmup/cooldown muted
+export type PaceKind = 'work' | 'rest' | 'ends'
+const PACE_STYLE: Record<PaceKind, { fill: string; opacity: number }> = {
+  work: { fill: '#2f6fe0', opacity: 1 },     // bold deep blue
+  rest: { fill: '#7db0ff', opacity: 1 },     // brighter/lighter blue
+  ends: { fill: '#3b82f6', opacity: 0.5 },   // warmup + cooldown, muted same tone
+}
+const PACE_AVG_COLOR = '#9dc0ff'
+
+export interface PaceBar { pace: number; kind: PaceKind }
+
+export function PaceBarsChart({ bars, avgPace, unit }: {
+  bars: PaceBar[]
   avgPace: number
-  strokeColor: string
   unit: 'km' | 'mi'
 }) {
   const [svgWidth, setSvgWidth] = useState(0)
+  const [activeIdx, setActiveIdx] = useState<number | null>(null)
+  const viewWidth = useRef(0)
 
-  let prevKm = 0
-  const paces = splits.map(s => {
-    const segKm = s.km - prevKm
-    prevKm = s.km
-    return segKm > 0 ? s.timeSec / segKm : avgPace
-  })
-
-  const n = paces.length
-  const minPace = Math.min(...paces)
-  const maxPace = Math.max(...paces)
-  const paceRange = maxPace - minPace || 1
-  const barAreaW = P_VW - P_LABEL_W
+  const n = bars.length
+  const barAreaW = P_VW - P_L_LABEL - P_R_LABEL
+  const plotLeft = P_L_LABEL
+  const plotRight = P_VW - P_R_LABEL
   const slotW = barAreaW / n
   const barW = Math.max(2, slotW - 2)
+  const baseY = P_BAR_Y + P_BAR_H
 
-  // faster pace (lower sec/km) = taller bar
-  const toBarH = (p: number) => Math.max(2, ((maxPace - p) / paceRange) * P_BAR_H)
-  const toY    = (p: number) => P_BAR_Y + P_BAR_H - toBarH(p)
-  const avgY   = toY(avgPace)
+  // fixed axis: 2:00 at yTop, 12:00 at yBot; slope stays linear beyond the
+  // band so faster/slower paces spill into the margins, then clamp to the chart
+  const yTop  = P_BAR_Y + P_TOP_MARGIN
+  const slope = P_GRID_H / (P_PACE_BOT - P_PACE_TOP)
+  const paceToY = (p: number) =>
+    Math.min(baseY, Math.max(P_BAR_Y, yTop + (p - P_PACE_TOP) * slope))
+  const avgY = paceToY(avgPace)
+  const barCx = (i: number) => plotLeft + (i + 0.5) * slotW
+
+  // svg height matches the viewBox aspect, so the scale is uniform with no
+  // letterbox: viewBox x = touch x * P_VW / width
+  const setFromX = (locationX: number) => {
+    const w = viewWidth.current
+    if (!w) return
+    const vbX = (locationX * P_VW) / w
+    const idx = Math.max(0, Math.min(n - 1, Math.floor((vbX - plotLeft) / slotW)))
+    setActiveIdx(idx)
+  }
+
+  const panResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: () => true,
+      onPanResponderGrant: (e) => setFromX(e.nativeEvent.locationX),
+      onPanResponderMove: (e) => setFromX(e.nativeEvent.locationX),
+      onPanResponderRelease: () => setActiveIdx(null),
+      onPanResponderTerminate: () => setActiveIdx(null),
+    }),
+  ).current
+
+  const FONT = 10
+  const activeX = activeIdx !== null ? barCx(activeIdx) : null
+  const label = activeIdx !== null ? fmtPace(bars[activeIdx].pace, unit) : ''
+  const labelW = label.length * FONT * 0.6
+  const PILL_W = labelW + 12
+  const PILL_H = 18
+  const pillX  = activeX !== null ? Math.max(0, Math.min(activeX - PILL_W / 2, P_VW - PILL_W)) : 0
+  const pillY  = P_BAR_Y - 2
+  const textX  = pillX + (PILL_W - labelW) / 2
+  const textY  = pillY + PILL_H / 2 + FONT * 0.34
 
   return (
-    <View onLayout={e => setSvgWidth(e.nativeEvent.layout.width)}>
+    <View
+      onLayout={e => {
+        viewWidth.current = e.nativeEvent.layout.width
+        setSvgWidth(e.nativeEvent.layout.width)
+      }}
+      {...panResponder.panHandlers}
+    >
       {svgWidth > 0 && (
-        <Svg viewBox={`0 0 ${P_VW} ${P_VH}`} width={svgWidth} height={95}>
-          {paces.map((pace, i) => {
-            const h = toBarH(pace)
-            const opacity = n > 1 ? 0.35 + (i / (n - 1)) * 0.65 : 1
+        <Svg viewBox={`0 0 ${P_VW} ${P_VH}`} width={svgWidth} height={svgWidth * P_VH / P_VW}>
+          {/* pace gridlines + scale labels every 1:00 */}
+          {P_MARKS.map(g => {
+            const gy = paceToY(g)
+            return (
+              <React.Fragment key={g}>
+                <Line x1={plotLeft} y1={gy} x2={plotRight} y2={gy}
+                  stroke={colors.borderSubtle} strokeOpacity={0.4} strokeWidth={0.5} />
+                <SvgText x={P_L_LABEL - 4} y={gy + 3}
+                  textAnchor="end" fill={colors.textMuted} fontSize={9} fontFamily={fonts.mono}>
+                  {fmtMMSS(g)}
+                </SvgText>
+              </React.Fragment>
+            )
+          })}
+
+          {bars.map(({ pace, kind }, i) => {
+            const y = paceToY(pace)
+            const style = PACE_STYLE[kind]
+            const dim = activeIdx !== null && activeIdx !== i
             return (
               <Rect
                 key={i}
-                x={P_LABEL_W + i * slotW + (slotW - barW) / 2}
-                y={P_BAR_Y + P_BAR_H - h}
+                x={plotLeft + i * slotW + (slotW - barW) / 2}
+                y={y}
                 width={barW}
-                height={h}
+                height={baseY - y}
                 rx={2}
-                fill={strokeColor}
-                fillOpacity={opacity}
+                fill={style.fill}
+                fillOpacity={dim ? style.opacity * 0.3 : style.opacity}
               />
             )
           })}
 
-          {/* avg dashed line */}
+          {/* avg dashed line + callout */}
           <Line
-            x1={P_LABEL_W} y1={avgY} x2={P_VW} y2={avgY}
-            stroke={strokeColor} strokeOpacity={0.5} strokeWidth={1}
+            x1={plotLeft} y1={avgY} x2={plotRight} y2={avgY}
+            stroke={PACE_AVG_COLOR} strokeOpacity={0.9} strokeWidth={1}
             strokeDasharray="4 3"
           />
+          <SvgText x={P_VW - 2} y={avgY + 3}
+            textAnchor="end" fill={PACE_AVG_COLOR} fontSize={9} fontFamily={fonts.mono}>
+            {fmtMMSS(avgPace)}
+          </SvgText>
 
-          {/* Y-axis: fastest at top, slowest at bottom */}
-          <SvgText x={P_LABEL_W - 4} y={P_BAR_Y + 8}
-            textAnchor="end" fill={colors.textMuted} fontSize={9} fontFamily={fonts.mono}>
-            {fmtMMSS(minPace)}
-          </SvgText>
-          <SvgText x={P_LABEL_W - 4} y={P_BAR_Y + P_BAR_H}
-            textAnchor="end" fill={colors.textMuted} fontSize={9} fontFamily={fonts.mono}>
-            {fmtMMSS(maxPace)}
-          </SvgText>
+          {/* scrubber */}
+          {activeIdx !== null && activeX !== null && (
+            <>
+              <Line
+                x1={activeX} y1={P_BAR_Y} x2={activeX} y2={baseY}
+                stroke="white" strokeOpacity={0.25} strokeWidth={1}
+              />
+              <Rect x={pillX} y={pillY} width={PILL_W} height={PILL_H} rx={4} fill={colors.bgElevated} />
+              <SvgText
+                x={textX} y={textY}
+                fill={colors.textPrimary} fontSize={FONT} fontFamily={fonts.mono}
+              >
+                {label}
+              </SvgText>
+            </>
+          )}
         </Svg>
       )}
     </View>
