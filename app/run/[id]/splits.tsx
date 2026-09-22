@@ -27,13 +27,13 @@ export default function SplitsScreen() {
     )
   }
 
-  // per-split pace uses the distance since the previous marker
+  // each split's own distance is the gap since the previous marker (not the cumulative km)
   let prevKm = 0
   const rows = run.splits.map((split) => {
     const segKm = split.km - prevKm
     const pace = segKm > 0 ? split.timeSec / segKm : 0
     prevKm = split.km
-    return { split, pace }
+    return { split, segKm, pace }
   })
 
   return (
@@ -67,9 +67,9 @@ export default function SplitsScreen() {
                 <Text style={[s.hdr, { width: COL.pace }]}>Pace</Text>
                 <Text style={[s.hdr, { width: COL.hr }]}>Heart Rate</Text>
               </View>
-              {rows.map(({ split, pace }, i) => (
+              {rows.map(({ split, segKm, pace }, i) => (
                 <View key={i} style={[s.metricRow, i > 0 && s.sep]}>
-                  <Text style={[s.val, { width: COL.dist, color: colors.accent }]}>{fmtDistance(split.km, UNIT)}</Text>
+                  <Text style={[s.val, { width: COL.dist, color: colors.accent }]}>{fmtDistance(segKm, UNIT)}</Text>
                   <Text style={[s.val, { width: COL.time, color: colors.iconTeal }]}>{fmtMMSS(split.timeSec)}</Text>
                   <Text style={[s.val, { width: COL.pace, color: colors.iconOrange }]}>{pace > 0 ? fmtPace(pace, UNIT) : '—'}</Text>
                   <Text style={[s.val, { width: COL.hr, color: colors.hrLine }]}>{split.avgHr != null ? `${split.avgHr} bpm` : '—'}</Text>
