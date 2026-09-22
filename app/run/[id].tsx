@@ -9,6 +9,7 @@ import { computePrimaryZone } from '../../src/utils/zones'
 import { Chart, HrRangeBarsChart, PaceBarsChart } from '../../src/components/Chart'
 import type { PaceBar, PaceKind } from '../../src/components/Chart'
 import { SplitsTable, tableStyles as st } from '../../src/components/SplitsTable'
+import { SegmentsTable } from '../../src/components/SegmentsTable'
 import { genSeries } from '../../src/utils/chart'
 
 const UNIT = 'km' as const
@@ -18,14 +19,6 @@ const SOURCE_LABEL: Record<string, string> = {
   apple_health: 'Apple Health',
   strava: 'Strava',
   garmin: 'Garmin',
-}
-
-const SEGMENT_DISPLAY: Record<string, { label: string; color: (typeColor: string) => string }> = {
-  warmup:   { label: 'Warm-up',   color: () => colors.elevLine },
-  cooldown: { label: 'Cool-down', color: () => colors.elevLine },
-  rep:      { label: 'Work',      color: (tc) => tc },
-  main:     { label: 'Work',      color: (tc) => tc },
-  rest:     { label: 'Rest',      color: () => colors.textMuted },
 }
 
 // map segment type → pace-bar visual kind
@@ -200,37 +193,16 @@ function ChartsSection({ run, typeColor, unit }: { run: Run; typeColor: string; 
 // ─── Segments Section ────────────────────────────────────────────────────────
 
 function SegmentsSection({ run, typeColor, unit }: { run: Run; typeColor: string; unit: 'km' | 'mi' }) {
+  const router = useRouter()
   if (!run.segments) return null
   return (
-    <View>
-      <Text style={s.sectionLabel}>STRUCTURE</Text>
-      <View style={st.card}>
-        <View style={[st.row, st.headerRow]}>
-          <Text style={[st.cell, st.hdr, { flex: 1.4 }]}>Type</Text>
-          <Text style={[st.cell, st.hdr, { color: colors.iconGold }]}>Dist</Text>
-          <Text style={[st.cell, st.hdr, { color: colors.iconOrange }]}>Pace</Text>
-          <Text style={[st.cell, st.hdr, { color: colors.iconTeal }]}>Time</Text>
-          <Text style={[st.cell, st.hdr, { color: colors.hrLine }]}>HR</Text>
-        </View>
-        {run.segments.map((seg, i) => {
-          const display = SEGMENT_DISPLAY[seg.type] ?? { label: seg.type, color: () => colors.textMuted }
-          const dotColor = display.color(typeColor)
-          const pace = seg.distanceKm > 0 ? seg.timeSec / seg.distanceKm : 0
-          return (
-            <View key={i} style={[st.row, st.rowCenter, i > 0 && st.borderTop]}>
-              <View style={[st.cell, { flex: 1.4, flexDirection: 'row', alignItems: 'center', gap: 6 }]}>
-                <View style={[sg.dot, { backgroundColor: dotColor }]} />
-                <Text style={[st.val, { color: dotColor }]} numberOfLines={1}>{display.label}</Text>
-              </View>
-              <Text style={[st.cell, st.val, { color: colors.iconGold }]} numberOfLines={1}>{fmtDistance(seg.distanceKm, unit)}</Text>
-              <Text style={[st.cell, st.val, { color: colors.iconOrange }]} numberOfLines={1}>{pace > 0 ? fmtPace(pace, unit) : '—'}</Text>
-              <Text style={[st.cell, st.val, { color: colors.iconTeal }]} numberOfLines={1}>{fmtMMSS(seg.timeSec)}</Text>
-              <Text style={[st.cell, st.val, { color: colors.hrLine }]} numberOfLines={1}>{seg.avgHr ?? '—'}</Text>
-            </View>
-          )
-        })}
+    <TouchableOpacity activeOpacity={0.7} onPress={() => router.push(`/run/${run.id}/segments`)}>
+      <View style={s.tapHeader}>
+        <Text style={[s.sectionLabel, { marginBottom: 0 }]}>STRUCTURE</Text>
+        <Text style={s.tapChevron}>›</Text>
       </View>
-    </View>
+      <SegmentsTable run={run} typeColor={typeColor} unit={unit} limit={5} />
+    </TouchableOpacity>
   )
 }
 
@@ -287,9 +259,9 @@ export default function RunDetail() {
 
         {/* splits — tap to open the full splits screen */}
         <TouchableOpacity activeOpacity={0.7} onPress={() => router.push(`/run/${run.id}/splits`)}>
-          <View style={s.splitsHeader}>
+          <View style={s.tapHeader}>
             <Text style={[s.sectionLabel, { marginBottom: 0 }]}>SPLITS</Text>
-            <Text style={s.splitsChevron}>›</Text>
+            <Text style={s.tapChevron}>›</Text>
           </View>
           <SplitsTable run={run} unit={UNIT} limit={5} />
         </TouchableOpacity>
@@ -374,15 +346,12 @@ const s = StyleSheet.create({
     marginBottom: 10,
   },
 
-  splitsHeader:  { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 },
-  splitsChevron: { fontFamily: fonts.body, fontSize: 18, color: colors.textGhost },
+  tapHeader:  { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 },
+  tapChevron: { fontFamily: fonts.body, fontSize: 18, color: colors.textGhost },
 
   notFound: { fontFamily: fonts.body, fontSize: 14, color: colors.textMuted, textAlign: 'center', marginTop: 40 },
 })
 
-const sg = StyleSheet.create({
-  dot: { width: 8, height: 8, borderRadius: 4 },
-})
 
 const ch = StyleSheet.create({
   card: {
