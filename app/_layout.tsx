@@ -6,7 +6,9 @@ export default function RootLayout() {
   return (
     <>
       <StatusBar style="light" />
-      <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.bgApp } }} />
+      <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.bgApp } }}>
+        <Stack.Screen name="run/[id]/segments" options={{ presentation: 'modal' }} />
+      </Stack>
     </>
   );
 }
