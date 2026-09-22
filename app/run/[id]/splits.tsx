@@ -56,6 +56,9 @@ export default function SplitsScreen() {
                 <Text style={s.idx}>{i + 1}</Text>
               </View>
             ))}
+            <View style={[s.pinRow, s.totalSep]}>
+              <Text style={s.totalLabel}>Total</Text>
+            </View>
           </View>
 
           {/* scrollable: metrics */}
@@ -75,6 +78,12 @@ export default function SplitsScreen() {
                   <Text style={[s.val, { width: COL.hr, color: colors.hrLine }]}>{split.avgHr != null ? `${split.avgHr} bpm` : '—'}</Text>
                 </View>
               ))}
+              <View style={[s.metricRow, s.totalSep]}>
+                <Text style={[s.val, s.totalVal, { width: COL.dist, color: colors.accent }]}>{fmtDistance(run.distanceKm, UNIT)}</Text>
+                <Text style={[s.val, s.totalVal, { width: COL.time, color: colors.iconTeal }]}>{fmtMMSS(run.timeSec)}</Text>
+                <Text style={[s.val, s.totalVal, { width: COL.pace, color: colors.iconOrange }]}>{fmtPace(run.timeSec / run.distanceKm, UNIT)}</Text>
+                <Text style={[s.val, s.totalVal, { width: COL.hr, color: colors.hrLine }]}>{run.avgHr != null ? `${run.avgHr} bpm` : '—'}</Text>
+              </View>
             </View>
           </ScrollView>
         </View>
@@ -122,4 +131,8 @@ const s = StyleSheet.create({
   val:       { fontFamily: fonts.mono, fontSize: 14, color: colors.textPrimary, paddingRight: 18 },
 
   sep:       { borderTopWidth: 1, borderTopColor: colors.borderSubtle },
+
+  totalSep:   { borderTopWidth: 1, borderTopColor: colors.borderStrong },
+  totalLabel: { fontFamily: fonts.body, fontSize: 13, fontWeight: '700', color: colors.textPrimary },
+  totalVal:   { fontWeight: '700', color: colors.textPrimary },
 })
