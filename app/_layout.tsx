@@ -8,6 +8,7 @@ export default function RootLayout() {
       <StatusBar style="light" />
       <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.bgApp } }}>
         <Stack.Screen name="run/[id]/segments" options={{ presentation: 'modal' }} />
+        <Stack.Screen name="run/[id]/splits" options={{ presentation: 'modal' }} />
       </Stack>
     </>
   );

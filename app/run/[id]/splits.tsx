@@ -1,13 +1,17 @@
-import { ScrollView, StyleSheet, Text, TouchableOpacity } from 'react-native'
+import { ScrollView, StyleSheet, Text, View, TouchableOpacity } from 'react-native'
 import { useLocalSearchParams, useRouter } from 'expo-router'
-import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
-import { MOCK_RUNS, MOCK_RUN_TYPES } from '../../../src/mockData'
-import { SplitsTable } from '../../../src/components/SplitsTable'
-import { fmtDateFull } from '../../../src/utils/format'
-import { colors, fonts, spacing } from '../../../src/utils/tokens'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
+import { MOCK_RUNS } from '../../../src/mockData'
+import { fmtDistance, fmtMMSS, fmtPace } from '../../../src/utils/format'
+import { colors, fonts } from '../../../src/utils/tokens'
 
 const UNIT = 'km' as const
-const TYPE_MAP = Object.fromEntries(MOCK_RUN_TYPES.map(t => [t.id, t]))
+
+const ROW_H = 54
+const HEADER_H = 38
+const PINNED_W = 52
+// scrollable metric columns
+const COL = { dist: 100, time: 84, pace: 108, hr: 112 }
 
 export default function SplitsScreen() {
   const { id } = useLocalSearchParams<{ id: string }>()
@@ -17,63 +21,118 @@ export default function SplitsScreen() {
 
   if (!run) {
     return (
-      <SafeAreaView style={s.safe} edges={['top']}>
+      <View style={[s.screen, s.center]}>
         <Text style={s.notFound}>Run not found</Text>
-      </SafeAreaView>
+      </View>
     )
   }
 
-  const type = run.typeId ? TYPE_MAP[run.typeId] : null
+  // each split's own distance is the gap since the previous marker (not the cumulative km)
+  let prevKm = 0
+  const rows = run.splits.map((split) => {
+    const segKm = split.km - prevKm
+    const pace = segKm > 0 ? split.timeSec / segKm : 0
+    prevKm = split.km
+    return { split, segKm, pace }
+  })
 
   return (
-    <SafeAreaView style={s.safe} edges={['top', 'left', 'right']}>
-      <ScrollView contentContainerStyle={s.content}>
-        <Text style={s.title}>Splits</Text>
-        <Text style={s.subtitle}>{type?.name ?? 'Unclassified'} · {fmtDateFull(run.date)}</Text>
-        <SplitsTable run={run} unit={UNIT} />
-      </ScrollView>
+    <View style={s.screen}>
+      {/* header */}
+      <View style={s.header}>
+        <TouchableOpacity onPress={() => router.back()} style={s.closeBtn} activeOpacity={0.7}>
+          <Text style={s.closeIcon}>✕</Text>
+        </TouchableOpacity>
+        <Text style={s.headerTitle}>Splits</Text>
+      </View>
 
-      {/* floating back button — matches the run detail screen */}
-      <TouchableOpacity onPress={() => router.back()} style={[s.backFab, { top: insets.top + 12 }]} activeOpacity={0.7}>
-        <Text style={s.backFabIcon}>‹</Text>
-      </TouchableOpacity>
-    </SafeAreaView>
+      <ScrollView style={s.body} contentContainerStyle={{ paddingBottom: insets.bottom + 24 }}>
+        <View style={s.tableRow}>
+          {/* pinned: split number */}
+          <View>
+            <View style={{ height: HEADER_H }} />
+            {rows.map((_, i) => (
+              <View key={i} style={[s.pinRow, i > 0 && s.sep]}>
+                <Text style={s.idx}>{i + 1}</Text>
+              </View>
+            ))}
+            <View style={[s.pinRow, s.totalSep]}>
+              <Text style={s.totalLabel}>Total</Text>
+            </View>
+          </View>
+
+          {/* scrollable: metrics */}
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={s.scrollArea}>
+            <View>
+              <View style={[s.metricRow, { height: HEADER_H }]}>
+                <Text style={[s.hdr, { width: COL.dist }]}>Distance</Text>
+                <Text style={[s.hdr, { width: COL.time }]}>Time</Text>
+                <Text style={[s.hdr, { width: COL.pace }]}>Pace</Text>
+                <Text style={[s.hdr, { width: COL.hr }]}>Heart Rate</Text>
+              </View>
+              {rows.map(({ split, segKm, pace }, i) => (
+                <View key={i} style={[s.metricRow, i > 0 && s.sep]}>
+                  <Text style={[s.val, { width: COL.dist, color: colors.accent }]}>{fmtDistance(segKm, UNIT)}</Text>
+                  <Text style={[s.val, { width: COL.time, color: colors.iconTeal }]}>{fmtMMSS(split.timeSec)}</Text>
+                  <Text style={[s.val, { width: COL.pace, color: colors.iconOrange }]}>{pace > 0 ? fmtPace(pace, UNIT) : '—'}</Text>
+                  <Text style={[s.val, { width: COL.hr, color: colors.hrLine }]}>{split.avgHr != null ? `${split.avgHr} bpm` : '—'}</Text>
+                </View>
+              ))}
+              <View style={[s.metricRow, s.totalSep]}>
+                <Text style={[s.val, s.totalVal, { width: COL.dist, color: colors.accent }]}>{fmtDistance(run.distanceKm, UNIT)}</Text>
+                <Text style={[s.val, s.totalVal, { width: COL.time, color: colors.iconTeal }]}>{fmtMMSS(run.timeSec)}</Text>
+                <Text style={[s.val, s.totalVal, { width: COL.pace, color: colors.iconOrange }]}>{fmtPace(run.timeSec / run.distanceKm, UNIT)}</Text>
+                <Text style={[s.val, s.totalVal, { width: COL.hr, color: colors.hrLine }]}>{run.avgHr != null ? `${run.avgHr} bpm` : '—'}</Text>
+              </View>
+            </View>
+          </ScrollView>
+        </View>
+      </ScrollView>
+    </View>
   )
 }
 
 const s = StyleSheet.create({
-  safe:    { flex: 1, backgroundColor: colors.bgApp },
-  content: { padding: spacing.screenH, paddingTop: 72, gap: spacing.gap },
+  screen: { flex: 1, backgroundColor: colors.bgApp },
+  center: { alignItems: 'center', justifyContent: 'center' },
+  notFound: { fontFamily: fonts.body, fontSize: 14, color: colors.textMuted },
 
-  title:    { fontFamily: fonts.body, fontSize: 20, fontWeight: '800', color: colors.textPrimary },
-  subtitle: { fontFamily: fonts.body, fontSize: 12, color: colors.textFaint, marginTop: 2, marginBottom: 4 },
-
-  backFab: {
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 14,
+    paddingHorizontal: 14,
+  },
+  closeBtn: {
     position: 'absolute',
-    left: spacing.screenH,
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    left: 14,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     backgroundColor: colors.bgSurface,
     borderWidth: 1,
     borderColor: colors.borderStrong,
     alignItems: 'center',
     justifyContent: 'center',
-    zIndex: 10,
-    shadowColor: '#000',
-    shadowOpacity: 0.4,
-    shadowRadius: 6,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 4,
   },
-  backFabIcon: {
-    fontFamily: fonts.body,
-    fontSize: 28,
-    lineHeight: 30,
-    color: colors.textPrimary,
-    marginTop: -3,
-    marginLeft: -2,
-  },
+  closeIcon:   { fontFamily: fonts.body, fontSize: 16, color: colors.textPrimary },
+  headerTitle: { fontFamily: fonts.body, fontSize: 18, fontWeight: '800', color: colors.textPrimary },
 
-  notFound: { fontFamily: fonts.body, fontSize: 14, color: colors.textMuted, textAlign: 'center', marginTop: 40 },
+  body:      { flex: 1, paddingHorizontal: 18 },
+  tableRow:  { flexDirection: 'row' },
+  scrollArea:{ flex: 1 },
+
+  pinRow:    { width: PINNED_W, height: ROW_H, flexDirection: 'row', alignItems: 'center' },
+  idx:       { fontFamily: fonts.mono, fontSize: 14, color: colors.textMuted, width: 30 },
+
+  metricRow: { flexDirection: 'row', alignItems: 'center', height: ROW_H },
+  hdr:       { fontFamily: fonts.body, fontSize: 12, color: colors.textDim, paddingRight: 18 },
+  val:       { fontFamily: fonts.mono, fontSize: 14, color: colors.textPrimary, paddingRight: 18 },
+
+  sep:       { borderTopWidth: 1, borderTopColor: colors.borderSubtle },
+
+  totalSep:   { borderTopWidth: 1, borderTopColor: colors.borderStrong },
+  totalLabel: { fontFamily: fonts.body, fontSize: 13, fontWeight: '700', color: colors.textPrimary },
+  totalVal:   { fontWeight: '700', color: colors.textPrimary },
 })

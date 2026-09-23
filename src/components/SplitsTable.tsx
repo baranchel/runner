@@ -24,7 +24,7 @@ export function SplitsTable({ run, unit, limit }: { run: Run; unit: 'km' | 'mi';
         return (
           <View key={i} style={[tableStyles.row, i > 0 && tableStyles.borderTop]}>
             <Text style={[tableStyles.cell, tableStyles.val, { flex: 0.4, color: colors.textMuted }]}>{i + 1}</Text>
-            <Text style={[tableStyles.cell, tableStyles.val, { color: colors.accent }]}>{fmtDistance(split.km, unit)}</Text>
+            <Text style={[tableStyles.cell, tableStyles.val, { color: colors.accent }]}>{fmtDistance(segKm, unit)}</Text>
             <Text style={[tableStyles.cell, tableStyles.val, { color: colors.iconOrange }]}>{pace > 0 ? fmtPace(pace, unit) : '—'}</Text>
             <Text style={[tableStyles.cell, tableStyles.val, { color: colors.iconTeal }]}>{fmtMMSS(split.timeSec)}</Text>
             <Text style={[tableStyles.cell, tableStyles.val, { color: colors.hrLine }]}>{split.avgHr ?? '—'}</Text>
