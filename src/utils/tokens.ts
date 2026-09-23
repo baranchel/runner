@@ -35,6 +35,12 @@ export const colors = {
   iconTeal:    '#00a6b8',   // time icon tint
   iconOrange:  '#dc6600',   // pace, calories icon tint
   iconSky:     '#6db8e8',   // weather icon tint
+
+  zone1: '#e8c200',   // oklch(~0.83 0.17 100) yellow
+  zone2: '#e89a00',   // oklch(~0.75 0.16 75)  amber
+  zone3: '#e06f00',   // oklch(~0.67 0.16 55)  orange
+  zone4: '#dc4a28',   // oklch(~0.60 0.18 35)  red-orange
+  zone5: '#d21f1f',   // oklch(~0.55 0.20 27)  strong red
 } as const
 
 // Run type color — oklch(0.66 0.17 <hue>) per hue value.
@@ -54,6 +60,11 @@ const RUN_TYPE_HEX: Record<number, string> = {
 
 export const runTypeColor = (hue: number): string =>
   RUN_TYPE_HEX[hue] ?? '#888898'
+
+export const ZONE_COLORS = [
+  colors.zone1, colors.zone2, colors.zone3, colors.zone4, colors.zone5,
+]
+export const zoneColor = (i: number): string => ZONE_COLORS[i] ?? colors.textGhost
 
 export const HUE_SWATCHES = [300, 225, 155, 55, 20, 95, 340, 270, 10, 190]
 

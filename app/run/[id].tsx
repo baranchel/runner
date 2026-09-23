@@ -10,7 +10,7 @@ import { Chart, HrRangeBarsChart, PaceBarsChart } from '../../src/components/Cha
 import type { PaceBar, PaceKind } from '../../src/components/Chart'
 import { SplitsTable, tableStyles as st } from '../../src/components/SplitsTable'
 import { SegmentsTable } from '../../src/components/SegmentsTable'
-import { genSeries } from '../../src/utils/chart'
+import { hrSeries } from '../../src/utils/chart'
 
 const UNIT = 'km' as const
 const TYPE_MAP = Object.fromEntries(MOCK_RUN_TYPES.map(t => [t.id, t]))
@@ -138,20 +138,9 @@ function SummaryGrid({ run, unit }: { run: Run; unit: 'km' | 'mi' }) {
 // ─── Charts Section ──────────────────────────────────────────────────────────
 
 function ChartsSection({ run, typeColor, unit }: { run: Run; typeColor: string; unit: 'km' | 'mi' }) {
+  const router = useRouter()
   const avgPace = run.timeSec / run.distanceKm
-  const avgHr = run.avgHr ?? 140
-
-  const runMinHr = run.minHr ?? (avgHr - 15)
-  const runMaxHr = run.maxHr ?? (avgHr + 15)
-  // normalize the synthetic series to span exactly [minHr, maxHr] so the
-  // chart extremes always match the summary
-  const rawHr = genSeries(run.id + 'hr', 240, avgHr, 4, 6)
-  const rawMin = Math.min(...rawHr)
-  const rawMax = Math.max(...rawHr)
-  const rawRange = rawMax - rawMin || 1
-  const hrDots = rawHr.map(v =>
-    Math.round(runMinHr + ((v - rawMin) / rawRange) * (runMaxHr - runMinHr)),
-  )
+  const hrDots = hrSeries(run)
 
   // pace bars follow the intervals (segments) when available, else the km splits
   let pacePrevKm = 0
@@ -177,15 +166,18 @@ function ChartsSection({ run, typeColor, unit }: { run: Run; typeColor: string; 
           />
         </View>
       </View>
-      <View>
-        <Text style={s.sectionLabel}>HEART RATE</Text>
+      <TouchableOpacity activeOpacity={0.7} onPress={() => router.push(`/run/${run.id}/zones`)}>
+        <View style={s.tapHeader}>
+          <Text style={[s.sectionLabel, { marginBottom: 0 }]}>HEART RATE</Text>
+          <Text style={s.tapChevron}>›</Text>
+        </View>
         <View style={ch.card}>
           <HrRangeBarsChart
             dots={hrDots}
             timeSec={run.timeSec}
           />
         </View>
-      </View>
+      </TouchableOpacity>
     </>
   )
 }
