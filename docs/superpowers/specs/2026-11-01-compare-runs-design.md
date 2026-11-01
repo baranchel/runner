@@ -59,8 +59,8 @@ Compare tab ── two slots [Run A] [Run B]
 ### Compare tab — picker
 
 - Title "Compare runs" (17 px / 700).
-- Two slot cards side by side: "Run A" and "Run B". An empty slot shows "Select run"; a filled slot shows type color bar, type name, date, and distance.
-- Tapping a slot opens a full-screen modal containing `RunPickerList` (month groups + type chips) and a close button. Tapping a run fills that slot and closes the modal.
+- Two slot cards side by side, with no A/B labels. An empty slot shows "Select run"; a filled slot shows type color bar, type name, date, and distance.
+- Tapping a slot opens a page sheet (RN `Modal`, `presentationStyle="pageSheet"`) containing `RunPickerList` (month groups + type chips) and a close button. Tapping a run fills that slot and closes the modal.
 - The run already in the other slot is shown greyed out and is not tappable.
 - A "Compare" button below the slots is disabled until both slots are filled, then pushes `/compare/result?a=<A>&b=<B>`.
 - Slots keep their values while the tab stays mounted.
@@ -68,9 +68,8 @@ Compare tab ── two slots [Run A] [Run B]
 ### Comparison screen — `/compare/result`
 
 - Floating back button (same as Run Detail).
-- Run headers in two columns, A and B: type color bar, type name, date. Tapping a header pushes that run's `/run/[id]`.
 - A row with the label "Highlight better results" and a native `Switch`, off on every visit (not persisted).
-- Metrics table (style from `FRONTEND_SPEC.md` §5: border `border-default`, radius 10, header Metric · A · B, columns `1fr 0.8fr 0.8fr`, A/B right-aligned, values in JetBrains Mono).
+- Metrics table (style from `FRONTEND_SPEC.md` §5: border `border-default`, radius 10, header row: empty metric cell, then per run its type name (in run type color) over its date, right-aligned, tap → that run's `/run/[id]`; columns `1fr 0.8fr 0.8fr`; values in JetBrains Mono). No A/B labels in the UI..
 - Missing value → "—".
 - Toggle on → for each metric, the better value in that row gets `accent` color and font-weight 700. Ties, `none` metrics, and rows with a missing value highlight nothing.
 - Bad or missing `a`/`b` param, or a run id not found → "Run not found" plus the back button.
