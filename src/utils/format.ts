@@ -30,9 +30,13 @@ export function fmtDateFull(iso: string): string {
   return `${MONTHS[m - 1]} ${d}, ${y}`
 }
 
-// mm:ss — for split times and segment durations
+// mm:ss, or hh:mm:ss when ≥ 1 hour — for split times and segment durations
 export function fmtMMSS(sec: number): string {
-  const m = Math.floor(sec / 60)
+  const h = Math.floor(sec / 3600)
+  const m = Math.floor((sec % 3600) / 60)
   const s = Math.round(sec % 60)
+  if (h > 0) {
+    return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
+  }
   return `${m}:${String(s).padStart(2, '0')}`
 }
