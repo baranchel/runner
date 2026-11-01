@@ -1,3 +1,5 @@
+import type { Run } from '../types'
+
 function hashStr(s: string): number {
   let h = 0
   for (let i = 0; i < s.length; i++) h = (Math.imul(31, h) + s.charCodeAt(i)) | 0
@@ -28,6 +30,19 @@ export function genSeries(
     series.push(v)
   }
   return series
+}
+
+// Deterministic synthetic HR series for a run, normalized so its extremes
+// match the run's min/max HR. Shared by run detail and the zones screen.
+export function hrSeries(run: Run): number[] {
+  const avgHr = run.avgHr ?? 140
+  const minHr = run.minHr ?? avgHr - 15
+  const maxHr = run.maxHr ?? avgHr + 15
+  const raw = genSeries(run.id + 'hr', 240, avgHr, 4, 6)
+  const rawMin = Math.min(...raw)
+  const rawMax = Math.max(...raw)
+  const rawRange = rawMax - rawMin || 1
+  return raw.map(v => Math.round(minHr + ((v - rawMin) / rawRange) * (maxHr - minHr)))
 }
 
 // viewBox 0 0 300 100, 10px top/bottom padding → 80px usable height

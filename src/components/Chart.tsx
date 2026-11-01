@@ -10,8 +10,6 @@ const DOT_Y   = 14
 const DOT_H   = 86
 const DOT_TL  = 20
 const DOT_VW  = 300
-const DOT_VH  = DOT_Y + DOT_H + DOT_TL
-const DOT_RENDER_H = 130   // px height the Svg is rendered at
 
 function fmtElapsed(sec: number) {
   const h = Math.floor(sec / 3600)
@@ -22,19 +20,22 @@ function fmtElapsed(sec: number) {
 }
 
 // HR range bars — each bar spans min→max bpm of a time window
-export function HrRangeBarsChart({ dots, timeSec }: {
+export function HrRangeBarsChart({ dots, timeSec, plotH = DOT_H }: {
   dots: number[]
   timeSec: number
+  plotH?: number
 }) {
   const [svgWidth, setSvgWidth] = useState(0)
   const [activeIdx, setActiveIdx] = useState<number | null>(null)
   const viewWidth = useRef(0)
 
+  const vh = DOT_Y + plotH + DOT_TL
+  const renderH = svgWidth * vh / DOT_VW   // aspect-matched: fills width, no letterbox
   const plotW = DOT_VW - R_LABEL
   const dataMin = Math.min(...dots)
   const dataMax = Math.max(...dots)
   const range = dataMax - dataMin || 1
-  const toY = (v: number) => DOT_Y + DOT_H - ((v - dataMin) / range) * DOT_H
+  const toY = (v: number) => DOT_Y + plotH - ((v - dataMin) / range) * plotH
 
   // bucket readings into range bars
   const bucket = Math.max(1, Math.ceil(dots.length / 80))
@@ -49,7 +50,7 @@ export function HrRangeBarsChart({ dots, timeSec }: {
   const barCx = (i: number) => (i + 0.5) * slotW
 
   const tl = [0, Math.round(timeSec / 2), timeSec]
-  const tlX = [0, plotW / 2, plotW]
+  const tlX = [5, plotW / 2, plotW]   // inset so start labels don't touch the edges
   const tlAnchor = ['start', 'middle', 'end'] as const
 
   const setFromX = (locationX: number) => {
@@ -57,9 +58,8 @@ export function HrRangeBarsChart({ dots, timeSec }: {
     if (!w) return
     // invert the preserveAspectRatio="meet" transform: content is uniformly
     // scaled and centered, so undo the scale + horizontal letterbox offset
-    const scale = Math.min(w / DOT_VW, DOT_RENDER_H / DOT_VH)
-    const offsetX = (w - DOT_VW * scale) / 2
-    const vbX = (locationX - offsetX) / scale
+    const scale = w / DOT_VW
+    const vbX = locationX / scale
     const idx = Math.max(0, Math.min(m - 1, Math.floor(vbX / slotW)))
     setActiveIdx(idx)
   }
@@ -80,15 +80,22 @@ export function HrRangeBarsChart({ dots, timeSec }: {
   const activeHi  = activeIdx !== null ? bars[activeIdx][1] : null
   const FONT = 10
   const CHAR_W = FONT * 0.6          // monospace glyph advance
-  const label = activeIdx !== null ? `${activeLo}–${activeHi} bpm` : ''
-  const labelW = label.length * CHAR_W
-  const PILL_W = labelW + 12         // pad label
-  const PILL_H = 18
-  const pillX  = activeX !== null ? Math.max(0, Math.min(activeX - PILL_W / 2, plotW - PILL_W)) : 0
-  const pillY  = DOT_Y - 2
-  // manual centering — textAnchor/dominantBaseline are ignored in this rn-svg build
-  const textX  = pillX + (PILL_W - labelW) / 2
-  const textY  = pillY + PILL_H / 2 + FONT * 0.34
+
+  // active tooltip: elapsed time (top line) + min–max bpm (bottom line), placed
+  // above the active bar; flips below the bar if it would clip the chart top
+  const TT_H = 30
+  const sampleTime = activeIdx !== null ? Math.round(((activeIdx + 0.5) / m) * timeSec) : 0
+  const ttTime = activeIdx !== null ? fmtElapsed(sampleTime) : ''
+  const ttBpm  = activeIdx !== null ? `${activeLo}–${activeHi} bpm` : ''
+  const ttW    = Math.max(ttTime.length, ttBpm.length) * CHAR_W + 12
+  const ttX    = activeX !== null ? Math.max(0, Math.min(activeX - ttW / 2, plotW - ttW)) : 0
+  const barTopY = activeHi !== null ? toY(activeHi) : 0
+  const barBotY = activeLo !== null ? toY(activeLo) : 0
+  const ttAbove = barTopY - TT_H - 6
+  const ttY = ttAbove >= 2 ? ttAbove : barBotY + 6      // flip below when above clips the top
+  // manual centering — textAnchor is ignored in this rn-svg build
+  const ttTimeX = ttX + (ttW - ttTime.length * CHAR_W) / 2
+  const ttBpmX  = ttX + (ttW - ttBpm.length * CHAR_W) / 2
 
   return (
     <View
@@ -99,7 +106,7 @@ export function HrRangeBarsChart({ dots, timeSec }: {
       {...panResponder.panHandlers}
     >
       {svgWidth > 0 && (
-        <Svg viewBox={`0 0 ${DOT_VW} ${DOT_VH}`} width={svgWidth} height={DOT_RENDER_H}>
+        <Svg viewBox={`0 0 ${DOT_VW} ${vh}`} width={svgWidth} height={renderH}>
           {bars.map(([lo, hi], i) => (
             <Rect
               key={i}
@@ -117,15 +124,21 @@ export function HrRangeBarsChart({ dots, timeSec }: {
           {activeIdx !== null && activeX !== null && (
             <>
               <Line
-                x1={activeX} y1={DOT_Y} x2={activeX} y2={DOT_Y + DOT_H}
+                x1={activeX} y1={DOT_Y} x2={activeX} y2={DOT_Y + plotH}
                 stroke="white" strokeOpacity={0.25} strokeWidth={1}
               />
-              <Rect x={pillX} y={pillY} width={PILL_W} height={PILL_H} rx={4} fill={colors.bgElevated} />
+              <Rect x={ttX} y={ttY} width={ttW} height={TT_H} rx={4} fill={colors.bgElevated} />
               <SvgText
-                x={textX} y={textY}
+                x={ttTimeX} y={ttY + 12}
+                fill={colors.textMuted} fontSize={FONT} fontFamily={fonts.mono}
+              >
+                {ttTime}
+              </SvgText>
+              <SvgText
+                x={ttBpmX} y={ttY + 24}
                 fill={colors.textPrimary} fontSize={FONT} fontFamily={fonts.mono}
               >
-                {label}
+                {ttBpm}
               </SvgText>
             </>
           )}
@@ -138,7 +151,7 @@ export function HrRangeBarsChart({ dots, timeSec }: {
               >
                 {dataMax}
               </SvgText>
-              <SvgText x={DOT_VW - 2} y={toY(dataMin) - 2}
+              <SvgText x={DOT_VW - 2} y={toY(dataMin) + 8}
                 textAnchor="end" fill={colors.textMuted} fontSize={9} fontFamily={fonts.mono}
               >
                 {dataMin}
@@ -146,10 +159,10 @@ export function HrRangeBarsChart({ dots, timeSec }: {
             </>
           )}
 
-          <Line x1={0} y1={DOT_Y + DOT_H + 6} x2={plotW} y2={DOT_Y + DOT_H + 6}
+          <Line x1={0} y1={DOT_Y + plotH + 6} x2={plotW} y2={DOT_Y + plotH + 6}
             stroke={colors.borderSubtle} strokeWidth={0.5} />
           {tl.map((t, i) => (
-            <SvgText key={i} x={tlX[i]} y={DOT_VH - 2}
+            <SvgText key={i} x={tlX[i]} y={vh - 2}
               fill={colors.textMuted} fontSize={9} fontFamily={fonts.mono}
               textAnchor={tlAnchor[i]}
             >
