@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, type ComponentRef } from 'react'
 import {
   View, Text, TextInput, TouchableOpacity,
   ScrollView, StyleSheet, KeyboardAvoidingView, Platform, Image,
@@ -11,8 +11,8 @@ export default function LoginScreen() {
   const [password, setPassword] = useState('')
   const [showPwd,  setShowPwd]  = useState(false)
 
-  const emailRef    = useRef<TextInput>(null)
-  const passwordRef = useRef<TextInput>(null)
+  const emailRef    = useRef<ComponentRef<typeof TextInput>>(null)
+  const passwordRef = useRef<ComponentRef<typeof TextInput>>(null)
 
   const submit = () => router.replace('/(tabs)/dashboard')
 
