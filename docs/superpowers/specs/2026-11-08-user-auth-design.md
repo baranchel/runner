@@ -45,14 +45,14 @@ This is the first step of the Phase 2 foundation. Order of the foundation work:
 src/api/supabase.ts        creates the client (AsyncStorage session, autoRefreshToken,
                            persistSession, detectSessionInUrl: false, flowType: 'pkce')
 src/api/auth.ts            signUp, signIn, resendConfirmation, signInWithGoogle,
-                           signInWithApple, handleAuthLink, resetPassword,
+                           signInWithApple, exchangeAuthCode, resetPassword,
                            updatePassword, signOut, deleteAccount
 src/store/useAuthStore.ts  { session, loading }; initialised from getSession(),
                            kept current via onAuthStateChange
 app/forgot-password.tsx    enter email → "if an account exists, we sent a link"
 app/reset-password.tsx     opened by the reset link → set new password
 app/auth-callback.tsx      deep-link target for email-confirmation links;
-                           calls handleAuthLink(url) then lets the gate route
+                           calls exchangeAuthCode(code), then router.replace("/")
 ```
 
 Values:
@@ -67,7 +67,7 @@ Values:
   - `guard={!!session}` → `(tabs)`, `run/*`, `settings/*`
   - `guard={!session}` → `login`, `signup`, `forgot-password`
   - always reachable: `auth-callback`, `reset-password`
-- `app/index.tsx` — removed; the gate decides the landing screen.
+- `app/index.tsx` — always reachable; redirects to `/(tabs)/dashboard` when logged in, `/login` otherwise. It is also where the guards fall back to when the session changes.
 - `app/login.tsx` — wire email/password; add placeholder Apple + Google buttons;
   "Forgot password?" link.
 - `app/signup.tsx` — remove DOB field and date picker; wire `signUp()`; after submit show the
@@ -104,7 +104,7 @@ Logging out deletes them.
 5. **Forgot password** — enter email →
    `resetPasswordForEmail(email, { redirectTo: chronodrom://reset-password })` → always
    "If an account exists, we sent a reset link" → link opens `reset-password` directly,
-   which calls `handleAuthLink(url)` (code → session) → user enters new password →
+   which calls `exchangeAuthCode(code)` (code → session) → user enters new password →
    `updateUser({ password })` (same 4 rules as signup) → dashboard. Because
    `reset-password` is always reachable, the gate does not redirect away when the
    recovery session appears.
