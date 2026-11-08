@@ -62,5 +62,6 @@ Every task is done on its own branch. At the start of every session and every ne
 ## Phases
 
 - **Phase 1 (now)**: iOS, HealthKit, local SQLite, all screens
-- **Phase 2**: FastAPI Python backend (`POST /suggest-type` ML classifier), Strava OAuth
+- **Phase 2 (started)**: Supabase Auth + Postgres (all calls in `src/api/` only — screens/stores never import Supabase). FastAPI only for the ML `POST /suggest-type` classifier. Strava OAuth.
+- **Jira**: project "Run App" (key `RA`) at baranchel.atlassian.net. Tickets carry user stories; write a story into a ticket only after Bar approves the draft.
 - **Phase 3**: Android (Health Connect + Google Maps), GPS route map on Run Detail

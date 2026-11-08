@@ -17,7 +17,8 @@ Development machine: Windows, no Mac. Builds via EAS cloud service.
 | Framework | Expo ~54, managed workflow |
 | Navigation | expo-router (file-based routing) |
 | State | Zustand |
-| Local DB | expo-sqlite |
+| Local DB | expo-sqlite (local cache / offline) |
+| Backend (Phase 2) | Supabase — Auth + Postgres, called only from `src/api/` |
 | HealthKit | @kingstinct/react-native-healthkit |
 | Charts | react-native-svg |
 | Fonts | expo-font (Inter + JetBrains Mono) |
@@ -179,15 +180,21 @@ CREATE TABLE run_overrides (
 
 ---
 
-## Phase 2 — Backend + Strava (after MVP)
+## Phase 2 — Backend + Strava (started 2026-11-08)
 
-- **FastAPI (Python)** backend hosted on Railway/Render (free tier)
-  - `POST /suggest-type` — ML classifier (scikit-learn) returns predicted run type from pace/distance/HR
-  - `POST /sync` — cross-device backup
-- **Strava OAuth** — register developer app, fetch `GET /athlete/activities`, map to Run schema
+**Decision (2026-11-08): Supabase for auth + cloud DB; FastAPI only for ML.** Supabase gives auth (email, Google, Apple), hosted Postgres and per-user Row Level Security without writing a server, so cross-device sync works immediately. Data is plain Postgres → portable if we move to a custom backend later. The lock-in is auth (user accounts).
+
+- **Supabase** (project `cbbalftydzsfbqategub`, region Frankfurt, free tier)
+  - **Auth** — email+password (confirmation required), native Google, native Sign in with Apple (App Store 4.8 requires Apple when Google is offered), in-app account deletion (App Store 5.1.1). Spec: `docs/superpowers/specs/2026-11-08-user-auth-design.md`.
+  - **Postgres** — full copy of every run (summary, splits, segments, zones, weather) + profile, run types, classifications, notes, overrides. All tables reference `auth.users(id) ON DELETE CASCADE` and use RLS. Run summaries kept forever (~1–2 KB/run); raw HR/GPS streams not stored yet. Offline: app works on locally cached data and syncs when back online.
+- **Boundary rule:** all Supabase calls live in `src/api/`. Screens and stores never import `@supabase/supabase-js`, so swapping to FastAPI later only rewrites `src/api/`.
+- **FastAPI (Python)** — only for `POST /suggest-type` (scikit-learn ML classifier), added next to Supabase later.
+- **Strava OAuth** — register developer app, fetch `GET /athlete/activities`, map to Run schema (needs a server-side secret → Supabase Edge Function or FastAPI)
 - **Garmin / Coros** — no API needed; both write to Apple Health automatically
 
-Why Python (not Node.js): scikit-learn for the ML classifier. Frontend/backend boundary is clean REST — two languages is fine.
+**Foundation order:** RA-18 auth (`feature/user-auth`) → RA-34 DB (`feature/manage-db`) → RA-3 HealthKit (`feature/healthkit`) → RA-11 + RA-9 personal info & zones (`feature/add-personal-info`).
+
+**Onboarding flow (target):** Signup → Health permission (RA-3) → Personal info form, prefilled from HealthKit (RA-11) → Dashboard.
 
 ---
 
