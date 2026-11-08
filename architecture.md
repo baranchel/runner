@@ -33,7 +33,7 @@ iPhone
   @kingstinct/react-native-healthkit
         │  maps HKWorkout → Run, deduplicates
         ▼
-  expo-sqlite (local)  ←── stores run type classifications + notes
+  expo-sqlite (local)  ←── stores run type classifications + notes + manual edit overrides
         │
         ▼
   Zustand stores       ←── in-memory state (runs, types, filters, user prefs)
@@ -155,6 +155,27 @@ const jul = getMonthStats(runs, 2026, 7, today.getDate())  // Jul through same d
 ```
 
 SQLite stores Run + RunType. HealthKit is read-only — never written back to.
+
+### Manual Run Edits (planned — build with the DB layer)
+
+The Run Detail **Edit** button lets the user fix bad HealthKit readings (name, distance, time, avg/min/max HR, elevation). Pace is never stored — always `timeSec / distanceKm`. Currently (pre-DB) edits mutate the mock run in memory and are lost on restart.
+
+Because HealthKit is read-only, edits are stored as **overrides** layered on top of the HealthKit data:
+
+```sql
+CREATE TABLE run_overrides (
+  healthkit_uuid TEXT PRIMARY KEY,   -- same key used for dedup
+  name TEXT, distance_km REAL, time_sec INTEGER,
+  avg_hr INTEGER, min_hr INTEGER, max_hr INTEGER, elev_gain INTEGER
+);  -- NULL column = use the HealthKit value
+```
+
+- **Load:** HealthKit run → apply non-null override columns → store.
+- **Save:** upsert only the edited fields into `run_overrides`, then update `useRunStore`.
+- **Re-sync:** HealthKit sync never touches `run_overrides`, so edits survive.
+- **Revert to original:** delete the row.
+- Splits, segments, zones and charts stay on the recorded HealthKit data (not rescaled by edits).
+- When done: remove the in-place mutation in `app/run/[id].tsx` (marked `ponytail:`).
 
 ---
 
