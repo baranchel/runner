@@ -30,6 +30,15 @@ export function fmtDateFull(iso: string): string {
   return `${MONTHS[m - 1]} ${d}, ${y}`
 }
 
+// inverse of fmtMMSS: "m:ss" or "h:mm:ss" → seconds, null if malformed
+export function parseMMSS(str: string): number | null {
+  const parts = str.trim().split(':')
+  if (parts.length < 2 || parts.length > 3 || parts.some(p => !/^\d+$/.test(p))) return null
+  const nums = parts.map(Number)
+  if (nums.slice(1).some(n => n >= 60)) return null
+  return nums.reduce((acc, n) => acc * 60 + n, 0)
+}
+
 // mm:ss, or hh:mm:ss when ≥ 1 hour — for split times and segment durations
 export function fmtMMSS(sec: number): string {
   const h = Math.floor(sec / 3600)

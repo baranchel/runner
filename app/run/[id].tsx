@@ -1,9 +1,10 @@
-import { Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native'
+import { useState, type ComponentProps } from 'react'
+import { Image, KeyboardAvoidingView, Modal, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native'
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router'
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { MOCK_RUNS, MOCK_RUN_TYPES } from '../../src/mockData'
 import type { Run, Segment, Split } from '../../src/types'
-import { fmtDateFull, fmtDistance, fmtDuration, fmtMMSS, fmtPace } from '../../src/utils/format'
+import { fmtDateFull, fmtDistance, fmtDuration, fmtMMSS, fmtPace, parseMMSS } from '../../src/utils/format'
 import { colors, fonts, runTypeColor, spacing } from '../../src/utils/tokens'
 import { computePrimaryZone } from '../../src/utils/zones'
 import { Chart, HrRangeBarsChart, PaceBarsChart } from '../../src/components/Chart'
@@ -211,12 +212,100 @@ function MapPlaceholder() {
   )
 }
 
+// ─── Edit Modal ──────────────────────────────────────────────────────────────
+
+type EditFields = 'name' | 'distanceKm' | 'timeSec' | 'avgHr' | 'minHr' | 'maxHr' | 'elevGain'
+
+// blank → null, otherwise a non-negative integer (NaN signals invalid)
+function optInt(str: string): number | null {
+  if (str.trim() === '') return null
+  return /^\d+$/.test(str.trim()) ? Number(str) : NaN
+}
+
+function EditRunModal({ run, onClose, onSave }: {
+  run: Run
+  onClose: () => void
+  onSave: (patch: Pick<Run, EditFields>) => void
+}) {
+  const [f, setF] = useState({
+    name:     run.name,
+    distance: String(run.distanceKm),
+    time:     fmtMMSS(run.timeSec),
+    avgHr:    run.avgHr?.toString() ?? '',
+    minHr:    run.minHr?.toString() ?? '',
+    maxHr:    run.maxHr?.toString() ?? '',
+    elevGain: run.elevGain?.toString() ?? '',
+  })
+  const set = (k: keyof typeof f) => (v: string) => setF(prev => ({ ...prev, [k]: v }))
+
+  const distanceKm = Number(f.distance.replace(',', '.'))
+  const timeSec = parseMMSS(f.time)
+  const ints = { avgHr: optInt(f.avgHr), minHr: optInt(f.minHr), maxHr: optInt(f.maxHr), elevGain: optInt(f.elevGain) }
+
+  const error =
+    f.name.trim() === '' ? 'Name is required'
+    : !(distanceKm > 0) ? 'Distance must be a positive number'
+    : !timeSec ? 'Time must be m:ss or h:mm:ss'
+    : Object.values(ints).some(Number.isNaN) ? 'HR and elevation must be whole numbers'
+    : null
+
+  const field = (label: string, k: keyof typeof f, props: Partial<ComponentProps<typeof TextInput>> = {}) => (
+    <View style={ed.field}>
+      <Text style={ed.label}>{label}</Text>
+      <TextInput
+        style={ed.input}
+        value={f[k]}
+        onChangeText={set(k)}
+        placeholderTextColor={colors.textGhost}
+        {...props}
+      />
+    </View>
+  )
+
+  return (
+    <Modal animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
+      <KeyboardAvoidingView style={ed.sheet} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+        <View style={ed.bar}>
+          <TouchableOpacity onPress={onClose}><Text style={ed.cancel}>Cancel</Text></TouchableOpacity>
+          <Text style={ed.title}>Edit Run</Text>
+          <TouchableOpacity
+            disabled={!!error}
+            onPress={() => onSave({ name: f.name.trim(), distanceKm, timeSec: timeSec!, ...ints })}
+          >
+            <Text style={[ed.save, !!error && { opacity: 0.4 }]}>Save</Text>
+          </TouchableOpacity>
+        </View>
+        <ScrollView contentContainerStyle={ed.body} keyboardShouldPersistTaps="handled">
+          {field('Name', 'name')}
+          <View style={ed.row}>
+            {field('Distance (km)', 'distance', { keyboardType: 'decimal-pad' })}
+            {field('Time', 'time', { keyboardType: 'numbers-and-punctuation', placeholder: 'h:mm:ss' })}
+          </View>
+          <Text style={ed.pace}>
+            Avg pace: {distanceKm > 0 && timeSec ? fmtPace(timeSec! / distanceKm, UNIT) : '—'}
+          </Text>
+          <View style={ed.row}>
+            {field('Avg HR', 'avgHr', { keyboardType: 'number-pad', placeholder: '—' })}
+            {field('Min HR', 'minHr', { keyboardType: 'number-pad', placeholder: '—' })}
+            {field('Max HR', 'maxHr', { keyboardType: 'number-pad', placeholder: '—' })}
+          </View>
+          {field('Elevation gain (m)', 'elevGain', { keyboardType: 'number-pad', placeholder: '—' })}
+          {error && <Text style={ed.error}>{error}</Text>}
+          <Text style={ed.note}>Splits and charts keep the original recorded data.</Text>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </Modal>
+  )
+}
+
 // ─── Screen ───────────────────────────────────────────────────────────────────
 
 export default function RunDetail() {
   const { id } = useLocalSearchParams<{ id: string }>()
   const router = useRouter()
   const insets = useSafeAreaInsets()
+  const [editing, setEditing] = useState(false)
+  const [, rerender] = useState(0)
   const run = MOCK_RUNS.find(r => r.id === id)
 
   if (!run) {
@@ -239,9 +328,9 @@ export default function RunDetail() {
         {/* header */}
         <View style={s.header}>
           <View style={[s.headerBar, { backgroundColor: typeColor }]} />
-          <View>
-            <Text style={s.headerType}>{type?.name ?? 'Unclassified'}</Text>
-            <Text style={s.headerDate}>{fmtDateFull(run.date)}</Text>
+          <View style={{ flex: 1 }}>
+            <Text style={s.headerType}>{run.name}</Text>
+            <Text style={s.headerDate}>{type?.name ?? 'Unclassified'} · {fmtDateFull(run.date)}</Text>
             <Text style={s.headerSource}>Synced from {SOURCE_LABEL[run.source] ?? run.source}</Text>
           </View>
         </View>
@@ -270,6 +359,25 @@ export default function RunDetail() {
       <TouchableOpacity onPress={() => router.back()} style={[s.backFab, { top: insets.top + 12 }]} activeOpacity={0.7}>
         <Text style={s.backFabIcon}>‹</Text>
       </TouchableOpacity>
+
+      {/* floating edit button — pinned top-right, fixes bad HealthKit readings */}
+      <TouchableOpacity onPress={() => setEditing(true)} style={[s.backFab, s.editFab, { top: insets.top + 12 }]} activeOpacity={0.7}>
+        <Text style={s.editFabText}>Edit</Text>
+      </TouchableOpacity>
+
+      {editing && (
+        <EditRunModal
+          run={run}
+          onClose={() => setEditing(false)}
+          onSave={patch => {
+            // ponytail: mutates the mock in place (visible app-wide on next render);
+            // move to a runs store + SQLite overrides when src/store and src/db land
+            Object.assign(run, patch)
+            setEditing(false)
+            rerender(n => n + 1)
+          }}
+        />
+      )}
     </SafeAreaView>
   )
 }
@@ -306,6 +414,9 @@ const s = StyleSheet.create({
     marginTop: -3,
     marginLeft: -2,
   },
+
+  editFab:     { left: undefined, right: spacing.screenH, width: undefined, paddingHorizontal: 16 },
+  editFabText: { fontFamily: fonts.body, fontSize: 14, fontWeight: '700', color: colors.accent },
 
   header:     { flexDirection: 'row', alignItems: 'center', gap: 14 },
   headerBar:  { width: 8, height: 52, borderRadius: 4 },
@@ -353,6 +464,25 @@ const ch = StyleSheet.create({
     borderRadius: spacing.radius,
     overflow: 'hidden',
   },
+})
+
+const ed = StyleSheet.create({
+  sheet:  { flex: 1, backgroundColor: colors.bgApp },
+  bar:    { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: spacing.screenH, borderBottomWidth: 1, borderColor: colors.borderDefault },
+  title:  { fontFamily: fonts.body, fontSize: 16, fontWeight: '700', color: colors.textPrimary },
+  cancel: { fontFamily: fonts.body, fontSize: 15, color: colors.textMuted },
+  save:   { fontFamily: fonts.body, fontSize: 15, fontWeight: '700', color: colors.accent },
+  body:   { padding: spacing.screenH, gap: 14 },
+  row:    { flexDirection: 'row', gap: 10 },
+  field:  { flex: 1, gap: 6 },
+  label:  { fontFamily: fonts.body, fontSize: 12, color: colors.textDim },
+  input:  {
+    backgroundColor: colors.bgSurface, borderWidth: 1, borderColor: colors.borderFocus, borderRadius: 10,
+    paddingVertical: 12, paddingHorizontal: 14, color: colors.textPrimary, fontFamily: fonts.mono, fontSize: 15,
+  },
+  pace:   { fontFamily: fonts.mono, fontSize: 13, color: colors.textSecondary },
+  error:  { fontFamily: fonts.body, fontSize: 13, color: colors.danger },
+  note:   { fontFamily: fonts.body, fontSize: 12, color: colors.textFaint },
 })
 
 const mp = StyleSheet.create({
