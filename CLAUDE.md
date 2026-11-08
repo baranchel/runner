@@ -35,7 +35,8 @@ All colors use oklch. See `FRONTEND_SPEC.md` → Design Tokens for the full tabl
 ## Data Rules
 
 - HealthKit is **read-only**. Never write back to it.
-- SQLite stores only: run type classification, notes, and RunType definitions.
+- SQLite stores only: run type classification, notes, RunType definitions, and manual run edits (`run_overrides`, keyed by `healthkitUuid` — see `architecture.md` → Manual Run Edits).
+- User edits are overrides on top of HealthKit data; HealthKit sync must never overwrite them.
 - Deduplication: check `healthkitUuid` before inserting a run from HealthKit.
 - `typeId` is nullable — null means unclassified.
 
