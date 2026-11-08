@@ -236,3 +236,5 @@ expo-env.d.ts
 *.ipa
 *.apk
 *.aab
+
+.superpowers/
