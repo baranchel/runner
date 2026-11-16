@@ -6,27 +6,30 @@ Mobile-first running tracker app. Single screen, 420 × 900 px at design time; s
 
 ## Design Tokens
 
-### Colors (oklch)
-All colors use the oklch color space. Use a CSS utility or Tailwind plugin that supports it.
+### Colors
+Palette comes from the Strides Figma file (dark). Translucent lavender layers are
+pre-blended over `bg-app` into solid hex (React Native has no oklch support).
 
 | Token | Value | Usage |
 |---|---|---|
-| `bg-app` | `oklch(0.10 0.004 285)` | Page background |
-| `bg-card` | `oklch(0.15 0.004 285)` | App shell / nav bars |
-| `bg-surface` | `oklch(0.19 0.006 285)` | Cards, inputs |
-| `bg-elevated` | `oklch(0.22 0.008 285)` | Dropdowns, table headers |
-| `bg-chart` | `oklch(0.18 0.006 285)` | Chart backgrounds |
-| `border-subtle` | `oklch(0.24 0.008 285)` | Dividers |
-| `border-default` | `oklch(0.26 0.008 285)` | Card borders |
-| `border-strong` | `oklch(0.28 0.01 285)` | Input borders |
-| `border-input-focus` | `oklch(0.30 0.01 285)` | Input border (un-active) |
-| `text-primary` | `oklch(0.97 0.002 285)` | Body text |
-| `text-secondary` | `oklch(0.70 0.012 285)` | Secondary labels |
-| `text-muted` | `oklch(0.60 0.012 285)` | Metadata |
-| `text-dim` | `oklch(0.58 0.012 285)` | Section labels |
-| `text-faint` | `oklch(0.55 0.012 285)` | Timestamps |
-| `text-ghost` | `oklch(0.50 0.012 285)` | Chevrons, disabled |
-| `accent` | `oklch(0.74 0.17 300)` | Purple — links, active tabs |
+| `bg-app` | `#1d172c` | Page background |
+| `bg-card` | `#1d172c` | App shell / nav bars |
+| `bg-surface` | `#271f39` (lavender 6%) | Cards, inputs |
+| `bg-elevated` | `#2e2541` (lavender 10%) | Tiles, pills, dropdowns |
+| `bg-chart` | `#241d34` (lavender 4%) | Chart backgrounds |
+| `border-subtle` | `#362c4c` (lavender 15%) | Dividers |
+| `border-default` | `#332947` (lavender 13%) | Card borders |
+| `border-strong` | `#3e3356` (lavender 20%) | Input borders |
+| `border-input-focus` | `#473a61` (lavender 25%) | Input border (un-active) |
+| `text-primary` | `#c4a3ff` | Body text |
+| `text-secondary` | `#ab8edf` (85%) | Secondary labels |
+| `text-muted` | `#9a80ca` (75%) | Metadata |
+| `text-dim` | `#957cc4` (72%) | Section labels |
+| `text-faint` | `#8a72b5` (65%) | Timestamps |
+| `text-ghost` | `#7964a0` (55%) | Chevrons, disabled |
+| `accent` | `#c4a3ff` | Lavender — links, active tabs, hero card |
+| `lime` | `#d9f879` | Highlight card, growth pill, best-day bar |
+| `ink` | `#1d172c` | Text on lavender / lime cards |
 | `accent-bg` | `oklch(0.64 0.19 300)` | Primary button background |
 | `accent-hover` | `oklch(0.70 0.18 300)` | Primary button hover |
 | `accent-dim` | `oklch(0.30 0.09 300)` | Avatar, active chip bg |

@@ -1,27 +1,27 @@
-// Colors are hex equivalents of the oklch values defined in FRONTEND_SPEC.md.
-// oklch is not supported by React Native's color parser — keep hex here, reference
-// the spec for the canonical oklch values if targeting web later.
-
+// Palette from the Strides Figma file (dark). Translucent lavender layers are
+// pre-blended over bgApp so RN gets solid hex.
 export const colors = {
-  bgApp:          '#0d0d12',   // oklch(0.10 0.004 285)
-  bgCard:         '#141419',   // oklch(0.15 0.004 285)
-  bgSurface:      '#1c1c23',   // oklch(0.19 0.006 285)
-  bgElevated:     '#21212b',   // oklch(0.22 0.008 285)
-  bgChart:        '#191920',   // oklch(0.18 0.006 285)
+  bgApp:          '#1d172c',   // Figma page bg
+  bgCard:         '#1d172c',   // nav bars (same as page, divider separates)
+  bgSurface:      '#271f39',   // lavender 6% — cards
+  bgElevated:     '#2e2541',   // lavender 10% — tiles, pills, dropdowns
+  bgChart:        '#241d34',   // lavender 4%
 
-  borderSubtle:   '#252532',   // oklch(0.24 0.008 285)
-  borderDefault:  '#29293b',   // oklch(0.26 0.008 285)
-  borderStrong:   '#2d2d3f',   // oklch(0.28 0.01 285)
-  borderFocus:    '#313144',   // oklch(0.30 0.01 285)
+  borderSubtle:   '#362c4c',   // lavender 15% — dividers
+  borderDefault:  '#332947',   // lavender 13% — card borders
+  borderStrong:   '#3e3356',   // lavender 20% — input borders
+  borderFocus:    '#473a61',   // lavender 25%
 
-  textPrimary:    '#f2f2f8',   // oklch(0.97 0.002 285)
-  textSecondary:  '#a3a3b6',   // oklch(0.70 0.012 285)
-  textMuted:      '#888898',   // oklch(0.60 0.012 285)
-  textDim:        '#848494',   // oklch(0.58 0.012 285)
-  textFaint:      '#7d7d8f',   // oklch(0.55 0.012 285)
-  textGhost:      '#707082',   // oklch(0.50 0.012 285)
+  textPrimary:    '#c4a3ff',   // lavender
+  textSecondary:  '#ab8edf',   // lavender 85%
+  textMuted:      '#9a80ca',   // lavender 75%
+  textDim:        '#957cc4',   // lavender 72%
+  textFaint:      '#8a72b5',   // lavender 65%
+  textGhost:      '#7964a0',   // lavender 55%
 
-  accent:         '#b887ff',   // oklch(0.74 0.17 300)
+  accent:         '#c4a3ff',   // lavender — links, active tabs, hero card
+  lime:           '#d9f879',   // highlight card / growth pill
+  ink:            '#1d172c',   // text on lavender / lime cards
   accentBg:       '#9b62e9',   // oklch(0.64 0.19 300)
   accentHover:    '#ad78fc',   // oklch(0.70 0.18 300)
   accentDim:      '#2e174d',   // oklch(0.30 0.09 300)
