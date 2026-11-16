@@ -6,6 +6,7 @@ iOS running tracker app. Reads workouts from Apple HealthKit, lets user classify
 
 ## Key Files
 
+- `docs/HANDOFF.md` — **read at session start**: current task status, open bugs, decisions from previous sessions.
 - `architecture.md` — tech stack, file structure, data model, phase roadmap. Keep updated when architectural decisions change.
 - `FRONTEND_SPEC.md` — pixel-level UI spec (colors, typography, layouts, component styles). Source of truth for all visual decisions.
 - `docs/superpowers/specs/2026-08-07-surge-implementation-design.md` — full design doc with all phase decisions and rationale.

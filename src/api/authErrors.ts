@@ -2,13 +2,15 @@
 // Codes: https://supabase.com/docs/guides/auth/debugging/error-codes
 export type AuthErrorLike = { code?: string; name?: string; message?: string }
 
+export const EMAIL_NOT_CONFIRMED = 'Please confirm your email first'
+
 export function authErrorMessage(e: AuthErrorLike): string {
   if (e.name === 'AuthRetryableFetchError' || /network request failed/i.test(e.message ?? '')) {
     return 'No connection, try again'
   }
   switch (e.code) {
     case 'invalid_credentials':        return 'Email or password is incorrect'
-    case 'email_not_confirmed':        return 'Please confirm your email first'
+    case 'email_not_confirmed':        return EMAIL_NOT_CONFIRMED
     case 'user_already_exists':
     case 'email_exists':               return 'This email already has an account. Log in?'
     case 'weak_password':              return "Password doesn't meet the requirements"
