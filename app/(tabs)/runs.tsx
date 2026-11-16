@@ -1,11 +1,11 @@
-import { SectionList, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native'
-import { useRouter } from 'expo-router'
+import { ActionSheetIOS, SectionList, StyleSheet, Text, TouchableOpacity, View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { useState } from 'react'
+import { RunCard } from '../../src/components/RunCard'
 import { MOCK_RUNS, MOCK_RUN_TYPES } from '../../src/mockData'
 import type { Run } from '../../src/types'
-import { fmtDate, fmtDistance, fmtDuration, fmtPace } from '../../src/utils/format'
-import { colors, fonts, runTypeColor, spacing } from '../../src/utils/tokens'
+import { fmtDistance, fmtDuration } from '../../src/utils/format'
+import { colors, fonts, runTypeColor } from '../../src/utils/tokens'
 
 // ponytail: hardcoded until useUserStore lands; replace with store selector
 const UNIT: 'km' | 'mi' = 'km'
@@ -13,6 +13,13 @@ const TYPE_MAP = Object.fromEntries(MOCK_RUN_TYPES.map(t => [t.id, t]))
 
 const MONTH_NAMES = ['January','February','March','April','May','June',
   'July','August','September','October','November','December']
+
+type SortKey = 'newest' | 'distance' | 'time'
+const SORTS: { key: SortKey; label: string; cmp: (a: Run, b: Run) => number }[] = [
+  { key: 'newest',   label: 'Newest',   cmp: (a, b) => b.date.localeCompare(a.date) },
+  { key: 'distance', label: 'Distance', cmp: (a, b) => b.distanceKm - a.distanceKm },
+  { key: 'time',     label: 'Time',     cmp: (a, b) => b.timeSec - a.timeSec },
+]
 
 type SectionStats = { runCount: number; totalDistanceKm: number; totalTimeSec: number }
 
@@ -32,7 +39,7 @@ function computeStats(runs: Run[]): SectionStats {
   }
 }
 
-function buildSections(runs: Run[], selectedTypeId: string | null): RunSection[] {
+function buildSections(runs: Run[], selectedTypeId: string | null, sort: SortKey): RunSection[] {
   // group by 'YYYY-MM'
   const groups = new Map<string, Run[]>()
   for (const run of runs) {
@@ -41,15 +48,12 @@ function buildSections(runs: Run[], selectedTypeId: string | null): RunSection[]
     groups.get(key)!.push(run)
   }
 
-  // sort months newest first
-  const sortedKeys = [...groups.keys()].sort((a, b) => b.localeCompare(a))
-
+  const cmp = SORTS.find(x => x.key === sort)!.cmp
   const sections: RunSection[] = []
-  for (const key of sortedKeys) {
-    const monthRuns = groups.get(key)!.sort((a, b) => b.date.localeCompare(a.date))
-    const filteredRuns = selectedTypeId
-      ? monthRuns.filter(r => r.typeId === selectedTypeId)
-      : monthRuns
+  // months always newest first; sort applies within each month
+  for (const key of [...groups.keys()].sort((a, b) => b.localeCompare(a))) {
+    const monthRuns = groups.get(key)!
+    const filteredRuns = selectedTypeId ? monthRuns.filter(r => r.typeId === selectedTypeId) : monthRuns
 
     // skip month entirely if filter active and no matching runs
     if (selectedTypeId && filteredRuns.length === 0) continue
@@ -57,202 +61,90 @@ function buildSections(runs: Run[], selectedTypeId: string | null): RunSection[]
     const [year, month] = key.split('-').map(Number)
     sections.push({
       key,
-      title: `${MONTH_NAMES[month - 1].toUpperCase()} ${year}`,
+      title: `${MONTH_NAMES[month - 1]} ${year}`,
       allStats: computeStats(monthRuns),
       filteredStats: selectedTypeId ? computeStats(filteredRuns) : null,
-      data: filteredRuns,
+      data: [...filteredRuns].sort(cmp),
     })
   }
   return sections
 }
 
 function fmtStats(stats: SectionStats): string {
-  const dist = fmtDistance(stats.totalDistanceKm, UNIT)
-  const time = fmtDuration(stats.totalTimeSec)
-  return `${stats.runCount} runs · ${dist} · ${time}`
+  return `${stats.runCount} runs · ${fmtDistance(stats.totalDistanceKm, UNIT)} · ${fmtDuration(stats.totalTimeSec)}`
 }
 
 function MonthHeader({ section, selectedTypeId }: { section: RunSection; selectedTypeId: string | null }) {
   const filteredType = selectedTypeId ? (TYPE_MAP[selectedTypeId] ?? null) : null
-  const typeColor = filteredType ? runTypeColor(filteredType.hue) : colors.textGhost
-
   return (
-    <View style={mh.container}>
-      <Text style={mh.title}>{section.title}</Text>
-      <View style={mh.row}>
-        <Text style={mh.label}>All runs</Text>
-        <Text style={mh.stats}>{fmtStats(section.allStats)}</Text>
+    <View style={s.monthHeader}>
+      <View style={s.rowBetween}>
+        <Text style={s.monthTitle}>{section.title}</Text>
+        <Text style={s.monthStats}>{fmtStats(section.allStats)}</Text>
       </View>
       {section.filteredStats && filteredType && (
-        <View style={mh.row}>
-          <View style={[mh.dot, { backgroundColor: typeColor }]} />
-          <Text style={[mh.label, { color: typeColor }]}>{filteredType.name}</Text>
-          <Text style={mh.stats}>{fmtStats(section.filteredStats)}</Text>
+        <View style={s.filteredRow}>
+          <View style={[s.dot, { backgroundColor: runTypeColor(filteredType.hue) }]} />
+          <Text style={[s.filteredLabel, { color: runTypeColor(filteredType.hue) }]}>{filteredType.name}</Text>
+          <Text style={s.monthStats}>{fmtStats(section.filteredStats)}</Text>
         </View>
       )}
     </View>
   )
 }
 
-const mh = StyleSheet.create({
-  container: {
-    backgroundColor: colors.bgCard,
-    paddingHorizontal: spacing.screenH,
-    paddingVertical: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.borderSubtle,
-  },
-  title: {
-    fontFamily: fonts.body,
-    fontSize: 12,
-    color: colors.textDim,
-    letterSpacing: 0.6,
-    marginBottom: 6,
-  },
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    marginBottom: 2,
-  },
-  dot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-  },
-  label: {
-    fontFamily: fonts.body,
-    fontSize: 12,
-    color: colors.textMuted,
-    marginRight: 2,
-  },
-  stats: {
-    fontFamily: fonts.mono,
-    fontSize: 12,
-    color: colors.textSecondary,
-    flexShrink: 1,
-  },
-})
+// Native iOS picker sheet — no dropdown component needed
+function pick(title: string, labels: string[], onPick: (i: number) => void) {
+  ActionSheetIOS.showActionSheetWithOptions(
+    { title, options: [...labels, 'Cancel'], cancelButtonIndex: labels.length },
+    i => { if (i < labels.length) onPick(i) },
+  )
+}
 
-function RunRow({ run }: { run: Run }) {
-  const router = useRouter()
-  const type = run.typeId ? TYPE_MAP[run.typeId] : undefined
-  const typeColor = type ? runTypeColor(type.hue) : colors.textGhost
-
-  const pace = run.timeSec / run.distanceKm
+function FilterPill({ label, onPress }: { label: string; onPress: () => void }) {
   return (
-    <TouchableOpacity style={rr.card} onPress={() => router.push(`/run/${run.id}`)}>
-      <View style={[rr.bar, { backgroundColor: typeColor }]} />
-      <View style={rr.center}>
-        <Text style={rr.typeName}>{type?.name ?? 'Unclassified'}</Text>
-        <Text style={rr.date}>{fmtDate(run.date)}</Text>
-        <Text style={rr.meta}>
-          {fmtDistance(run.distanceKm, UNIT)} · {fmtPace(pace, UNIT)} · {fmtDuration(run.timeSec)}
-        </Text>
-      </View>
-      <Text style={rr.chevron}>›</Text>
+    <TouchableOpacity style={s.pill} onPress={onPress}>
+      <Text style={s.pillText}>{label}</Text>
+      <Text style={s.pillChevron}>▾</Text>
     </TouchableOpacity>
   )
 }
 
-const rr = StyleSheet.create({
-  card: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.bgSurface,
-    borderWidth: 1,
-    borderColor: colors.borderDefault,
-    borderRadius: spacing.radius,
-    padding: 12,
-    gap: 12,
-  },
-  bar:      { width: 8, height: 36, borderRadius: 4 },
-  center:   { flex: 1, gap: 2 },
-  typeName: { fontFamily: fonts.body, fontSize: 14, fontWeight: '600', color: colors.textPrimary },
-  date:     { fontFamily: fonts.body, fontSize: 11, color: colors.textFaint },
-  meta:     { fontFamily: fonts.body, fontSize: 12, color: colors.textMuted },
-  chevron:  { fontFamily: fonts.body, fontSize: 18, color: colors.textGhost },
-})
-
-function TypeFilterBar({
-  selectedTypeId,
-  onSelect,
-}: {
-  selectedTypeId: string | null
-  onSelect: (id: string | null) => void
-}) {
-  return (
-    <View style={tf.wrapper}>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={tf.row}>
-        <TouchableOpacity
-          style={[tf.chip, selectedTypeId === null && tf.chipActive]}
-          onPress={() => onSelect(null)}
-        >
-          <Text style={[tf.chipText, selectedTypeId === null && tf.chipTextActive]}>All</Text>
-        </TouchableOpacity>
-        {MOCK_RUN_TYPES.map(type => {
-          const active = selectedTypeId === type.id
-          const typeColor = runTypeColor(type.hue)
-          return (
-            <TouchableOpacity
-              key={type.id}
-              style={[
-                tf.chip,
-                active && { backgroundColor: typeColor + '40', borderColor: typeColor + '80' },
-              ]}
-              onPress={() => onSelect(active ? null : type.id)}
-            >
-              <Text style={[tf.chipText, active && { color: typeColor }]}>{type.name}</Text>
-            </TouchableOpacity>
-          )
-        })}
-      </ScrollView>
-    </View>
-  )
-}
-
-const tf = StyleSheet.create({
-  wrapper: {
-    backgroundColor: colors.bgCard,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.borderSubtle,
-  },
-  row: {
-    flexDirection: 'row',
-    paddingHorizontal: spacing.screenH,
-    paddingVertical: 12,
-    gap: 8,
-  },
-  chip: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: colors.borderFocus,
-    backgroundColor: 'transparent',
-  },
-  chipActive: {
-    backgroundColor: colors.accentMuted,
-    borderColor: 'transparent',
-  },
-  chipText: {
-    fontFamily: fonts.body,
-    fontSize: 12,
-    fontWeight: '600',
-    color: colors.textSecondary,
-  },
-  chipTextActive: {
-    color: colors.textPrimary,
-  },
-})
-
 export default function Runs() {
   const [selectedTypeId, setSelectedTypeId] = useState<string | null>(null)
-  const sections = buildSections(MOCK_RUNS, selectedTypeId)
+  const [sort, setSort] = useState<SortKey>('newest')
+  const sections = buildSections(MOCK_RUNS, selectedTypeId, sort)
+
+  const typeLabel = selectedTypeId ? TYPE_MAP[selectedTypeId]?.name ?? 'All types' : 'All types'
+  const sortLabel = SORTS.find(x => x.key === sort)!.label
 
   return (
     <SafeAreaView style={s.safe} edges={['top', 'left', 'right']}>
-      <TypeFilterBar selectedTypeId={selectedTypeId} onSelect={setSelectedTypeId} />
+      <View style={s.top}>
+        <Text style={s.title}>All runs</Text>
+
+        <View style={s.searchRow}>
+          {/* Placeholder — search lands with RA-35 */}
+          <View style={s.search}>
+            <Text style={s.searchText}>Search your runs</Text>
+          </View>
+          {/* Reserved slot (Figma "+" button) — empty for now */}
+          <View style={s.reserved} />
+        </View>
+
+        <View style={s.filters}>
+          <FilterPill
+            label={typeLabel}
+            onPress={() => pick('Run type', ['All types', ...MOCK_RUN_TYPES.map(t => t.name)],
+              i => setSelectedTypeId(i === 0 ? null : MOCK_RUN_TYPES[i - 1].id))}
+          />
+          <FilterPill
+            label={sortLabel}
+            onPress={() => pick('Sort by', SORTS.map(x => x.label), i => setSort(SORTS[i].key))}
+          />
+        </View>
+      </View>
+
       <SectionList
         sections={sections}
         keyExtractor={run => run.id}
@@ -260,12 +152,8 @@ export default function Runs() {
         renderSectionHeader={({ section }) => (
           <MonthHeader section={section as RunSection} selectedTypeId={selectedTypeId} />
         )}
-        renderSectionFooter={() => <View style={{ height: 16 }} />}
-        renderItem={({ item }) => (
-          <View style={s.itemWrap}>
-            <RunRow run={item} />
-          </View>
-        )}
+        renderSectionFooter={() => <View style={{ height: 14 }} />}
+        renderItem={({ item }) => <RunCard run={item} unit={UNIT} />}
         ItemSeparatorComponent={() => <View style={{ height: 10 }} />}
         contentContainerStyle={s.listContent}
         ListEmptyComponent={
@@ -280,8 +168,28 @@ export default function Runs() {
 
 const s = StyleSheet.create({
   safe:        { flex: 1, backgroundColor: colors.bgApp },
-  listContent: { paddingBottom: 32 },
-  itemWrap:    { paddingHorizontal: spacing.screenH, paddingTop: 10 },
-  empty:       { flex: 1, alignItems: 'center', justifyContent: 'center', paddingTop: 60 },
+  top:         { paddingHorizontal: 24, paddingTop: 14, gap: 16, paddingBottom: 6 },
+  title:       { fontFamily: fonts.body, fontSize: 25, fontWeight: '600', color: colors.textPrimary },
+
+  searchRow:   { flexDirection: 'row', gap: 12 },
+  search:      { flex: 1, height: 44, borderRadius: 15, backgroundColor: colors.bgSurface, justifyContent: 'center', paddingHorizontal: 16 },
+  searchText:  { fontFamily: fonts.body, fontSize: 12, color: colors.textSecondary, opacity: 0.8 },
+  reserved:    { width: 46, height: 44, borderRadius: 15, backgroundColor: colors.bgElevated },
+
+  filters:     { flexDirection: 'row', gap: 10 },
+  pill:        { flexDirection: 'row', alignItems: 'center', gap: 8, height: 34, borderRadius: 17, paddingHorizontal: 13, backgroundColor: colors.bgSurface },
+  pillText:    { fontFamily: fonts.body, fontSize: 11, fontWeight: '500', color: colors.textPrimary },
+  pillChevron: { fontSize: 10, color: colors.textPrimary },
+
+  listContent: { paddingHorizontal: 24, paddingBottom: 32 },
+  monthHeader: { backgroundColor: colors.bgApp, paddingTop: 16, paddingBottom: 12, gap: 6 },
+  rowBetween:  { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  monthTitle:  { fontFamily: fonts.body, fontSize: 18, fontWeight: '600', color: colors.textPrimary },
+  monthStats:  { fontFamily: fonts.mono, fontSize: 10, fontWeight: '500', color: colors.textSecondary, flexShrink: 1 },
+  filteredRow: { flexDirection: 'row', alignItems: 'center', gap: 6, justifyContent: 'flex-end' },
+  dot:         { width: 8, height: 8, borderRadius: 4 },
+  filteredLabel: { fontFamily: fonts.body, fontSize: 10, fontWeight: '600' },
+
+  empty:       { alignItems: 'center', paddingTop: 60 },
   emptyText:   { fontFamily: fonts.body, fontSize: 14, color: colors.textMuted },
 })

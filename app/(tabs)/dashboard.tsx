@@ -1,10 +1,11 @@
 import { Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native'
 import { useRouter } from 'expo-router'
 import { SafeAreaView } from 'react-native-safe-area-context'
-import { MOCK_RUNS, MOCK_RUN_TYPES } from '../../src/mockData'
+import { RunCard } from '../../src/components/RunCard'
+import { MOCK_RUNS } from '../../src/mockData'
 import { fmtDate, fmtDistance, fmtDuration, fmtPace } from '../../src/utils/format'
 import { getPeriodStats } from '../../src/utils/stats'
-import { colors, fonts, runTypeColor, spacing } from '../../src/utils/tokens'
+import { colors, fonts, spacing } from '../../src/utils/tokens'
 
 // ─── Module-level constants (stable mock data) ────────────────────────────────
 
@@ -14,8 +15,6 @@ const UNIT: 'km' | 'mi' = 'km'
 const RECENT_RUNS = [...MOCK_RUNS]
   .sort((a, b) => b.date.localeCompare(a.date))
   .slice(0, 4)
-
-const TYPE_MAP = Object.fromEntries(MOCK_RUN_TYPES.map(t => [t.id, t]))
 
 // Local-date ISO (toISOString would shift to UTC)
 const iso = (d: Date) =>
@@ -209,27 +208,7 @@ function RecentRuns({ router }: { router: ReturnType<typeof useRouter> }) {
           <Text style={s.pillText}>See all →</Text>
         </TouchableOpacity>
       </View>
-      {RECENT_RUNS.map(run => {
-        const type = run.typeId ? TYPE_MAP[run.typeId] : null
-        const typeColor = type ? runTypeColor(type.hue) : colors.textGhost
-        const [num, unit] = splitDist(run.distanceKm)
-        return (
-          <TouchableOpacity key={run.id} style={s.runCard} activeOpacity={0.7} onPress={() => router.push(`/run/${run.id}`)}>
-            <View style={[s.typeTile, { backgroundColor: typeColor + '40' }]}>
-              <View style={[s.typeDot, { backgroundColor: typeColor }]} />
-            </View>
-            <View style={s.runCenter}>
-              <Text style={s.runName} numberOfLines={1}>{run.name}</Text>
-              <Text style={s.runSub}>{fmtDate(run.date)} · {type?.name ?? 'Unclassified'}</Text>
-              <Text style={s.runMeta}>{fmtPace(run.timeSec / run.distanceKm, UNIT)}   ·   {fmtDuration(run.timeSec)}</Text>
-            </View>
-            <View style={s.runRight}>
-              <Text style={s.runDist}>{num}</Text>
-              <Text style={s.runUnit}>{unit}</Text>
-            </View>
-          </TouchableOpacity>
-        )
-      })}
+      {RECENT_RUNS.map(run => <RunCard key={run.id} run={run} unit={UNIT} />)}
     </View>
   )
 }
@@ -302,14 +281,4 @@ const s = StyleSheet.create({
   pill:         { backgroundColor: colors.bgElevated, borderRadius: 14, paddingHorizontal: 13, paddingVertical: 7 },
   pillText:     { fontFamily: fonts.body, fontSize: 11, fontWeight: '600', color: colors.accent },
 
-  runCard:   { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.bgSurface, borderRadius: 18, padding: 12, gap: 14 },
-  typeTile:  { width: 48, height: 48, borderRadius: 13, alignItems: 'center', justifyContent: 'center' },
-  typeDot:   { width: 14, height: 14, borderRadius: 7 },
-  runCenter: { flex: 1, gap: 4 },
-  runName:   { fontFamily: fonts.body, fontSize: 13, fontWeight: '600', color: colors.textPrimary },
-  runSub:    { fontFamily: fonts.body, fontSize: 10, color: colors.textDim },
-  runMeta:   { fontFamily: fonts.mono, fontSize: 10, fontWeight: '500', color: colors.textSecondary },
-  runRight:  { alignItems: 'flex-end', paddingRight: 5 },
-  runDist:   { fontFamily: fonts.mono, fontSize: 22, fontWeight: '600', color: colors.textPrimary },
-  runUnit:   { fontFamily: fonts.body, fontSize: 11, fontWeight: '500', color: colors.textMuted },
 })

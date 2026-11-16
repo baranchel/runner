@@ -73,9 +73,10 @@ app/
   index.tsx                    ← redirects to (tabs)/dashboard
   login.tsx                    ← auth screen
   (tabs)/
-    _layout.tsx                ← bottom tab bar
-    dashboard.tsx
-    runs.tsx
+    _layout.tsx                ← bottom tab bar (Insights, Running, All runs, Compare, You)
+    insights.tsx               ← placeholder until Figma "Data & insights" is built
+    dashboard.tsx              ← "Running" tab
+    runs.tsx                   ← "All runs" tab
     compare.tsx
     settings.tsx
   run/
