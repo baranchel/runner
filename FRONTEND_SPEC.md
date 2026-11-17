@@ -304,52 +304,23 @@ Same card style as Dashboard recent runs, plus HR shown: `distance · pace · du
 
 ### 4. Run Detail
 
-Navigate from any run row.
+Navigate from any run row. No Figma frame exists for this screen; it reuses the Strides language (Dashboard hero card, dark stat cards, lime highlight, Compare table style).
 
-**Back link**: "‹ Back" — 12 px, accent, navigates to Runs screen.
+**Floating buttons** (stay pinned while scrolling): back ‹ top-left; compare icon + "Edit" top-right. Rounded squares 46×44, radius 15, `bg-surface`, soft shadow. Edit text 14 / 600 `text-primary`.
 
-**Run Header**
-- Type name — 20 px / 800
-- Full date (e.g. "Aug 1, 2026") — 12 px, `text-faint`
-- "Synced from Strava" — 12 px, `text-faint`
+**Header**: type-color dot + "TEMPO · NOV 14, 2026" (10 / 600, `text-secondary`); run name 25 / 600; "Synced from Apple Health" 12 `text-secondary`.
 
-#### Stats Grid — 3 columns
-8 stat cards (3-col grid, gap 10 px):
-Distance · Time · Pace · Avg HR · Max HR · Elev gain · Cadence · Calories
+**Hero** — lavender card (`accent`, radius 26, padding 22), ink text and ink-tinted icons: "DISTANCE" label with icon, distance mono 56 / 600 + unit; row of Time · Avg pace · Avg HR (icon + 10 px label, mono 16 / 600 value).
 
-Stat card style (same as dashboard but smaller):
-```
-border-radius: 10px
-padding: 12px
-label: 10.5px, text-dim
-value: JetBrains Mono, 16px / 700
-```
+**Stat grid** — 2 columns, gap 10. Cards `bg-surface`, radius 18, padding 14: lavender-tinted icon + uppercase label (10 / 600, `text-secondary`), mono 18 / 600 value, optional 10 px `text-muted` sub. Cards: Pace range · HR range · Elevation · Calories · Weather (sub: humidity) · Primary zone (sub: zone name · minutes).
 
-#### Charts — 3 charts
-Each chart section:
-- Section label — 12 px, uppercase, `text-dim`
-- SVG `viewBox="0 0 300 100"`, 100% width, 90 px height
-- Background card: `bg-chart`, border `border-default`, border-radius 10
+**Lime highlight** — "Fastest km: km N · m:ss/km" (full kms only), ink 14 / 600, radius 17. Placeholder until Run Insights (RA-36).
 
-**Pace chart**: fill area with type-color (opacity 0.15), stroke with type-color (width 2)
+**Sections** — title 19 / 600 with an optional "See all →" / "Zones →" pill (`bg-surface`, radius 14). Order: Splits (first 5, → splits screen) · Structure (interval runs, first 5, → segments screen) · Pace chart · Heart rate chart (→ zones screen) · Map placeholder.
 
-**Heart rate chart**: fill `oklch(0.62 0.17 25)` (opacity 0.15), stroke same (width 2)
+**Tables** (Splits, Structure): no box; header row 10 / 600 uppercase `text-secondary`; rows with 1 px `border-subtle` top divider, mono 12 / 500 `text-primary` (split # in `text-secondary`; segment type keeps its colored dot + label).
 
-**Elevation chart**: fill `oklch(0.68 0.14 155)` (opacity 0.18), stroke same (width 2)
-
-Chart data is generated from stored run data — see Data Model.
-
-#### Splits Table
-Section label + table card (border `border-default`, border-radius 10, overflow hidden):
-
-Header row (bg `bg-elevated`, 11 px, `text-dim`): Km · Pace · HR
-
-Data rows (3-col grid `0.6fr 1fr 1fr`, border-top `border-subtle`, 13 px, JetBrains Mono):
-One row per km of run distance.
-
-#### Reclassify
-Section label + horizontal wrap of type chips (same chip style, single-select, current type is active).
-Tapping a chip immediately changes the run's type.
+**Charts** keep their own colors (blue pace bars, red HR range bars) inside `bg-surface` cards, radius 18. Scrubbing unchanged; swipe-back is disabled so scrubbing doesn't pop the screen.
 
 ---
 
