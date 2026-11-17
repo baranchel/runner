@@ -1,6 +1,7 @@
 import { useState, type ComponentProps } from 'react'
-import { Image, KeyboardAvoidingView, Modal, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native'
+import { FlatList, Image, KeyboardAvoidingView, Modal, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native'
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router'
+import { RunRow } from '../../src/components/RunPickerList'
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { MOCK_RUNS, MOCK_RUN_TYPES } from '../../src/mockData'
 import type { Run, Segment, Split } from '../../src/types'
@@ -298,6 +299,56 @@ function EditRunModal({ run, onClose, onSave }: {
   )
 }
 
+// ─── Compare Sheet ───────────────────────────────────────────────────────────
+
+function CompareSheet({ run, visible, onClose }: { run: Run; visible: boolean; onClose: () => void }) {
+  const router = useRouter()
+  const typeName = run.typeId ? (TYPE_MAP[run.typeId]?.name ?? 'Unclassified') : 'unclassified'
+  const others = MOCK_RUNS
+    .filter(r => r.id !== run.id && r.typeId === run.typeId)
+    .sort((x, y) => y.date.localeCompare(x.date))
+
+  return (
+    <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
+      <View style={cs.sheet}>
+        <View style={cs.header}>
+          <Text style={cs.title}>Compare with…</Text>
+          <TouchableOpacity onPress={onClose} hitSlop={8}>
+            <Text style={cs.close}>✕</Text>
+          </TouchableOpacity>
+        </View>
+        <FlatList
+          data={others}
+          keyExtractor={r => r.id}
+          contentContainerStyle={cs.list}
+          ItemSeparatorComponent={() => <View style={{ height: 10 }} />}
+          renderItem={({ item }) => (
+            <RunRow
+              run={item}
+              onPress={() => {
+                onClose()
+                router.push({ pathname: '/compare/result', params: { a: run.id, b: item.id } })
+              }}
+            />
+          )}
+          ListEmptyComponent={<Text style={cs.empty}>No other {typeName} runs</Text>}
+        />
+        <TouchableOpacity
+          style={cs.allRow}
+          activeOpacity={0.7}
+          onPress={() => {
+            onClose()
+            router.navigate({ pathname: '/runs', params: { select: run.id } })
+          }}
+        >
+          <Text style={cs.allText}>Choose from all runs</Text>
+          <Text style={cs.allChevron}>›</Text>
+        </TouchableOpacity>
+      </View>
+    </Modal>
+  )
+}
+
 // ─── Screen ───────────────────────────────────────────────────────────────────
 
 export default function RunDetail() {
@@ -305,6 +356,7 @@ export default function RunDetail() {
   const router = useRouter()
   const insets = useSafeAreaInsets()
   const [editing, setEditing] = useState(false)
+  const [sheetOpen, setSheetOpen] = useState(false)
   const [, rerender] = useState(0)
   const run = MOCK_RUNS.find(r => r.id === id)
 
@@ -360,10 +412,17 @@ export default function RunDetail() {
         <Text style={s.backFabIcon}>‹</Text>
       </TouchableOpacity>
 
-      {/* floating edit button — pinned top-right, fixes bad HealthKit readings */}
-      <TouchableOpacity onPress={() => setEditing(true)} style={[s.backFab, s.editFab, { top: insets.top + 12 }]} activeOpacity={0.7}>
-        <Text style={s.editFabText}>Edit</Text>
-      </TouchableOpacity>
+      {/* top-right floating actions: compare with another run, edit bad HealthKit readings */}
+      <View style={[s.fabRow, { top: insets.top + 12 }]}>
+        <TouchableOpacity onPress={() => setSheetOpen(true)} style={[s.backFab, s.fabInRow]} activeOpacity={0.7}>
+          <Image source={require('../../assets/compare.png')} style={s.compareFabIcon} />
+        </TouchableOpacity>
+        <TouchableOpacity onPress={() => setEditing(true)} style={[s.backFab, s.fabInRow, s.editFab]} activeOpacity={0.7}>
+          <Text style={s.editFabText}>Edit</Text>
+        </TouchableOpacity>
+      </View>
+
+      <CompareSheet run={run} visible={sheetOpen} onClose={() => setSheetOpen(false)} />
 
       {editing && (
         <EditRunModal
@@ -414,8 +473,11 @@ const s = StyleSheet.create({
     marginTop: -3,
     marginLeft: -2,
   },
+  fabRow:         { position: 'absolute', right: spacing.screenH, flexDirection: 'row', gap: 10, zIndex: 10 },
+  fabInRow:       { position: 'relative', left: undefined },
+  compareFabIcon: { width: 20, height: 20, tintColor: colors.textPrimary },
 
-  editFab:     { left: undefined, right: spacing.screenH, width: undefined, paddingHorizontal: 16 },
+  editFab:     { width: undefined, paddingHorizontal: 16 },
   editFabText: { fontFamily: fonts.body, fontSize: 14, fontWeight: '700', color: colors.accent },
 
   header:     { flexDirection: 'row', alignItems: 'center', gap: 14 },
@@ -488,4 +550,33 @@ const ed = StyleSheet.create({
 const mp = StyleSheet.create({
   card:  { backgroundColor: colors.bgChart, borderWidth: 1, borderColor: colors.borderDefault, borderRadius: spacing.radius, height: 160, alignItems: 'center', justifyContent: 'center' },
   label: { fontFamily: fonts.body, fontSize: 12, color: colors.textMuted },
+})
+
+const cs = StyleSheet.create({
+  sheet:  { flex: 1, backgroundColor: colors.bgApp },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: spacing.screenH,
+    paddingVertical: 16,
+  },
+  title: { fontFamily: fonts.body, fontSize: 17, fontWeight: '700', color: colors.textPrimary },
+  close: { fontFamily: fonts.body, fontSize: 18, color: colors.textSecondary },
+  list:  { paddingHorizontal: spacing.screenH, paddingBottom: 16 },
+  empty: { fontFamily: fonts.body, fontSize: 14, color: colors.textMuted, textAlign: 'center', marginTop: 40 },
+  allRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginHorizontal: spacing.screenH,
+    marginBottom: 32,
+    padding: 14,
+    backgroundColor: colors.bgSurface,
+    borderWidth: 1,
+    borderColor: colors.borderDefault,
+    borderRadius: spacing.radius,
+  },
+  allText:    { fontFamily: fonts.body, fontSize: 14, fontWeight: '600', color: colors.textPrimary },
+  allChevron: { fontFamily: fonts.body, fontSize: 18, color: colors.textGhost },
 })

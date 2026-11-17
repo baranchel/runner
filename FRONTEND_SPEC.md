@@ -355,21 +355,21 @@ Tapping a chip immediately changes the run's type.
 
 ### 5. Compare
 
-**Title**: "Compare runs" — 17 px / 700
+Full design: `docs/superpowers/specs/2026-11-01-compare-runs-design.md`.
 
-**Selectors**: 2-column grid of `<select>` dropdowns; each option shows "Aug 1 · Long Run · 21.1km".
+**Entry points**
+- **Runs tab**: compare icon (right of type chips, separated by a vertical divider + 14px gap) toggles selection mode; rows show check circles; max 2 (3rd tap → alert "You can compare only 2 runs. Uncheck one first."). With 2 checked, a bottom bar shows "<date> vs <date>", "Compare ›", and ✕ (clears selection, exits mode). Selection persists until ✕ or icon re-tap.
+- **Run Detail**: compare button top-right (mirrors back button) → page sheet listing other runs of the same type; tap one → comparison. "Choose from all runs ›" → Runs tab in selection mode with this run checked.
+- **Compare tab**: title "Compare runs" — 17 px / 700. Two slot cards (no A/B labels; empty shows "Select run", filled shows type, date, distance); tap → page sheet with the run list; the other slot's run is greyed out. "Compare" button (accentBg, disabled at 35% opacity until both filled).
 
-**Comparison table** (when both runs selected):
-```
-border: 1px solid border-default
-border-radius: 10px
-overflow: hidden
-```
-Header: Metric · A · B (3-col `1fr 0.8fr 0.8fr`, right-aligned A/B)
-
-Rows (8 metrics): Distance · Duration · Pace · Avg HR · Max HR · Elevation · Cadence · Calories
-
-**Winner highlighting**: the better value in each metric row gets `accent` color + font-weight 700. Lower-is-better for Pace and HR.
+**Comparison screen** (`/compare/result?a=&b=`)
+- Floating back button.
+- Row: "Highlight better results" + native iOS Switch, off by default, not persisted.
+- Table: bg `bg-surface`, border `border-default`, radius 10, overflow hidden. Three equal columns (`1fr 1fr 1fr`): metric label | run 1 | run 2.
+  - Head row (bg `bg-elevated`, padding 14 vertical, bottom border `border-strong`): empty metric cell; each run cell centered — 24×4 type-color bar, type name (13 px / 700, `text-primary`), date (11 px, `text-faint`). Tap opens Run Detail. No A/B labels.
+  - Body rows: min height 46, zebra striped (odd rows `bg-card`). Metric label 13 px `text-muted`, left. Values centered, JetBrains Mono 14 px; missing → "—".
+- Rows (10): Distance · Time · Avg Pace · Avg HR · Max HR · Elevation · Cadence · Calories · Primary Zone · Weather.
+- **Highlighting** (toggle on): per row only, the better value gets `accent` + weight 700 inside an `accent-dim` pill (radius 6). Higher is better: Distance, Elevation, Cadence. Lower: Time, Pace, Avg HR, Max HR. Never: Calories, Primary Zone, Weather. Ties and missing values never highlight. No overall winner. Rule lives in `src/utils/compare.ts`.
 
 ---
 
@@ -604,6 +604,11 @@ authed views (controlled by `view` state):
   settings ──tap──► connected    ──back──► settings
   dashboard ──chip tap──► runlist (pre-filtered)
   dashboard ──"See all"──► runlist
+  runlist (selection mode, 2 checked) ──"Compare ›"──► compareResult ──back──► runlist
+  detail ──compare icon──► sheet ──tap run──► compareResult ──back──► detail
+  detail ──compare icon──► sheet ──"Choose from all runs"──► runlist (selection mode, run pre-checked)
+  compare ──"Compare"──► compareResult ──back──► compare
+  compareResult ──tap run header──► detail ──back──► compareResult
 ```
 
 Hamburger menu provides alternative navigation to all primary views. Closing happens on overlay tap or on any item click.

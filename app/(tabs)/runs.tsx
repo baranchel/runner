@@ -1,15 +1,17 @@
-import { ActionSheetIOS, SectionList, StyleSheet, Text, TouchableOpacity, View } from 'react-native'
+import { ActionSheetIOS, Alert, Image, SectionList, StyleSheet, Text, TouchableOpacity, View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { useLocalSearchParams, useRouter } from 'expo-router'
 import { RunCard } from '../../src/components/RunCard'
 import { MOCK_RUNS, MOCK_RUN_TYPES } from '../../src/mockData'
 import type { Run } from '../../src/types'
-import { fmtDistance, fmtDuration } from '../../src/utils/format'
+import { fmtDate, fmtDistance, fmtDuration } from '../../src/utils/format'
 import { colors, fonts, runTypeColor } from '../../src/utils/tokens'
 
 // ponytail: hardcoded until useUserStore lands; replace with store selector
 const UNIT: 'km' | 'mi' = 'km'
 const TYPE_MAP = Object.fromEntries(MOCK_RUN_TYPES.map(t => [t.id, t]))
+const BAR_SPACE = 76 // extra list bottom padding while the compare bar is showing
 
 const MONTH_NAMES = ['January','February','March','April','May','June',
   'July','August','September','October','November','December']
@@ -115,6 +117,50 @@ export default function Runs() {
   const [sort, setSort] = useState<SortKey>('newest')
   const sections = buildSections(MOCK_RUNS, selectedTypeId, sort)
 
+  const router = useRouter()
+  const { select } = useLocalSearchParams<{ select?: string }>()
+  // Compare selection lives here; tab screens stay mounted, so it persists until ✕ or icon re-tap.
+  const [selecting, setSelecting] = useState(false)
+  const [selectedIds, setSelectedIds] = useState<string[]>([])
+
+  // Arriving from Run Detail's "Choose from all runs": start fresh with that run checked.
+  useEffect(() => {
+    if (!select) return
+    setSelecting(true)
+    setSelectedIds([select])
+    router.setParams({ select: undefined })
+  }, [select])
+
+  function exitSelection() {
+    setSelecting(false)
+    setSelectedIds([])
+  }
+
+  function onPressRun(run: Run) {
+    if (!selecting) {
+      router.push(`/run/${run.id}`)
+      return
+    }
+    if (selectedIds.includes(run.id)) {
+      setSelectedIds(ids => ids.filter(id => id !== run.id))
+      return
+    }
+    if (selectedIds.length >= 2) {
+      Alert.alert('You can compare only 2 runs. Uncheck one first.')
+      return
+    }
+    // guard inside the updater too: two fast taps before a re-render can't add a dup or a 3rd run
+    setSelectedIds(ids => (ids.includes(run.id) || ids.length >= 2 ? ids : [...ids, run.id]))
+  }
+
+  // older run first → A, newer → B
+  const pair = selectedIds.length === 2
+    ? selectedIds
+        .map(id => MOCK_RUNS.find(r => r.id === id))
+        .filter((r): r is Run => r !== undefined)
+        .sort((x, y) => x.date.localeCompare(y.date))
+    : null
+
   const typeLabel = selectedTypeId ? TYPE_MAP[selectedTypeId]?.name ?? 'All types' : 'All types'
   const sortLabel = SORTS.find(x => x.key === sort)!.label
 
@@ -128,8 +174,16 @@ export default function Runs() {
           <View style={s.search}>
             <Text style={s.searchText}>Search your runs</Text>
           </View>
-          {/* Reserved slot (Figma "+" button) — empty for now */}
-          <View style={s.reserved} />
+          {/* Figma "+" slot → compare-mode toggle */}
+          <TouchableOpacity
+            style={[s.reserved, selecting && s.reservedOn]}
+            onPress={() => (selecting ? exitSelection() : setSelecting(true))}
+          >
+            <Image
+              source={require('../../assets/compare.png')}
+              style={[s.compareIcon, { tintColor: selecting ? colors.ink : colors.textPrimary }]}
+            />
+          </TouchableOpacity>
         </View>
 
         <View style={s.filters}>
@@ -153,15 +207,40 @@ export default function Runs() {
           <MonthHeader section={section as RunSection} selectedTypeId={selectedTypeId} />
         )}
         renderSectionFooter={() => <View style={{ height: 14 }} />}
-        renderItem={({ item }) => <RunCard run={item} unit={UNIT} />}
+        extraData={[selecting, selectedIds]}
+        renderItem={({ item }) => (
+          <RunCard
+            run={item}
+            unit={UNIT}
+            checked={selecting ? selectedIds.includes(item.id) : undefined}
+            onPress={() => onPressRun(item)}
+          />
+        )}
         ItemSeparatorComponent={() => <View style={{ height: 10 }} />}
-        contentContainerStyle={s.listContent}
+        contentContainerStyle={[s.listContent, pair && { paddingBottom: 32 + BAR_SPACE }]}
         ListEmptyComponent={
           <View style={s.empty}>
             <Text style={s.emptyText}>No runs match this filter.</Text>
           </View>
         }
       />
+
+      {pair && pair.length === 2 && (
+        <View style={s.bar}>
+          <Text style={s.barText} numberOfLines={1}>
+            {fmtDate(pair[0].date)} vs {fmtDate(pair[1].date)}
+          </Text>
+          <TouchableOpacity
+            style={s.barBtn}
+            onPress={() => router.push({ pathname: '/compare/result', params: { a: pair[0].id, b: pair[1].id } })}
+          >
+            <Text style={s.barBtnText}>Compare ›</Text>
+          </TouchableOpacity>
+          <TouchableOpacity onPress={exitSelection} hitSlop={8}>
+            <Text style={s.barClose}>✕</Text>
+          </TouchableOpacity>
+        </View>
+      )}
     </SafeAreaView>
   )
 }
@@ -174,7 +253,17 @@ const s = StyleSheet.create({
   searchRow:   { flexDirection: 'row', gap: 12 },
   search:      { flex: 1, height: 44, borderRadius: 15, backgroundColor: colors.bgSurface, justifyContent: 'center', paddingHorizontal: 16 },
   searchText:  { fontFamily: fonts.body, fontSize: 12, color: colors.textSecondary, opacity: 0.8 },
-  reserved:    { width: 46, height: 44, borderRadius: 15, backgroundColor: colors.bgElevated },
+  reserved:    { width: 46, height: 44, borderRadius: 15, backgroundColor: colors.bgElevated, alignItems: 'center', justifyContent: 'center' },
+  reservedOn:  { backgroundColor: colors.lime },
+  compareIcon: { width: 20, height: 20 },
+
+  bar:        { position: 'absolute', left: 24, right: 24, bottom: 12, flexDirection: 'row', alignItems: 'center', gap: 12,
+                backgroundColor: colors.bgElevated, borderRadius: 18, paddingVertical: 10, paddingHorizontal: 14,
+                shadowColor: '#000', shadowOpacity: 0.4, shadowRadius: 8, shadowOffset: { width: 0, height: 2 } },
+  barText:    { flex: 1, fontFamily: fonts.body, fontSize: 14, fontWeight: '600', color: colors.textPrimary },
+  barBtn:     { backgroundColor: colors.lime, borderRadius: 12, paddingVertical: 8, paddingHorizontal: 12 },
+  barBtnText: { fontFamily: fonts.body, fontSize: 13, fontWeight: '700', color: colors.ink },
+  barClose:   { fontFamily: fonts.body, fontSize: 18, color: colors.textSecondary },
 
   filters:     { flexDirection: 'row', gap: 10 },
   pill:        { flexDirection: 'row', alignItems: 'center', gap: 8, height: 34, borderRadius: 17, paddingHorizontal: 13, backgroundColor: colors.bgSurface },

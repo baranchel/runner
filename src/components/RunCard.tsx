@@ -8,14 +8,24 @@ import { colors, fonts, runTypeColor } from '../utils/tokens'
 const TYPE_MAP = Object.fromEntries(MOCK_RUN_TYPES.map(t => [t.id, t]))
 
 // Run row from the Strides Figma: type tile · name / date · type / pace · time · big distance
-export function RunCard({ run, unit }: { run: Run; unit: 'km' | 'mi' }) {
+// checked: undefined = normal row; true/false = selection mode (shows a check circle)
+export function RunCard({ run, unit, checked, onPress }: {
+  run: Run
+  unit: 'km' | 'mi'
+  checked?: boolean
+  onPress?: () => void
+}) {
   const router = useRouter()
   const type = run.typeId ? TYPE_MAP[run.typeId] : null
   const typeColor = type ? runTypeColor(type.hue) : colors.textGhost
   const [num, unitLabel] = fmtDistance(run.distanceKm, unit).split(' ')
 
   return (
-    <TouchableOpacity style={s.card} activeOpacity={0.7} onPress={() => router.push(`/run/${run.id}`)}>
+    <TouchableOpacity
+      style={[s.card, checked && s.cardChecked]}
+      activeOpacity={0.7}
+      onPress={onPress ?? (() => router.push(`/run/${run.id}`))}
+    >
       <View style={[s.tile, { backgroundColor: typeColor + '40' }]}>
         <View style={[s.dot, { backgroundColor: typeColor }]} />
       </View>
@@ -28,6 +38,11 @@ export function RunCard({ run, unit }: { run: Run; unit: 'km' | 'mi' }) {
         <Text style={s.dist}>{num}</Text>
         <Text style={s.unit}>{unitLabel}</Text>
       </View>
+      {checked !== undefined && (
+        <View style={[s.check, checked && s.checkOn]}>
+          {checked && <Text style={s.checkMark}>✓</Text>}
+        </View>
+      )}
     </TouchableOpacity>
   )
 }
@@ -43,4 +58,8 @@ const s = StyleSheet.create({
   right:  { alignItems: 'flex-end', paddingRight: 5 },
   dist:   { fontFamily: fonts.mono, fontSize: 22, fontWeight: '600', color: colors.textPrimary },
   unit:   { fontFamily: fonts.body, fontSize: 11, fontWeight: '500', color: colors.textMuted },
+  cardChecked: { borderWidth: 1.5, borderColor: colors.lime },
+  check:     { width: 22, height: 22, borderRadius: 11, borderWidth: 2, borderColor: colors.borderFocus, alignItems: 'center', justifyContent: 'center' },
+  checkOn:   { backgroundColor: colors.lime, borderColor: colors.lime },
+  checkMark: { fontFamily: fonts.body, fontSize: 13, fontWeight: '700', color: colors.ink },
 })
