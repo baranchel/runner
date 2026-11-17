@@ -7,7 +7,7 @@ import { colors, fonts, runTypeColor } from '../utils/tokens'
 
 const TYPE_MAP = Object.fromEntries(MOCK_RUN_TYPES.map(t => [t.id, t]))
 
-// Run row from the Strides Figma: type tile · name / date · type / pace · time · big distance
+// Run row from the Strides Figma: type tile · name / date · type / distance · time · pace · achievements slot
 // checked: undefined = normal row; true/false = selection mode (shows a check circle)
 export function RunCard({ run, unit, checked, onPress, disabled }: {
   run: Run
@@ -19,7 +19,6 @@ export function RunCard({ run, unit, checked, onPress, disabled }: {
   const router = useRouter()
   const type = run.typeId ? TYPE_MAP[run.typeId] : null
   const typeColor = type ? runTypeColor(type.hue) : colors.textGhost
-  const [num, unitLabel] = fmtDistance(run.distanceKm, unit).split(' ')
 
   return (
     <TouchableOpacity
@@ -34,12 +33,12 @@ export function RunCard({ run, unit, checked, onPress, disabled }: {
       <View style={s.center}>
         <Text style={s.name} numberOfLines={1}>{run.name}</Text>
         <Text style={s.sub}>{fmtDate(run.date)} · {type?.name ?? 'Unclassified'}</Text>
-        <Text style={s.meta}>{fmtPace(run.timeSec / run.distanceKm, unit)}   ·   {fmtDuration(run.timeSec)}</Text>
+        <Text style={s.meta}>
+          {fmtDistance(run.distanceKm, unit)}  ·  {fmtDuration(run.timeSec)}  ·  {fmtPace(run.timeSec / run.distanceKm, unit)}
+        </Text>
       </View>
-      <View style={s.right}>
-        <Text style={s.dist}>{num}</Text>
-        <Text style={s.unit}>{unitLabel}</Text>
-      </View>
+      {/* Reserved for achievement badges earned on this run — RA-37 */}
+      <View style={s.achievements} />
       {checked !== undefined && (
         <View style={[s.check, checked && s.checkOn]}>
           {checked && <Text style={s.checkMark}>✓</Text>}
@@ -57,9 +56,7 @@ const s = StyleSheet.create({
   name:   { fontFamily: fonts.body, fontSize: 13, fontWeight: '600', color: colors.textPrimary },
   sub:    { fontFamily: fonts.body, fontSize: 10, color: colors.textDim },
   meta:   { fontFamily: fonts.mono, fontSize: 10, fontWeight: '500', color: colors.textSecondary },
-  right:  { alignItems: 'flex-end', paddingRight: 5 },
-  dist:   { fontFamily: fonts.mono, fontSize: 22, fontWeight: '600', color: colors.textPrimary },
-  unit:   { fontFamily: fonts.body, fontSize: 11, fontWeight: '500', color: colors.textMuted },
+  achievements: { width: 44, alignSelf: 'stretch' },
   cardChecked: { borderWidth: 1.5, borderColor: colors.lime },
   check:     { width: 22, height: 22, borderRadius: 11, borderWidth: 2, borderColor: colors.borderFocus, alignItems: 'center', justifyContent: 'center' },
   checkOn:   { backgroundColor: colors.lime, borderColor: colors.lime },

@@ -241,6 +241,8 @@ Layout:
 
 ### 3. Runs (Run List)
 
+**RunCard** (`src/components/RunCard.tsx`, shared by Dashboard recent runs, All runs, the compare picker and Run Detail's compare sheet): `bg-surface`, radius 18, padding 12. Type tile 48×48 (type color at 25% + 14 px dot) · name 13 / 600 · "date · type" 10 `text-dim` · "8.0 km  ·  44m  ·  5:35/km" mono 10 · right: 44 px reserved slot for achievement badges (RA-37, empty for now). Selection mode adds a lime check circle.
+
 #### Header
 "Runs (N)" — 17 px / 700, N = filtered count in muted text. "Reset" link at top-right clears all filters.
 
