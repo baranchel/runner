@@ -355,21 +355,22 @@ Tapping a chip immediately changes the run's type.
 
 ### 5. Compare
 
-Full design: `docs/superpowers/specs/2026-11-01-compare-runs-design.md`.
+Original design: `docs/superpowers/specs/2026-11-01-compare-runs-design.md`. Restyled to the Strides Figma (frame "Dark · 04 Run comparison").
 
 **Entry points**
-- **Runs tab**: compare icon (right of type chips, separated by a vertical divider + 14px gap) toggles selection mode; rows show check circles; max 2 (3rd tap → alert "You can compare only 2 runs. Uncheck one first."). With 2 checked, a bottom bar shows "<date> vs <date>", "Compare ›", and ✕ (clears selection, exits mode). Selection persists until ✕ or icon re-tap.
-- **Run Detail**: compare button top-right (mirrors back button) → page sheet listing other runs of the same type; tap one → comparison. "Choose from all runs ›" → Runs tab in selection mode with this run checked.
-- **Compare tab**: title "Compare runs" — 17 px / 700. Two slot cards (no A/B labels; empty shows "Select run", filled shows type, date, distance); tap → page sheet with the run list; the other slot's run is greyed out. "Compare" button (accentBg, disabled at 35% opacity until both filled).
+- **All runs tab**: compare button in the Figma "+" slot (46×44, radius 15, `bg-elevated`; lime with ink icon while selecting) toggles selection mode; run cards show check circles (lime when on); max 2 (3rd tap → alert "You can compare only 2 runs. Uncheck one first."). With 2 checked, a bottom bar shows "<date> vs <date>", lime "Compare ›", and ✕. Selection persists until ✕ or button re-tap.
+- **Run Detail**: top-right row of floating buttons — compare icon, then Edit. Compare → page sheet of other runs of the same type (RunCard rows); tap one → comparison. "Choose from all runs ›" → All runs in selection mode with this run checked.
+- **Compare tab** and **`/compare/result?a=&b=`** render the same `CompareView`; result pre-fills both runs (newer run = A) and adds a floating back button.
 
-**Comparison screen** (`/compare/result?a=&b=`)
-- Floating back button.
-- Row: "Highlight better results" + native iOS Switch, off by default, not persisted.
-- Table: bg `bg-surface`, border `border-default`, radius 10, overflow hidden. Three equal columns (`1fr 1fr 1fr`): metric label | run 1 | run 2.
-  - Head row (bg `bg-elevated`, padding 14 vertical, bottom border `border-strong`): empty metric cell; each run cell centered — 24×4 type-color bar, type name (13 px / 700, `text-primary`), date (11 px, `text-faint`). Tap opens Run Detail. No A/B labels.
-  - Body rows: min height 46, zebra striped (odd rows `bg-card`). Metric label 13 px `text-muted`, left. Values centered, JetBrains Mono 14 px; missing → "—".
-- Rows (10): Distance · Time · Avg Pace · Avg HR · Max HR · Elevation · Cadence · Calories · Primary Zone · Weather.
-- **Highlighting** (toggle on): per row only, the better value gets `accent` + weight 700 inside an `accent-dim` pill (radius 6). Higher is better: Distance, Elevation, Cadence. Lower: Time, Pace, Avg HR, Max HR. Never: Calories, Primary Zone, Weather. Ties and missing values never highlight. No overall winner. Rule lives in `src/utils/compare.ts`.
+**CompareView** (one screen; results appear once both runs are picked)
+- Header: "See how you’re growing." 25 / 600, subtitle "Two runs. A little more perspective." 12 `text-secondary`.
+- Distance label (10 / 600, only with both runs): "SAME DISTANCE · A FAIR COMPARISON" when distances match at 0.1 km; "SIMILAR DISTANCE" within 10%; else "DIFFERENT DISTANCES".
+- Run cards A/B: `bg-surface`, radius 20, padding 15, min height 110. "RUN A" (10 / 600) with type-color dot, ▾ right; date 21 / 600; "8.0 km · 5:35/km" mono 11. Empty: "Pick a run". Tap → page sheet "Select run A" with RunPickerList (type pill, month headers, RunCards; other slot's run at 35% opacity). Before both are picked: "Pick two runs to compare."
+- Pace by kilometre: lavender card (`accent`, radius 26, padding 20), ink text. Legend: run A solid line, run B 55% line. Per-split pace from `splits`; Run A solid 2.5 px with dots, Run B dashed 2 px at 55%; faster = higher; 3 gridlines at 20 s steps around the data; x labels 1…N (every other when N > 10); the shorter run's line ends early.
+- Headline "<A date> vs <B date>" 17 / 600, then "Highlight better results" + Switch (lime track), off by default.
+- Table, no box: head row = A and B dates (10 / 600, tap → Run Detail); rows with 1 px `border-subtle` top divider, label 12 / 500 `text-secondary`, A value mono 12 / 600 `text-primary`, B value mono 12 / 500 `text-secondary`; missing → "—". Rows (10): Distance · Time · Avg Pace · Avg HR · Max HR · Elevation · Cadence · Calories · Primary Zone · Weather.
+- **Highlighting** (toggle on): per row only, the better value turns lime / 700. Higher is better: Distance, Elevation, Cadence. Lower: Time, Pace, Avg HR, Max HR. Never: Calories, Primary Zone, Weather. Ties and missing values never highlight. Rule lives in `src/utils/compare.ts`.
+- Takeaway: lime card, radius 17, ink 14 / 600. Fact only, no verdict: "<A date> was N sec/km faster|slower", or "Same average pace".
 
 ---
 
@@ -607,7 +608,7 @@ authed views (controlled by `view` state):
   runlist (selection mode, 2 checked) ──"Compare ›"──► compareResult ──back──► runlist
   detail ──compare icon──► sheet ──tap run──► compareResult ──back──► detail
   detail ──compare icon──► sheet ──"Choose from all runs"──► runlist (selection mode, run pre-checked)
-  compare ──"Compare"──► compareResult ──back──► compare
+  compare (pick A/B → results inline)
   compareResult ──tap run header──► detail ──back──► compareResult
 ```
 

@@ -1,7 +1,7 @@
 import { useState, type ComponentProps } from 'react'
 import { FlatList, Image, KeyboardAvoidingView, Modal, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native'
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router'
-import { RunRow } from '../../src/components/RunPickerList'
+import { RunCard } from '../../src/components/RunCard'
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { MOCK_RUNS, MOCK_RUN_TYPES } from '../../src/mockData'
 import type { Run, Segment, Split } from '../../src/types'
@@ -323,8 +323,9 @@ function CompareSheet({ run, visible, onClose }: { run: Run; visible: boolean; o
           contentContainerStyle={cs.list}
           ItemSeparatorComponent={() => <View style={{ height: 10 }} />}
           renderItem={({ item }) => (
-            <RunRow
+            <RunCard
               run={item}
+              unit={UNIT}
               onPress={() => {
                 onClose()
                 router.push({ pathname: '/compare/result', params: { a: run.id, b: item.id } })

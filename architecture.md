@@ -88,7 +88,7 @@ app/
     connected-apps.tsx
 
 src/
-  components/                  ← RunPickerList (shared run list + type chips), Chart, SplitsTable, SegmentsTable
+  components/                  ← RunCard, RunPickerList (shared month-grouped list pieces + run picker), CompareView, Chart, SplitsTable, SegmentsTable
   store/                       ← useRunStore, useRunTypeStore, useUserStore (Zustand)
   db/                          ← schema.ts, queries.ts (expo-sqlite)
   healthkit/                   ← permissions.ts, sync.ts

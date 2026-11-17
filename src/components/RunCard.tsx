@@ -9,11 +9,12 @@ const TYPE_MAP = Object.fromEntries(MOCK_RUN_TYPES.map(t => [t.id, t]))
 
 // Run row from the Strides Figma: type tile · name / date · type / pace · time · big distance
 // checked: undefined = normal row; true/false = selection mode (shows a check circle)
-export function RunCard({ run, unit, checked, onPress }: {
+export function RunCard({ run, unit, checked, onPress, disabled }: {
   run: Run
   unit: 'km' | 'mi'
   checked?: boolean
   onPress?: () => void
+  disabled?: boolean
 }) {
   const router = useRouter()
   const type = run.typeId ? TYPE_MAP[run.typeId] : null
@@ -22,8 +23,9 @@ export function RunCard({ run, unit, checked, onPress }: {
 
   return (
     <TouchableOpacity
-      style={[s.card, checked && s.cardChecked]}
+      style={[s.card, checked && s.cardChecked, disabled && { opacity: 0.35 }]}
       activeOpacity={0.7}
+      disabled={disabled}
       onPress={onPress ?? (() => router.push(`/run/${run.id}`))}
     >
       <View style={[s.tile, { backgroundColor: typeColor + '40' }]}>

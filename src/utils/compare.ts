@@ -1,5 +1,5 @@
 import type { Run } from '../types'
-import { fmtDistance, fmtMMSS, fmtPace } from './format'
+import { fmtDate, fmtDistance, fmtMMSS, fmtPace } from './format'
 import { computePrimaryZone } from './zones'
 
 export type Better = 'higher' | 'lower' | 'none'
@@ -34,4 +34,20 @@ export function betterValue(m: CompareMetric, a: Run, b: Run): 'a' | 'b' | null 
   const vb = m.get(b)
   if (va == null || vb == null || va === vb) return null
   return (va > vb) === (m.better === 'higher') ? 'a' : 'b'
+}
+
+export const paceOf = (r: Run) => r.timeSec / r.distanceKm
+
+// "same" only when the displayed distances match; within 10% is just "similar"
+export function distanceLabel(a: Run, b: Run): string {
+  if (Math.round(a.distanceKm * 10) === Math.round(b.distanceKm * 10)) return 'SAME DISTANCE · A FAIR COMPARISON'
+  if (Math.abs(a.distanceKm - b.distanceKm) / Math.max(a.distanceKm, b.distanceKm) <= 0.1) return 'SIMILAR DISTANCE'
+  return 'DIFFERENT DISTANCES'
+}
+
+// Fact only, no verdict (compare spec): how A's average pace differs from B's
+export function paceTakeaway(a: Run, b: Run): string {
+  const diff = Math.round(paceOf(b) - paceOf(a))
+  if (diff === 0) return 'Same average pace'
+  return `${fmtDate(a.date)} was ${Math.abs(diff)} sec/km ${diff > 0 ? 'faster' : 'slower'}`
 }
