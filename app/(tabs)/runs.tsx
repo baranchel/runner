@@ -10,7 +10,7 @@ import {
 import { MOCK_RUNS } from '../../src/mockData'
 import type { Run } from '../../src/types'
 import { fmtDate } from '../../src/utils/format'
-import { colors, fonts } from '../../src/utils/tokens'
+import { buttons, colors, fonts } from '../../src/utils/tokens'
 
 // ponytail: hardcoded until useUserStore lands; replace with store selector
 const UNIT: 'km' | 'mi' = 'km'
@@ -166,7 +166,7 @@ const s = StyleSheet.create({
                 backgroundColor: colors.bgElevated, borderRadius: 18, paddingVertical: 10, paddingHorizontal: 14,
                 shadowColor: '#000', shadowOpacity: 0.4, shadowRadius: 8, shadowOffset: { width: 0, height: 2 } },
   barText:    { flex: 1, fontFamily: fonts.body, fontSize: 14, fontWeight: '600', color: colors.textPrimary },
-  barBtn:     { backgroundColor: colors.lime, borderRadius: 12, paddingVertical: 8, paddingHorizontal: 12 },
-  barBtnText: { fontFamily: fonts.body, fontSize: 13, fontWeight: '700', color: colors.ink },
+  barBtn:     buttons.primary,
+  barBtnText: buttons.primaryText,
   barClose:   { fontFamily: fonts.body, fontSize: 18, color: colors.textSecondary },
 })

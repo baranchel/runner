@@ -6,7 +6,7 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { MOCK_RUNS, MOCK_RUN_TYPES } from '../../src/mockData'
 import type { Run, Segment, Split } from '../../src/types'
 import { fmtDateFull, fmtDistance, fmtDuration, fmtMMSS, fmtPace, parseMMSS } from '../../src/utils/format'
-import { colors, fonts, runTypeColor, spacing } from '../../src/utils/tokens'
+import { buttons, colors, fonts, runTypeColor, spacing } from '../../src/utils/tokens'
 import { computePrimaryZone } from '../../src/utils/zones'
 import { Chart, HrRangeBarsChart, PaceBarsChart } from '../../src/components/Chart'
 import type { PaceBar, PaceKind } from '../../src/components/Chart'
@@ -301,7 +301,7 @@ function EditRunModal({ run, onClose, onSave }: {
             disabled={!!error}
             onPress={() => onSave({ name: f.name.trim(), distanceKm, timeSec: timeSec!, ...ints })}
           >
-            <Text style={[ed.save, !!error && { opacity: 0.4 }]}>Save</Text>
+            <View style={[buttons.primary, !!error && { opacity: 0.4 }]}><Text style={buttons.primaryText}>Save</Text></View>
           </TouchableOpacity>
         </View>
         <ScrollView contentContainerStyle={ed.body} keyboardShouldPersistTaps="handled">
@@ -511,8 +511,8 @@ const s = StyleSheet.create({
   fabInRow:       { position: 'relative', left: undefined },
   compareFabIcon: { width: 20, height: 20, tintColor: colors.textPrimary },
 
-  editFab:     { width: undefined, paddingHorizontal: 16 },
-  editFabText: { fontFamily: fonts.body, fontSize: 14, fontWeight: '600', color: colors.textPrimary },
+  editFab:     { width: undefined, paddingHorizontal: 16, borderWidth: 1, borderColor: colors.lime },
+  editFabText: { fontFamily: fonts.body, fontSize: 14, fontWeight: '600', color: colors.lime },
 
   header:    { gap: 6 },
   kickerRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
@@ -535,8 +535,8 @@ const s = StyleSheet.create({
 
   sectionRow:   { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 },
   sectionTitle: { fontFamily: fonts.body, fontSize: 19, fontWeight: '600', color: colors.textPrimary },
-  linkPill:     { backgroundColor: colors.bgSurface, borderRadius: 14, paddingVertical: 6, paddingHorizontal: 12 },
-  linkText:     { fontFamily: fonts.body, fontSize: 11, fontWeight: '500', color: colors.textPrimary },
+  linkPill:     buttons.outline,
+  linkText:     buttons.outlineText,
 
   notFound: { fontFamily: fonts.body, fontSize: 14, color: colors.textMuted, textAlign: 'center', marginTop: 40 },
 })
@@ -565,7 +565,6 @@ const ed = StyleSheet.create({
   bar:    { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: spacing.screenH, borderBottomWidth: 1, borderColor: colors.borderDefault },
   title:  { fontFamily: fonts.body, fontSize: 16, fontWeight: '700', color: colors.textPrimary },
   cancel: { fontFamily: fonts.body, fontSize: 15, color: colors.textMuted },
-  save:   { fontFamily: fonts.body, fontSize: 15, fontWeight: '700', color: colors.accent },
   body:   { padding: spacing.screenH, gap: 14 },
   row:    { flexDirection: 'row', gap: 10 },
   field:  { flex: 1, gap: 6 },
@@ -604,11 +603,10 @@ const cs = StyleSheet.create({
     marginHorizontal: spacing.screenH,
     marginBottom: 32,
     padding: 14,
-    backgroundColor: colors.bgSurface,
     borderWidth: 1,
-    borderColor: colors.borderDefault,
-    borderRadius: spacing.radius,
+    borderColor: colors.lime,
+    borderRadius: 18,
   },
-  allText:    { fontFamily: fonts.body, fontSize: 14, fontWeight: '600', color: colors.textPrimary },
-  allChevron: { fontFamily: fonts.body, fontSize: 18, color: colors.textGhost },
+  allText:    { fontFamily: fonts.body, fontSize: 14, fontWeight: '600', color: colors.lime },
+  allChevron: { fontFamily: fonts.body, fontSize: 18, color: colors.lime },
 })

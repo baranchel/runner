@@ -4,7 +4,7 @@ import { RunCard } from './RunCard'
 import { MOCK_RUNS, MOCK_RUN_TYPES } from '../mockData'
 import type { Run, RunType } from '../types'
 import { fmtDistance, fmtDuration } from '../utils/format'
-import { colors, fonts, runTypeColor } from '../utils/tokens'
+import { buttons, colors, fonts, runTypeColor } from '../utils/tokens'
 
 // Shared month-grouped run list pieces — used by All runs and the compare run picker.
 
@@ -160,9 +160,9 @@ export function RunPickerList({ onPressRun, disabledIds = [] }: {
 const s = StyleSheet.create({
   flex:        { flex: 1 },
   filters:     { flexDirection: 'row', gap: 10, paddingHorizontal: 24, paddingBottom: 6 },
-  pill:        { flexDirection: 'row', alignItems: 'center', gap: 8, height: 34, borderRadius: 17, paddingHorizontal: 13, backgroundColor: colors.bgSurface },
-  pillText:    { fontFamily: fonts.body, fontSize: 11, fontWeight: '500', color: colors.textPrimary },
-  pillChevron: { fontSize: 10, color: colors.textPrimary },
+  pill:        { ...buttons.outline, flexDirection: 'row', gap: 8, height: 34, borderRadius: 17, paddingVertical: 0, paddingHorizontal: 13 },
+  pillText:    buttons.outlineText,
+  pillChevron: { fontSize: 10, color: colors.lime },
 
   listContent: { paddingHorizontal: 24, paddingBottom: 32 },
   monthHeader: { backgroundColor: colors.bgApp, paddingTop: 16, paddingBottom: 12, gap: 6 },

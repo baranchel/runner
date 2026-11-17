@@ -5,7 +5,7 @@ import { RunCard } from '../../src/components/RunCard'
 import { MOCK_RUNS } from '../../src/mockData'
 import { fmtDate, fmtDistance, fmtDuration, fmtPace } from '../../src/utils/format'
 import { getPeriodStats } from '../../src/utils/stats'
-import { colors, fonts, spacing } from '../../src/utils/tokens'
+import { colors, fonts, spacing, buttons } from '../../src/utils/tokens'
 
 // ─── Module-level constants (stable mock data) ────────────────────────────────
 
@@ -278,7 +278,7 @@ const s = StyleSheet.create({
   // Recent runs
   rowBetween:   { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   sectionTitle: { fontFamily: fonts.body, fontSize: 19, fontWeight: '600', color: colors.textPrimary },
-  pill:         { backgroundColor: colors.bgElevated, borderRadius: 14, paddingHorizontal: 13, paddingVertical: 7 },
-  pillText:     { fontFamily: fonts.body, fontSize: 11, fontWeight: '600', color: colors.accent },
+  pill:         buttons.outline,
+  pillText:     buttons.outlineText,
 
 })

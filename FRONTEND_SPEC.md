@@ -64,6 +64,14 @@ Each run type has a hue; the color is `oklch(0.66 0.17 <hue>)`.
 
 Hue picker swatches: `[300, 225, 155, 55, 20, 95, 340, 270, 10, 190]`
 
+### Buttons
+
+Tokens in `src/utils/tokens.ts` → `buttons`.
+- **Primary** — solid `lime`, `ink` text 13 / 700, radius 12. One per screen at most: "Compare ›" (All runs bar), Save (Edit run). The All runs compare toggle turns solid lime while selecting.
+- **Secondary** — `lime` 1 px outline, `lime` text 11 / 600, radius 14, transparent fill: "See all →", "Zones →", filter pills (▾), Edit (run screen), "Choose from all runs ›".
+- **Icon-only** (back ‹, compare icon) — dark `bg-surface` squares, `text-primary` icon.
+- Lime fills that are *not* buttons (growth pill, takeaway / fastest-km cards) have no border and no arrow.
+
 ### Typography
 ```
 font-family: 'Inter', system-ui, sans-serif       — all body text

@@ -79,3 +79,12 @@ export const spacing = {
   cardP:   14,
   radius:  10,
 } as const
+
+// Button hierarchy: one solid-lime primary per screen; everything else tappable is a lime outline.
+// Icon-only buttons (back, compare icon) stay dark bgSurface squares.
+export const buttons = {
+  primary:     { backgroundColor: colors.lime, borderRadius: 12, paddingVertical: 8, paddingHorizontal: 14, alignItems: 'center', justifyContent: 'center' },
+  primaryText: { fontFamily: fonts.body, fontSize: 13, fontWeight: '700', color: colors.ink },
+  outline:     { borderWidth: 1, borderColor: colors.lime, borderRadius: 14, paddingVertical: 6, paddingHorizontal: 12, alignItems: 'center', justifyContent: 'center' },
+  outlineText: { fontFamily: fonts.body, fontSize: 11, fontWeight: '600', color: colors.lime },
+} as const
