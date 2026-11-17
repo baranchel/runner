@@ -38,6 +38,17 @@ pre-blended over `bg-app` into solid hex (React Native has no oklch support).
 | `hr-line` | `oklch(0.62 0.17 25)` | Heart rate chart stroke |
 | `elev-line` | `oklch(0.68 0.14 155)` | Elevation chart stroke |
 
+### Zone colors (Z1–Z5)
+Heart-rate zones ramp from yellow (low intensity) to red (high intensity). Used in zones table and HR visualization.
+
+| Token | Value | Usage |
+|---|---|---|
+| `zone1` | `oklch(0.83 0.17 100)` | Z1 yellow — recovery |
+| `zone2` | `oklch(0.75 0.16 75)` | Z2 amber — base |
+| `zone3` | `oklch(0.67 0.16 55)` | Z3 orange — tempo |
+| `zone4` | `oklch(0.60 0.18 35)` | Z4 red-orange — threshold |
+| `zone5` | `oklch(0.55 0.20 27)` | Z5 strong red — max effort |
+
 ### Run-type Colors
 Each run type has a hue; the color is `oklch(0.66 0.17 <hue>)`.
 

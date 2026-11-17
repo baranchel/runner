@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, type ComponentRef } from 'react'
 import {
   View, Text, TextInput, TouchableOpacity, ScrollView,
   StyleSheet, KeyboardAvoidingView, Platform, Image, Modal,
@@ -43,11 +43,11 @@ export default function SignupScreen() {
   const hintTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // Field refs for keyboard navigation
-  const nameRef    = useRef<TextInput>(null)
-  const emailRef   = useRef<TextInput>(null)
-  const dobRef     = useRef<TextInput>(null)
-  const pwdRef     = useRef<TextInput>(null)
-  const confirmRef = useRef<TextInput>(null)
+  const nameRef    = useRef<ComponentRef<typeof TextInput>>(null)
+  const emailRef   = useRef<ComponentRef<typeof TextInput>>(null)
+  const dobRef     = useRef<ComponentRef<typeof TextInput>>(null)
+  const pwdRef     = useRef<ComponentRef<typeof TextInput>>(null)
+  const confirmRef = useRef<ComponentRef<typeof TextInput>>(null)
 
   const openHint = () => {
     setHintVisible(true)
