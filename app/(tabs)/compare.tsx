@@ -1,15 +1,16 @@
-import { View, Text, StyleSheet } from 'react-native'
-import { colors, fonts } from '../../src/utils/tokens'
+import { StyleSheet } from 'react-native'
+import { SafeAreaView } from 'react-native-safe-area-context'
+import { CompareView } from '../../src/components/CompareView'
+import { colors } from '../../src/utils/tokens'
 
 export default function Compare() {
   return (
-    <View style={s.container}>
-      <Text style={s.text}>Compare — coming soon</Text>
-    </View>
+    <SafeAreaView style={s.safe} edges={['top', 'left', 'right']}>
+      <CompareView />
+    </SafeAreaView>
   )
 }
 
 const s = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.bgApp, alignItems: 'center', justifyContent: 'center' },
-  text: { color: colors.textSecondary, fontFamily: fonts.body, fontSize: 14 },
+  safe: { flex: 1, backgroundColor: colors.bgApp },
 })

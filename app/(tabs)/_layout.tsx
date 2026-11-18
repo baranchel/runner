@@ -12,10 +12,11 @@ export default function TabLayout() {
         tabBarLabelStyle: { fontFamily: fonts.body, fontSize: 11.5, fontWeight: '600' },
       }}
     >
-      <Tabs.Screen name="dashboard" options={{ title: 'Dashboard' }} />
-      <Tabs.Screen name="runs" options={{ title: 'Runs' }} />
+      <Tabs.Screen name="insights" options={{ title: 'Insights' }} />
+      <Tabs.Screen name="dashboard" options={{ title: 'Running' }} />
+      <Tabs.Screen name="runs" options={{ title: 'All runs' }} />
       <Tabs.Screen name="compare" options={{ title: 'Compare' }} />
-      <Tabs.Screen name="settings" options={{ title: 'Settings' }} />
+      <Tabs.Screen name="settings" options={{ title: 'You' }} />
     </Tabs>
   );
 }

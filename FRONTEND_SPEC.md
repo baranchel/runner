@@ -6,27 +6,30 @@ Mobile-first running tracker app. Single screen, 420 × 900 px at design time; s
 
 ## Design Tokens
 
-### Colors (oklch)
-All colors use the oklch color space. Use a CSS utility or Tailwind plugin that supports it.
+### Colors
+Palette comes from the Strides Figma file (dark). Translucent lavender layers are
+pre-blended over `bg-app` into solid hex (React Native has no oklch support).
 
 | Token | Value | Usage |
 |---|---|---|
-| `bg-app` | `oklch(0.10 0.004 285)` | Page background |
-| `bg-card` | `oklch(0.15 0.004 285)` | App shell / nav bars |
-| `bg-surface` | `oklch(0.19 0.006 285)` | Cards, inputs |
-| `bg-elevated` | `oklch(0.22 0.008 285)` | Dropdowns, table headers |
-| `bg-chart` | `oklch(0.18 0.006 285)` | Chart backgrounds |
-| `border-subtle` | `oklch(0.24 0.008 285)` | Dividers |
-| `border-default` | `oklch(0.26 0.008 285)` | Card borders |
-| `border-strong` | `oklch(0.28 0.01 285)` | Input borders |
-| `border-input-focus` | `oklch(0.30 0.01 285)` | Input border (un-active) |
-| `text-primary` | `oklch(0.97 0.002 285)` | Body text |
-| `text-secondary` | `oklch(0.70 0.012 285)` | Secondary labels |
-| `text-muted` | `oklch(0.60 0.012 285)` | Metadata |
-| `text-dim` | `oklch(0.58 0.012 285)` | Section labels |
-| `text-faint` | `oklch(0.55 0.012 285)` | Timestamps |
-| `text-ghost` | `oklch(0.50 0.012 285)` | Chevrons, disabled |
-| `accent` | `oklch(0.74 0.17 300)` | Purple — links, active tabs |
+| `bg-app` | `#1d172c` | Page background |
+| `bg-card` | `#1d172c` | App shell / nav bars |
+| `bg-surface` | `#271f39` (lavender 6%) | Cards, inputs |
+| `bg-elevated` | `#2e2541` (lavender 10%) | Tiles, pills, dropdowns |
+| `bg-chart` | `#241d34` (lavender 4%) | Chart backgrounds |
+| `border-subtle` | `#362c4c` (lavender 15%) | Dividers |
+| `border-default` | `#332947` (lavender 13%) | Card borders |
+| `border-strong` | `#3e3356` (lavender 20%) | Input borders |
+| `border-input-focus` | `#473a61` (lavender 25%) | Input border (un-active) |
+| `text-primary` | `#c4a3ff` | Body text |
+| `text-secondary` | `#ab8edf` (85%) | Secondary labels |
+| `text-muted` | `#9a80ca` (75%) | Metadata |
+| `text-dim` | `#957cc4` (72%) | Section labels |
+| `text-faint` | `#8a72b5` (65%) | Timestamps |
+| `text-ghost` | `#7964a0` (55%) | Chevrons, disabled |
+| `accent` | `#c4a3ff` | Lavender — links, active tabs, hero card |
+| `lime` | `#d9f879` | Highlight card, growth pill, best-day bar |
+| `ink` | `#1d172c` | Text on lavender / lime cards |
 | `accent-bg` | `oklch(0.64 0.19 300)` | Primary button background |
 | `accent-hover` | `oklch(0.70 0.18 300)` | Primary button hover |
 | `accent-dim` | `oklch(0.30 0.09 300)` | Avatar, active chip bg |
@@ -60,6 +63,14 @@ Each run type has a hue; the color is `oklch(0.66 0.17 <hue>)`.
 | Hills | 340 |
 
 Hue picker swatches: `[300, 225, 155, 55, 20, 95, 340, 270, 10, 190]`
+
+### Buttons
+
+Tokens in `src/utils/tokens.ts` → `buttons`.
+- **Primary** — solid `lime`, `ink` text 13 / 700, radius 12. One per screen at most: "Compare ›" (All runs bar), Save (Edit run). The All runs compare toggle turns solid lime while selecting.
+- **Secondary** — `lime` 1 px outline, `lime` text 11 / 600, radius 14, transparent fill: "See all →", "Zones →", filter pills (▾), Edit (run screen), "Choose from all runs ›".
+- **Icon-only** (back ‹, compare icon) — dark `bg-surface` squares, `text-primary` icon.
+- Lime fills that are *not* buttons (growth pill, takeaway / fastest-km cards) have no border and no arrow.
 
 ### Typography
 ```
@@ -230,6 +241,8 @@ Layout:
 
 ### 3. Runs (Run List)
 
+**RunCard** (`src/components/RunCard.tsx`, shared by Dashboard recent runs, All runs, the compare picker and Run Detail's compare sheet): `bg-surface`, radius 18, padding 12. Type tile 48×48 (type color at 25% + 14 px dot) · name 13 / 600 · "date · type" 10 `text-dim` · "8.0 km  ·  44m  ·  5:35/km" mono 10 · right: 44 px reserved slot for achievement badges (RA-37, empty for now). Selection mode adds a lime check circle.
+
 #### Header
 "Runs (N)" — 17 px / 700, N = filtered count in muted text. "Reset" link at top-right clears all filters.
 
@@ -301,72 +314,44 @@ Same card style as Dashboard recent runs, plus HR shown: `distance · pace · du
 
 ### 4. Run Detail
 
-Navigate from any run row.
+Navigate from any run row. No Figma frame exists for this screen; it reuses the Strides language (Dashboard hero card, dark stat cards, lime highlight, Compare table style).
 
-**Back link**: "‹ Back" — 12 px, accent, navigates to Runs screen.
+**Floating buttons** (stay pinned while scrolling): back ‹ top-left; compare icon + "Edit" top-right. Rounded squares 46×44, radius 15, `bg-surface`, soft shadow. Edit text 14 / 600 `text-primary`.
 
-**Run Header**
-- Type name — 20 px / 800
-- Full date (e.g. "Aug 1, 2026") — 12 px, `text-faint`
-- "Synced from Strava" — 12 px, `text-faint`
+**Header**: type-color dot + "TEMPO · NOV 14, 2026" (10 / 600, `text-secondary`); run name 25 / 600; "Synced from Apple Health" 12 `text-secondary`.
 
-#### Stats Grid — 3 columns
-8 stat cards (3-col grid, gap 10 px):
-Distance · Time · Pace · Avg HR · Max HR · Elev gain · Cadence · Calories
+**Hero** — lavender card (`accent`, radius 26, padding 22), ink text and ink-tinted icons: "DISTANCE" label with icon, distance mono 56 / 600 + unit; row of Time · Avg pace · Avg HR (icon + 10 px label, mono 16 / 600 value).
 
-Stat card style (same as dashboard but smaller):
-```
-border-radius: 10px
-padding: 12px
-label: 10.5px, text-dim
-value: JetBrains Mono, 16px / 700
-```
+**Stat grid** — 2 columns, gap 10. Cards `bg-surface`, radius 18, padding 14: lavender-tinted icon + uppercase label (10 / 600, `text-secondary`), mono 18 / 600 value, optional 10 px `text-muted` sub. Cards: Pace range · HR range · Elevation · Calories · Weather (sub: humidity) · Primary zone (sub: zone name · minutes).
 
-#### Charts — 3 charts
-Each chart section:
-- Section label — 12 px, uppercase, `text-dim`
-- SVG `viewBox="0 0 300 100"`, 100% width, 90 px height
-- Background card: `bg-chart`, border `border-default`, border-radius 10
+**Lime highlight** — "Fastest km: km N · m:ss/km" (full kms only), ink 14 / 600, radius 17. Placeholder until Run Insights (RA-36).
 
-**Pace chart**: fill area with type-color (opacity 0.15), stroke with type-color (width 2)
+**Sections** — title 19 / 600 with an optional "See all →" / "Zones →" pill (`bg-surface`, radius 14). Order: Splits (first 5, → splits screen) · Structure (interval runs, first 5, → segments screen) · Pace chart · Heart rate chart (→ zones screen) · Map placeholder.
 
-**Heart rate chart**: fill `oklch(0.62 0.17 25)` (opacity 0.15), stroke same (width 2)
+**Tables** (Splits, Structure): no box; header row 10 / 600 uppercase `text-secondary`; rows with 1 px `border-subtle` top divider, mono 12 / 500 `text-primary` (split # in `text-secondary`; segment type keeps its colored dot + label).
 
-**Elevation chart**: fill `oklch(0.68 0.14 155)` (opacity 0.18), stroke same (width 2)
-
-Chart data is generated from stored run data — see Data Model.
-
-#### Splits Table
-Section label + table card (border `border-default`, border-radius 10, overflow hidden):
-
-Header row (bg `bg-elevated`, 11 px, `text-dim`): Km · Pace · HR
-
-Data rows (3-col grid `0.6fr 1fr 1fr`, border-top `border-subtle`, 13 px, JetBrains Mono):
-One row per km of run distance.
-
-#### Reclassify
-Section label + horizontal wrap of type chips (same chip style, single-select, current type is active).
-Tapping a chip immediately changes the run's type.
+**Charts** keep their own colors (blue pace bars, red HR range bars) inside `bg-surface` cards, radius 18. Scrubbing unchanged; swipe-back is disabled so scrubbing doesn't pop the screen.
 
 ---
 
 ### 5. Compare
 
-**Title**: "Compare runs" — 17 px / 700
+Original design: `docs/superpowers/specs/2026-11-01-compare-runs-design.md`. Restyled to the Strides Figma (frame "Dark · 04 Run comparison").
 
-**Selectors**: 2-column grid of `<select>` dropdowns; each option shows "Aug 1 · Long Run · 21.1km".
+**Entry points**
+- **All runs tab**: compare button in the Figma "+" slot (46×44, radius 15, `bg-elevated`; lime with ink icon while selecting) toggles selection mode; run cards show check circles (lime when on); max 2 (3rd tap → alert "You can compare only 2 runs. Uncheck one first."). With 2 checked, a bottom bar shows "<date> vs <date>", lime "Compare ›", and ✕. Selection persists until ✕ or button re-tap.
+- **Run Detail**: top-right row of floating buttons — compare icon, then Edit. Compare → page sheet of other runs of the same type (RunCard rows); tap one → comparison. "Choose from all runs ›" → All runs in selection mode with this run checked.
+- **Compare tab** and **`/compare/result?a=&b=`** render the same `CompareView`; result pre-fills both runs (newer run = A) and adds a floating back button.
 
-**Comparison table** (when both runs selected):
-```
-border: 1px solid border-default
-border-radius: 10px
-overflow: hidden
-```
-Header: Metric · A · B (3-col `1fr 0.8fr 0.8fr`, right-aligned A/B)
-
-Rows (8 metrics): Distance · Duration · Pace · Avg HR · Max HR · Elevation · Cadence · Calories
-
-**Winner highlighting**: the better value in each metric row gets `accent` color + font-weight 700. Lower-is-better for Pace and HR.
+**CompareView** (one screen; results appear once both runs are picked)
+- Header: "See how you’re growing." 25 / 600, subtitle "Two runs. A little more perspective." 12 `text-secondary`.
+- Distance label (10 / 600, only with both runs): "SAME DISTANCE · A FAIR COMPARISON" when distances match at 0.1 km; "SIMILAR DISTANCE" within 10%; else "DIFFERENT DISTANCES".
+- Run cards A/B: `bg-surface`, radius 20, padding 15, min height 110. "RUN A" (10 / 600) with type-color dot, ▾ right; date 21 / 600; "8.0 km · 5:35/km" mono 11. Empty: "Pick a run". Tap → page sheet "Select run A" with RunPickerList (type pill, month headers, RunCards; other slot's run at 35% opacity). Before both are picked: "Pick two runs to compare."
+- Pace by kilometre: lavender card (`accent`, radius 26, padding 20), ink text. Legend: run A solid line, run B 55% line. Per-split pace from `splits`; Run A solid 2.5 px with dots, Run B dashed 2 px at 55%; faster = higher; 3 gridlines at 20 s steps around the data; x labels 1…N (every other when N > 10); the shorter run's line ends early.
+- Headline "<A date> vs <B date>" 17 / 600, then "Highlight better results" + Switch (lime track), off by default.
+- Table, no box: head row = A and B dates (10 / 600, tap → Run Detail); rows with 1 px `border-subtle` top divider, label 12 / 500 `text-secondary`, A value mono 12 / 600 `text-primary`, B value mono 12 / 500 `text-secondary`; missing → "—". Rows (10): Distance · Time · Avg Pace · Avg HR · Max HR · Elevation · Cadence · Calories · Primary Zone · Weather.
+- **Highlighting** (toggle on): per row only, the better value turns lime / 700. Higher is better: Distance, Elevation, Cadence. Lower: Time, Pace, Avg HR, Max HR. Never: Calories, Primary Zone, Weather. Ties and missing values never highlight. Rule lives in `src/utils/compare.ts`.
+- Takeaway: lime card, radius 17, ink 14 / 600. Fact only, no verdict: "<A date> was N sec/km faster|slower", or "Same average pace".
 
 ---
 
@@ -601,6 +586,11 @@ authed views (controlled by `view` state):
   settings ──tap──► connected    ──back──► settings
   dashboard ──chip tap──► runlist (pre-filtered)
   dashboard ──"See all"──► runlist
+  runlist (selection mode, 2 checked) ──"Compare ›"──► compareResult ──back──► runlist
+  detail ──compare icon──► sheet ──tap run──► compareResult ──back──► detail
+  detail ──compare icon──► sheet ──"Choose from all runs"──► runlist (selection mode, run pre-checked)
+  compare (pick A/B → results inline)
+  compareResult ──tap run header──► detail ──back──► compareResult
 ```
 
 Hamburger menu provides alternative navigation to all primary views. Closing happens on overlay tap or on any item click.

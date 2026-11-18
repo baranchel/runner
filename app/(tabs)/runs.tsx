@@ -1,258 +1,103 @@
-import { SectionList, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native'
-import { useRouter } from 'expo-router'
+import { Alert, Image, SectionList, StyleSheet, Text, TouchableOpacity, View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
-import { useState } from 'react'
-import { MOCK_RUNS, MOCK_RUN_TYPES } from '../../src/mockData'
+import { useEffect, useState } from 'react'
+import { useLocalSearchParams, useRouter } from 'expo-router'
+import { RunCard } from '../../src/components/RunCard'
+import {
+  FilterPill, MonthHeader, SORTS, buildSections, pick, pickType, typeLabel,
+  type RunSection, type SortKey,
+} from '../../src/components/RunPickerList'
+import { MOCK_RUNS } from '../../src/mockData'
 import type { Run } from '../../src/types'
-import { fmtDate, fmtDistance, fmtDuration, fmtPace } from '../../src/utils/format'
-import { colors, fonts, runTypeColor, spacing } from '../../src/utils/tokens'
+import { fmtDate } from '../../src/utils/format'
+import { buttons, colors, fonts } from '../../src/utils/tokens'
 
 // ponytail: hardcoded until useUserStore lands; replace with store selector
 const UNIT: 'km' | 'mi' = 'km'
-const TYPE_MAP = Object.fromEntries(MOCK_RUN_TYPES.map(t => [t.id, t]))
-
-const MONTH_NAMES = ['January','February','March','April','May','June',
-  'July','August','September','October','November','December']
-
-type SectionStats = { runCount: number; totalDistanceKm: number; totalTimeSec: number }
-
-type RunSection = {
-  key: string
-  title: string
-  allStats: SectionStats
-  filteredStats: SectionStats | null
-  data: Run[]
-}
-
-function computeStats(runs: Run[]): SectionStats {
-  return {
-    runCount: runs.length,
-    totalDistanceKm: runs.reduce((s, r) => s + r.distanceKm, 0),
-    totalTimeSec: runs.reduce((s, r) => s + r.timeSec, 0),
-  }
-}
-
-function buildSections(runs: Run[], selectedTypeId: string | null): RunSection[] {
-  // group by 'YYYY-MM'
-  const groups = new Map<string, Run[]>()
-  for (const run of runs) {
-    const key = run.date.slice(0, 7)
-    if (!groups.has(key)) groups.set(key, [])
-    groups.get(key)!.push(run)
-  }
-
-  // sort months newest first
-  const sortedKeys = [...groups.keys()].sort((a, b) => b.localeCompare(a))
-
-  const sections: RunSection[] = []
-  for (const key of sortedKeys) {
-    const monthRuns = groups.get(key)!.sort((a, b) => b.date.localeCompare(a.date))
-    const filteredRuns = selectedTypeId
-      ? monthRuns.filter(r => r.typeId === selectedTypeId)
-      : monthRuns
-
-    // skip month entirely if filter active and no matching runs
-    if (selectedTypeId && filteredRuns.length === 0) continue
-
-    const [year, month] = key.split('-').map(Number)
-    sections.push({
-      key,
-      title: `${MONTH_NAMES[month - 1].toUpperCase()} ${year}`,
-      allStats: computeStats(monthRuns),
-      filteredStats: selectedTypeId ? computeStats(filteredRuns) : null,
-      data: filteredRuns,
-    })
-  }
-  return sections
-}
-
-function fmtStats(stats: SectionStats): string {
-  const dist = fmtDistance(stats.totalDistanceKm, UNIT)
-  const time = fmtDuration(stats.totalTimeSec)
-  return `${stats.runCount} runs · ${dist} · ${time}`
-}
-
-function MonthHeader({ section, selectedTypeId }: { section: RunSection; selectedTypeId: string | null }) {
-  const filteredType = selectedTypeId ? (TYPE_MAP[selectedTypeId] ?? null) : null
-  const typeColor = filteredType ? runTypeColor(filteredType.hue) : colors.textGhost
-
-  return (
-    <View style={mh.container}>
-      <Text style={mh.title}>{section.title}</Text>
-      <View style={mh.row}>
-        <Text style={mh.label}>All runs</Text>
-        <Text style={mh.stats}>{fmtStats(section.allStats)}</Text>
-      </View>
-      {section.filteredStats && filteredType && (
-        <View style={mh.row}>
-          <View style={[mh.dot, { backgroundColor: typeColor }]} />
-          <Text style={[mh.label, { color: typeColor }]}>{filteredType.name}</Text>
-          <Text style={mh.stats}>{fmtStats(section.filteredStats)}</Text>
-        </View>
-      )}
-    </View>
-  )
-}
-
-const mh = StyleSheet.create({
-  container: {
-    backgroundColor: colors.bgCard,
-    paddingHorizontal: spacing.screenH,
-    paddingVertical: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.borderSubtle,
-  },
-  title: {
-    fontFamily: fonts.body,
-    fontSize: 12,
-    color: colors.textDim,
-    letterSpacing: 0.6,
-    marginBottom: 6,
-  },
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    marginBottom: 2,
-  },
-  dot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-  },
-  label: {
-    fontFamily: fonts.body,
-    fontSize: 12,
-    color: colors.textMuted,
-    marginRight: 2,
-  },
-  stats: {
-    fontFamily: fonts.mono,
-    fontSize: 12,
-    color: colors.textSecondary,
-    flexShrink: 1,
-  },
-})
-
-function RunRow({ run }: { run: Run }) {
-  const router = useRouter()
-  const type = run.typeId ? TYPE_MAP[run.typeId] : undefined
-  const typeColor = type ? runTypeColor(type.hue) : colors.textGhost
-
-  const pace = run.timeSec / run.distanceKm
-  return (
-    <TouchableOpacity style={rr.card} onPress={() => router.push(`/run/${run.id}`)}>
-      <View style={[rr.bar, { backgroundColor: typeColor }]} />
-      <View style={rr.center}>
-        <Text style={rr.typeName}>{type?.name ?? 'Unclassified'}</Text>
-        <Text style={rr.date}>{fmtDate(run.date)}</Text>
-        <Text style={rr.meta}>
-          {fmtDistance(run.distanceKm, UNIT)} · {fmtPace(pace, UNIT)} · {fmtDuration(run.timeSec)}
-        </Text>
-      </View>
-      <Text style={rr.chevron}>›</Text>
-    </TouchableOpacity>
-  )
-}
-
-const rr = StyleSheet.create({
-  card: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.bgSurface,
-    borderWidth: 1,
-    borderColor: colors.borderDefault,
-    borderRadius: spacing.radius,
-    padding: 12,
-    gap: 12,
-  },
-  bar:      { width: 8, height: 36, borderRadius: 4 },
-  center:   { flex: 1, gap: 2 },
-  typeName: { fontFamily: fonts.body, fontSize: 14, fontWeight: '600', color: colors.textPrimary },
-  date:     { fontFamily: fonts.body, fontSize: 11, color: colors.textFaint },
-  meta:     { fontFamily: fonts.body, fontSize: 12, color: colors.textMuted },
-  chevron:  { fontFamily: fonts.body, fontSize: 18, color: colors.textGhost },
-})
-
-function TypeFilterBar({
-  selectedTypeId,
-  onSelect,
-}: {
-  selectedTypeId: string | null
-  onSelect: (id: string | null) => void
-}) {
-  return (
-    <View style={tf.wrapper}>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={tf.row}>
-        <TouchableOpacity
-          style={[tf.chip, selectedTypeId === null && tf.chipActive]}
-          onPress={() => onSelect(null)}
-        >
-          <Text style={[tf.chipText, selectedTypeId === null && tf.chipTextActive]}>All</Text>
-        </TouchableOpacity>
-        {MOCK_RUN_TYPES.map(type => {
-          const active = selectedTypeId === type.id
-          const typeColor = runTypeColor(type.hue)
-          return (
-            <TouchableOpacity
-              key={type.id}
-              style={[
-                tf.chip,
-                active && { backgroundColor: typeColor + '40', borderColor: typeColor + '80' },
-              ]}
-              onPress={() => onSelect(active ? null : type.id)}
-            >
-              <Text style={[tf.chipText, active && { color: typeColor }]}>{type.name}</Text>
-            </TouchableOpacity>
-          )
-        })}
-      </ScrollView>
-    </View>
-  )
-}
-
-const tf = StyleSheet.create({
-  wrapper: {
-    backgroundColor: colors.bgCard,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.borderSubtle,
-  },
-  row: {
-    flexDirection: 'row',
-    paddingHorizontal: spacing.screenH,
-    paddingVertical: 12,
-    gap: 8,
-  },
-  chip: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: colors.borderFocus,
-    backgroundColor: 'transparent',
-  },
-  chipActive: {
-    backgroundColor: colors.accentMuted,
-    borderColor: 'transparent',
-  },
-  chipText: {
-    fontFamily: fonts.body,
-    fontSize: 12,
-    fontWeight: '600',
-    color: colors.textSecondary,
-  },
-  chipTextActive: {
-    color: colors.textPrimary,
-  },
-})
+const BAR_SPACE = 76 // extra list bottom padding while the compare bar is showing
 
 export default function Runs() {
   const [selectedTypeId, setSelectedTypeId] = useState<string | null>(null)
-  const sections = buildSections(MOCK_RUNS, selectedTypeId)
+  const [sort, setSort] = useState<SortKey>('newest')
+  const sections = buildSections(MOCK_RUNS, selectedTypeId, sort)
+
+  const router = useRouter()
+  const { select } = useLocalSearchParams<{ select?: string }>()
+  // Compare selection lives here; tab screens stay mounted, so it persists until ✕ or icon re-tap.
+  const [selecting, setSelecting] = useState(false)
+  const [selectedIds, setSelectedIds] = useState<string[]>([])
+
+  // Arriving from Run Detail's "Choose from all runs": start fresh with that run checked.
+  useEffect(() => {
+    if (!select) return
+    setSelecting(true)
+    setSelectedIds([select])
+    router.setParams({ select: undefined })
+  }, [select])
+
+  function exitSelection() {
+    setSelecting(false)
+    setSelectedIds([])
+  }
+
+  function onPressRun(run: Run) {
+    if (!selecting) {
+      router.push(`/run/${run.id}`)
+      return
+    }
+    if (selectedIds.includes(run.id)) {
+      setSelectedIds(ids => ids.filter(id => id !== run.id))
+      return
+    }
+    if (selectedIds.length >= 2) {
+      Alert.alert('You can compare only 2 runs. Uncheck one first.')
+      return
+    }
+    // guard inside the updater too: two fast taps before a re-render can't add a dup or a 3rd run
+    setSelectedIds(ids => (ids.includes(run.id) || ids.length >= 2 ? ids : [...ids, run.id]))
+  }
+
+  // newer run first → A, older → B
+  const pair = selectedIds.length === 2
+    ? selectedIds
+        .map(id => MOCK_RUNS.find(r => r.id === id))
+        .filter((r): r is Run => r !== undefined)
+        .sort((x, y) => y.date.localeCompare(x.date))
+    : null
+
+  const sortLabel = SORTS.find(x => x.key === sort)!.label
 
   return (
     <SafeAreaView style={s.safe} edges={['top', 'left', 'right']}>
-      <TypeFilterBar selectedTypeId={selectedTypeId} onSelect={setSelectedTypeId} />
+      <View style={s.top}>
+        <Text style={s.title}>All runs</Text>
+
+        <View style={s.searchRow}>
+          {/* Placeholder — search lands with RA-35 */}
+          <View style={s.search}>
+            <Text style={s.searchText}>Search your runs</Text>
+          </View>
+          {/* Figma "+" slot → compare-mode toggle */}
+          <TouchableOpacity
+            style={[s.compareBtn, selecting && s.compareBtnOn]}
+            onPress={() => (selecting ? exitSelection() : setSelecting(true))}
+          >
+            <Image
+              source={require('../../assets/compare.png')}
+              style={[s.compareIcon, { tintColor: selecting ? colors.ink : colors.textPrimary }]}
+            />
+          </TouchableOpacity>
+        </View>
+
+        <View style={s.filters}>
+          <FilterPill label={typeLabel(selectedTypeId)} onPress={() => pickType(setSelectedTypeId)} />
+          <FilterPill
+            label={sortLabel}
+            onPress={() => pick('Sort by', SORTS.map(x => x.label), i => setSort(SORTS[i].key))}
+          />
+        </View>
+      </View>
+
       <SectionList
         sections={sections}
         keyExtractor={run => run.id}
@@ -260,28 +105,68 @@ export default function Runs() {
         renderSectionHeader={({ section }) => (
           <MonthHeader section={section as RunSection} selectedTypeId={selectedTypeId} />
         )}
-        renderSectionFooter={() => <View style={{ height: 16 }} />}
+        renderSectionFooter={() => <View style={{ height: 14 }} />}
+        extraData={[selecting, selectedIds]}
         renderItem={({ item }) => (
-          <View style={s.itemWrap}>
-            <RunRow run={item} />
-          </View>
+          <RunCard
+            run={item}
+            unit={UNIT}
+            checked={selecting ? selectedIds.includes(item.id) : undefined}
+            onPress={() => onPressRun(item)}
+          />
         )}
         ItemSeparatorComponent={() => <View style={{ height: 10 }} />}
-        contentContainerStyle={s.listContent}
+        contentContainerStyle={[s.listContent, pair && { paddingBottom: 32 + BAR_SPACE }]}
         ListEmptyComponent={
           <View style={s.empty}>
             <Text style={s.emptyText}>No runs match this filter.</Text>
           </View>
         }
       />
+
+      {pair && pair.length === 2 && (
+        <View style={s.bar}>
+          <Text style={s.barText} numberOfLines={1}>
+            {fmtDate(pair[0].date)} vs {fmtDate(pair[1].date)}
+          </Text>
+          <TouchableOpacity
+            style={s.barBtn}
+            onPress={() => router.push({ pathname: '/compare/result', params: { a: pair[0].id, b: pair[1].id } })}
+          >
+            <Text style={s.barBtnText}>Compare ›</Text>
+          </TouchableOpacity>
+          <TouchableOpacity onPress={exitSelection} hitSlop={8}>
+            <Text style={s.barClose}>✕</Text>
+          </TouchableOpacity>
+        </View>
+      )}
     </SafeAreaView>
   )
 }
 
 const s = StyleSheet.create({
   safe:        { flex: 1, backgroundColor: colors.bgApp },
-  listContent: { paddingBottom: 32 },
-  itemWrap:    { paddingHorizontal: spacing.screenH, paddingTop: 10 },
-  empty:       { flex: 1, alignItems: 'center', justifyContent: 'center', paddingTop: 60 },
+  top:         { paddingHorizontal: 24, paddingTop: 14, gap: 16, paddingBottom: 6 },
+  title:       { fontFamily: fonts.body, fontSize: 25, fontWeight: '600', color: colors.textPrimary },
+
+  searchRow:   { flexDirection: 'row', gap: 12 },
+  search:      { flex: 1, height: 44, borderRadius: 15, backgroundColor: colors.bgSurface, justifyContent: 'center', paddingHorizontal: 16 },
+  searchText:  { fontFamily: fonts.body, fontSize: 12, color: colors.textSecondary, opacity: 0.8 },
+  compareBtn:  { width: 46, height: 44, borderRadius: 15, backgroundColor: colors.bgElevated, alignItems: 'center', justifyContent: 'center' },
+  compareBtnOn: { backgroundColor: colors.lime },
+  compareIcon: { width: 20, height: 20 },
+
+  filters:     { flexDirection: 'row', gap: 10 },
+
+  listContent: { paddingHorizontal: 24, paddingBottom: 32 },
+  empty:       { alignItems: 'center', paddingTop: 60 },
   emptyText:   { fontFamily: fonts.body, fontSize: 14, color: colors.textMuted },
+
+  bar:        { position: 'absolute', left: 24, right: 24, bottom: 12, flexDirection: 'row', alignItems: 'center', gap: 12,
+                backgroundColor: colors.bgElevated, borderRadius: 18, paddingVertical: 10, paddingHorizontal: 14,
+                shadowColor: '#000', shadowOpacity: 0.4, shadowRadius: 8, shadowOffset: { width: 0, height: 2 } },
+  barText:    { flex: 1, fontFamily: fonts.body, fontSize: 14, fontWeight: '600', color: colors.textPrimary },
+  barBtn:     buttons.primary,
+  barBtnText: buttons.primaryText,
+  barClose:   { fontFamily: fonts.body, fontSize: 18, color: colors.textSecondary },
 })

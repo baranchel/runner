@@ -73,24 +73,27 @@ app/
   index.tsx                    ← redirects to (tabs)/dashboard
   login.tsx                    ← auth screen
   (tabs)/
-    _layout.tsx                ← bottom tab bar
-    dashboard.tsx
-    runs.tsx
+    _layout.tsx                ← bottom tab bar (Insights, Running, All runs, Compare, You)
+    insights.tsx               ← placeholder until Figma "Data & insights" is built
+    dashboard.tsx              ← "Running" tab
+    runs.tsx                   ← "All runs" tab
     compare.tsx
     settings.tsx
   run/
-    [id].tsx                   ← Run Detail screen
+    [id].tsx                   ← Run Detail screen (+ compare sheet)
+  compare/
+    result.tsx                 ← Comparison screen (?a=<runId>&b=<runId>)
   settings/
     manage-types.tsx
     connected-apps.tsx
 
 src/
-  components/                  ← RunCard, FilterBar, TypeChip, MetricCard, Chart, TypePicker, Drawer
+  components/                  ← RunCard, RunPickerList (shared month-grouped list pieces + run picker), CompareView, Chart, SplitsTable, SegmentsTable
   store/                       ← useRunStore, useRunTypeStore, useUserStore (Zustand)
   db/                          ← schema.ts, queries.ts (expo-sqlite)
   healthkit/                   ← permissions.ts, sync.ts
   types/                       ← index.ts (Run, RunType, User interfaces)
-  utils/                       ← format.ts, chart.ts, filters.ts, stats.ts
+  utils/                       ← format.ts, chart.ts, stats.ts, zones.ts, compare.ts (metrics + per-row "better" rule)
 ```
 
 ### Data Model

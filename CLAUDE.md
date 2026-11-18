@@ -26,10 +26,11 @@ iOS running tracker app. Reads workouts from Apple HealthKit, lets user classify
 
 ## Design Tokens
 
-All colors use oklch. See `FRONTEND_SPEC.md` → Design Tokens for the full table. Key values:
-- Background: `oklch(0.10 0.004 285)`
-- Cards: `oklch(0.19 0.006 285)`
-- Accent (purple): `oklch(0.74 0.17 300)`
+Palette comes from the Strides Figma file (dark): https://www.figma.com/design/w6vPmzGQXWbzuI5wPj8S5o/Strides-App. See `FRONTEND_SPEC.md` → Design Tokens for the full table. Key values:
+- Background: `#1d172c`
+- Cards: `#271f39`
+- Accent / text (lavender): `#c4a3ff`
+- Highlight (lime): `#d9f879`, with `ink` `#1d172c` text on lavender/lime
 - Body font: Inter. Numeric metrics: JetBrains Mono.
 
 ## Data Rules
