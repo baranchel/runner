@@ -5,6 +5,9 @@ import {
 } from 'react-native'
 import { router } from 'expo-router'
 import { colors } from '../src/utils/tokens'
+import * as AppleAuthentication from 'expo-apple-authentication'
+import { signIn, resendConfirmation, signInWithGoogle, signInWithApple } from '../src/api/auth'
+import { EMAIL_NOT_CONFIRMED } from '../src/api/authErrors'
 
 export default function LoginScreen() {
   const [email,    setEmail]    = useState('')
@@ -14,7 +17,34 @@ export default function LoginScreen() {
   const emailRef    = useRef<ComponentRef<typeof TextInput>>(null)
   const passwordRef = useRef<ComponentRef<typeof TextInput>>(null)
 
-  const submit = () => router.replace('/(tabs)/dashboard')
+  const [busy,       setBusy]       = useState(false)
+  const [error,      setError]      = useState<string | null>(null)
+  const [unconfirmed, setUnconfirmed] = useState(false)
+  const [resent,     setResent]     = useState(false)
+
+  const submit = async () => {
+    if (!email.trim() || !password || busy) return
+    setBusy(true); setError(null); setUnconfirmed(false); setResent(false)
+    const err = await signIn(email.trim(), password)
+    setBusy(false)
+    if (!err) return  // gate redirects to the dashboard
+    setError(err)
+    setUnconfirmed(err === EMAIL_NOT_CONFIRMED)
+  }
+
+  const resend = async () => {
+    const err = await resendConfirmation(email.trim())
+    if (err) setError(err)
+    else setResent(true)
+  }
+
+  const social = async (fn: () => Promise<string | null>) => {
+    if (busy) return  // a second tap would open a second sheet
+    setBusy(true); setError(null); setUnconfirmed(false)
+    const err = await fn()
+    setBusy(false)
+    if (err) setError(err)  // success → gate redirects
+  }
 
   return (
     <KeyboardAvoidingView style={s.screen} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
@@ -73,8 +103,19 @@ export default function LoginScreen() {
             </View>
           </View>
 
+          <TouchableOpacity onPress={() => router.push('/forgot-password')} activeOpacity={0.7}>
+            <Text style={s.forgotLink}>Forgot password?</Text>
+          </TouchableOpacity>
+
+          {error && <Text style={s.errorText}>{error}</Text>}
+          {unconfirmed && (
+            <TouchableOpacity onPress={resend} disabled={resent} activeOpacity={0.7}>
+              <Text style={s.forgotLink}>{resent ? 'Confirmation email sent' : 'Resend confirmation email'}</Text>
+            </TouchableOpacity>
+          )}
+
           <TouchableOpacity style={s.primaryBtn} onPress={submit} activeOpacity={0.82}>
-            <Text style={s.primaryBtnText}>Log in</Text>
+            <Text style={s.primaryBtnText}>{busy ? 'Logging in…' : 'Log in'}</Text>
           </TouchableOpacity>
 
           <View style={s.dividerRow}>
@@ -83,7 +124,15 @@ export default function LoginScreen() {
             <View style={s.dividerLine} />
           </View>
 
-          <TouchableOpacity style={s.googleBtn} activeOpacity={0.82}>
+          <AppleAuthentication.AppleAuthenticationButton
+            buttonType={AppleAuthentication.AppleAuthenticationButtonType.CONTINUE}
+            buttonStyle={AppleAuthentication.AppleAuthenticationButtonStyle.WHITE}
+            cornerRadius={10}
+            style={s.appleBtn}
+            onPress={() => social(signInWithApple)}
+          />
+
+          <TouchableOpacity style={s.googleBtn} onPress={() => social(signInWithGoogle)} activeOpacity={0.82}>
             <Image source={require('../assets/google-icon.png')} style={s.googleIcon} resizeMode="contain" />
             <Text style={s.googleBtnText}>Continue with Google</Text>
           </TouchableOpacity>
@@ -139,6 +188,9 @@ const s = StyleSheet.create({
   eyeBtn:  { paddingHorizontal: 12 },
   eyeIcon: { width: 20, height: 20, tintColor: colors.textMuted },
 
+  forgotLink: { fontSize: 13, color: colors.accent, textAlign: 'right' },
+  errorText:  { fontSize: 13, color: colors.danger },
+
   primaryBtn:     { backgroundColor: colors.accentBg, borderRadius: 10, paddingVertical: 16, alignItems: 'center', marginTop: 2 },
   primaryBtnText: { color: '#f5eeff', fontSize: 15, fontWeight: '700' },
 
@@ -148,6 +200,7 @@ const s = StyleSheet.create({
 
   googleBtn:     { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, backgroundColor: colors.bgSurface, borderWidth: 1, borderColor: colors.borderDefault, borderRadius: 10, paddingVertical: 15 },
   googleIcon:    { width: 22, height: 22 },
+  appleBtn:      { height: 50 },
   googleBtnText: { color: colors.textPrimary, fontSize: 15, fontWeight: '600' },
 
   switchLink: { fontSize: 14, color: colors.textSecondary, textAlign: 'center', marginTop: 2 },

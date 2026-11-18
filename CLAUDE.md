@@ -6,6 +6,7 @@ iOS running tracker app. Reads workouts from Apple HealthKit, lets user classify
 
 ## Key Files
 
+- `docs/HANDOFF.md` — **read at session start**: current task status, open bugs, decisions from previous sessions.
 - `architecture.md` — tech stack, file structure, data model, phase roadmap. Keep updated when architectural decisions change.
 - `FRONTEND_SPEC.md` — pixel-level UI spec (colors, typography, layouts, component styles). Source of truth for all visual decisions.
 - `docs/superpowers/specs/2026-08-07-surge-implementation-design.md` — full design doc with all phase decisions and rationale.
@@ -15,13 +16,16 @@ iOS running tracker app. Reads workouts from Apple HealthKit, lets user classify
 - **expo-router** — file-based navigation. Screens live in `app/`. Tabs in `app/(tabs)/`.
 - **Zustand** — global state. Stores in `src/store/`. One store per domain (runs, run types, user).
 - **expo-sqlite** — local persistence. Schema + queries in `src/db/`.
+- **Supabase** — auth + cloud Postgres. Client and all calls in `src/api/` only; screens/stores import from `src/api/auth.ts`, never `@supabase/supabase-js`. Keys in `.env` (local) and EAS env (builds).
 - **@kingstinct/react-native-healthkit** — reads HealthKit workouts. Logic in `src/healthkit/`.
 - **react-native-svg** — SVG area/line charts. Shared `Chart` component in `src/components/`.
 
 ## Development Workflow
 
 - **Expo Go**: use for all UI work with mock data. Works on Windows → iPhone without any build step.
-- **EAS dev build**: required for HealthKit. Run `eas build --profile development --platform ios` once, install `.ipa` on iPhone. Live reload continues over Wi-Fi after that.
+- **EAS dev build**: installed on Bar's iPhone (2026-11-18). Required for HealthKit and native Google/Apple sign-in. Run with `npx expo start --dev-client`. Rebuild (`eas build --profile development --platform ios`) only after adding native packages or changing `app.json`.
+- **Auth email links**: Supabase rejects redirect addresses with an IP host, so in Expo Go use `npx expo start --tunnel` (`exps://`); the dev build uses `chronodrom://`. See `architecture.md` → Development Workflow.
+- After switching branches, run `npm install` (branches have different dependencies).
 - **EAS production**: `eas build --profile production --platform ios` → TestFlight.
 
 ## Design Tokens
@@ -63,5 +67,6 @@ Every task is done on its own branch. At the start of every session and every ne
 ## Phases
 
 - **Phase 1 (now)**: iOS, HealthKit, local SQLite, all screens
-- **Phase 2**: FastAPI Python backend (`POST /suggest-type` ML classifier), Strava OAuth
+- **Phase 2 (started)**: Supabase Auth + Postgres (all calls in `src/api/` only — screens/stores never import Supabase). FastAPI only for the ML `POST /suggest-type` classifier. Strava OAuth.
+- **Jira**: project "Run App" (key `RA`) at baranchel.atlassian.net. Tickets carry user stories; write a story into a ticket only after Bar approves the draft.
 - **Phase 3**: Android (Health Connect + Google Maps), GPS route map on Run Detail

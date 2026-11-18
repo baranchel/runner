@@ -3,27 +3,18 @@ import {
   View, Text, TextInput, TouchableOpacity, ScrollView,
   StyleSheet, KeyboardAvoidingView, Platform, Image, Modal,
 } from 'react-native'
-import DateTimePicker from '@react-native-community/datetimepicker'
 import { router } from 'expo-router'
 import { colors } from '../src/utils/tokens'
 import { PRIVACY_POLICY } from '../src/legal/privacyPolicy'
 import { TERMS_OF_SERVICE } from '../src/legal/termsOfService'
+import { PASSWORD_RULES, passwordValid } from '../src/utils/password'
+import * as AppleAuthentication from 'expo-apple-authentication'
+import { signUp, resendConfirmation, signInWithGoogle, signInWithApple } from '../src/api/auth'
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-const TERMS = [
-  { label: 'At least 8 characters',       test: (p: string) => p.length >= 8 },
-  { label: 'At least 1 capital letter',   test: (p: string) => /[A-Z]/.test(p) },
-  { label: 'At least 1 lowercase letter', test: (p: string) => /[a-z]/.test(p) },
-  { label: 'At least 1 number',           test: (p: string) => /[0-9]/.test(p) },
-]
-
 const MET   = '#4ade80'
 const UNMET = colors.danger
-
-function formatDate(d: Date) {
-  return `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}`
-}
 
 // ─── Screen ───────────────────────────────────────────────────────────────────
 
@@ -35,9 +26,10 @@ export default function SignupScreen() {
   const [showPwd,     setShowPwd]     = useState(false)
   const [showConfPwd, setShowConfPwd] = useState(false)
   const [agreed,      setAgreed]      = useState(false)
-  const [dob,         setDob]         = useState('')
-  const [pickerDate,  setPickerDate]  = useState(new Date(2000, 0, 1))
-  const [showPicker,  setShowPicker]  = useState(false)
+  const [busy,    setBusy]    = useState(false)
+  const [error,   setError]   = useState<string | null>(null)
+  const [sentTo,  setSentTo]  = useState<string | null>(null)  // set after successful signup
+  const [resent,  setResent]  = useState(false)
   const [hintVisible, setHintVisible] = useState(false)
   const [legalDoc,    setLegalDoc]    = useState<'privacy' | 'terms' | null>(null)
   const hintTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -45,7 +37,6 @@ export default function SignupScreen() {
   // Field refs for keyboard navigation
   const nameRef    = useRef<ComponentRef<typeof TextInput>>(null)
   const emailRef   = useRef<ComponentRef<typeof TextInput>>(null)
-  const dobRef     = useRef<ComponentRef<typeof TextInput>>(null)
   const pwdRef     = useRef<ComponentRef<typeof TextInput>>(null)
   const confirmRef = useRef<ComponentRef<typeof TextInput>>(null)
 
@@ -58,26 +49,49 @@ export default function SignupScreen() {
     if (hintTimer.current) { clearTimeout(hintTimer.current); hintTimer.current = null }
   }
 
-  const openPicker = () => {
-    const parts = dob.split('/')
-    if (parts.length === 3 && parts[2].length === 4) {
-      const d = new Date(+parts[2], +parts[1] - 1, +parts[0])
-      if (!isNaN(d.getTime())) setPickerDate(d)
-    }
-    setShowPicker(true)
-  }
-
-  const handleDobText = (text: string) => {
-    const digits = text.replace(/\D/g, '').slice(0, 8)
-    let out = digits
-    if (digits.length > 2) out = digits.slice(0, 2) + '/' + digits.slice(2)
-    if (digits.length > 4) out = digits.slice(0, 2) + '/' + digits.slice(2, 4) + '/' + digits.slice(4)
-    setDob(out)
-  }
-
-  const submit = () => router.replace('/(tabs)/dashboard')
-
   const passwordsMatch = confirmPwd.length > 0 && confirmPwd === password
+  const canSubmit = name.trim() !== '' && email.trim() !== '' && passwordValid(password) && passwordsMatch && agreed && !busy
+
+  const submit = async () => {
+    if (!canSubmit) return
+    setBusy(true); setError(null)
+    const err = await signUp(name.trim(), email.trim(), password)
+    setBusy(false)
+    if (err) setError(err)
+    else setSentTo(email.trim())
+  }
+
+  const resend = async () => {
+    if (!sentTo || resent) return
+    setError(null)
+    const err = await resendConfirmation(sentTo)
+    if (err) setError(err)
+    else setResent(true)
+  }
+
+  const social = async (fn: () => Promise<string | null>) => {
+    if (busy) return  // a second tap would open a second sheet
+    setBusy(true); setError(null)
+    const err = await fn()
+    setBusy(false)
+    if (err) setError(err)  // success → gate redirects
+  }
+
+  if (sentTo) {
+    return (
+      <View style={[s.screen, s.container, { gap: 14 }]}>
+        <Text style={s.formTitle}>Check your email</Text>
+        <Text style={s.checkboxLabel}>We sent a confirmation link to {sentTo}. Tap it on this phone to finish signing up.</Text>
+        <TouchableOpacity style={s.primaryBtn} onPress={resend} activeOpacity={0.82} disabled={resent}>
+          <Text style={s.primaryBtnText}>{resent ? 'Sent again' : 'Resend email'}</Text>
+        </TouchableOpacity>
+        {error && <Text style={s.mismatchText}>{error}</Text>}
+        <TouchableOpacity onPress={() => router.replace('/login')} activeOpacity={0.7}>
+          <Text style={s.switchLink}>Back to log in</Text>
+        </TouchableOpacity>
+      </View>
+    )
+  }
 
   return (
     <KeyboardAvoidingView style={s.screen} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
@@ -124,32 +138,9 @@ export default function SignupScreen() {
               autoCapitalize="none"
               autoCorrect={false}
               returnKeyType="next"
-              onSubmitEditing={() => dobRef.current?.focus()}
+              onSubmitEditing={() => pwdRef.current?.focus()}
               blurOnSubmit={false}
             />
-          </View>
-
-          {/* Date of birth */}
-          <View style={s.fieldGroup}>
-            <Text style={s.fieldLabel}>Date of birth</Text>
-            <View style={s.inputWrap}>
-              <TextInput
-                ref={dobRef}
-                style={s.inputFlex}
-                placeholder="DD / MM / YYYY"
-                placeholderTextColor={colors.textGhost}
-                value={dob}
-                onChangeText={handleDobText}
-                keyboardType="numeric"
-                returnKeyType="next"
-                onSubmitEditing={() => pwdRef.current?.focus()}
-                blurOnSubmit={false}
-              />
-              <TouchableOpacity onPress={openPicker} style={s.eyeBtn} activeOpacity={0.7}>
-                <Image source={require('../assets/calendar.png')}
-                  style={[s.eyeIcon, { tintColor: colors.textMuted }]} resizeMode="contain" />
-              </TouchableOpacity>
-            </View>
           </View>
 
           {/* Password */}
@@ -222,8 +213,10 @@ export default function SignupScreen() {
             </Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={s.primaryBtn} onPress={submit} activeOpacity={0.82}>
-            <Text style={s.primaryBtnText}>Create account</Text>
+          {error && <Text style={s.mismatchText}>{error}</Text>}
+
+          <TouchableOpacity style={[s.primaryBtn, !canSubmit && { opacity: 0.5 }]} onPress={submit} disabled={!canSubmit} activeOpacity={0.82}>
+            <Text style={s.primaryBtnText}>{busy ? 'Creating account…' : 'Create account'}</Text>
           </TouchableOpacity>
 
           <View style={s.dividerRow}>
@@ -232,7 +225,15 @@ export default function SignupScreen() {
             <View style={s.dividerLine} />
           </View>
 
-          <TouchableOpacity style={s.googleBtn} activeOpacity={0.82}>
+          <AppleAuthentication.AppleAuthenticationButton
+            buttonType={AppleAuthentication.AppleAuthenticationButtonType.SIGN_UP}
+            buttonStyle={AppleAuthentication.AppleAuthenticationButtonStyle.WHITE}
+            cornerRadius={10}
+            style={s.appleBtn}
+            onPress={() => social(signInWithApple)}
+          />
+
+          <TouchableOpacity style={s.googleBtn} onPress={() => social(signInWithGoogle)} activeOpacity={0.82}>
             <Image source={require('../assets/google-icon.png')} style={s.googleIcon} resizeMode="contain" />
             <Text style={s.googleBtnText}>Continue with Google</Text>
           </TouchableOpacity>
@@ -242,33 +243,6 @@ export default function SignupScreen() {
           </TouchableOpacity>
         </View>
       </View>
-
-      {/* Native OS date picker */}
-      <Modal visible={showPicker} transparent animationType="slide">
-        <TouchableOpacity style={s.pickerOverlay} activeOpacity={1} onPress={() => setShowPicker(false)}>
-          <TouchableOpacity activeOpacity={1} style={s.pickerSheet}>
-            <View style={s.pickerHeader}>
-              <TouchableOpacity onPress={() => setShowPicker(false)}>
-                <Text style={s.pickerCancel}>Cancel</Text>
-              </TouchableOpacity>
-              <TouchableOpacity onPress={() => { setDob(formatDate(pickerDate)); setShowPicker(false) }}>
-                <Text style={s.pickerDone}>Done</Text>
-              </TouchableOpacity>
-            </View>
-            <DateTimePicker
-              value={pickerDate}
-              mode="date"
-              display="spinner"
-              themeVariant="dark"
-              textColor={colors.textPrimary}
-              maximumDate={new Date()}
-              minimumDate={new Date(1930, 0, 1)}
-              onChange={(_, date) => { if (date) setPickerDate(date) }}
-              style={s.nativePicker}
-            />
-          </TouchableOpacity>
-        </TouchableOpacity>
-      </Modal>
 
       {/* Password requirements hint */}
       <Modal visible={hintVisible} transparent animationType="fade" onRequestClose={closeHint}>
@@ -280,7 +254,7 @@ export default function SignupScreen() {
                 <Text style={s.closeBtnText}>✕</Text>
               </TouchableOpacity>
             </View>
-            {TERMS.map(({ label, test }) => {
+            {PASSWORD_RULES.map(({ label, test }) => {
               const met = test(password)
               return (
                 <View key={label} style={s.termRow}>
@@ -380,16 +354,9 @@ const s = StyleSheet.create({
   dividerText:    { fontSize: 11, color: colors.textGhost },
   googleBtn:      { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, backgroundColor: colors.bgSurface, borderWidth: 1, borderColor: colors.borderDefault, borderRadius: 10, paddingVertical: 12 },
   googleIcon:     { width: 20, height: 20 },
+  appleBtn:       { height: 46 },
   googleBtnText:  { color: colors.textPrimary, fontSize: 14, fontWeight: '600' },
   switchLink:     { fontSize: 12, color: colors.textSecondary, textAlign: 'center' },
-
-  // Date picker sheet
-  pickerOverlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.45)' },
-  pickerSheet:   { backgroundColor: colors.bgCard, borderTopLeftRadius: 16, borderTopRightRadius: 16, paddingBottom: 32 },
-  pickerHeader:  { flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 20, paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: colors.borderSubtle },
-  pickerCancel:  { fontSize: 15, color: colors.textSecondary },
-  pickerDone:    { fontSize: 15, color: colors.accent, fontWeight: '600' },
-  nativePicker:  { width: '100%' },
 
   // Shared modal header
   modalHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 },
