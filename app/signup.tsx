@@ -70,8 +70,10 @@ export default function SignupScreen() {
   }
 
   const social = async (fn: () => Promise<string | null>) => {
-    setError(null)
+    if (busy) return  // a second tap would open a second sheet
+    setBusy(true); setError(null)
     const err = await fn()
+    setBusy(false)
     if (err) setError(err)  // success → gate redirects
   }
 

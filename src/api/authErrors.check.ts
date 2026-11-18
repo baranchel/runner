@@ -9,6 +9,8 @@ const cases: [Parameters<typeof authErrorMessage>[0], string][] = [
   [{ code: 'otp_expired' },                                 'Link expired. Request a new one'],
   [{ code: 'flow_state_not_found' },                        'Link expired. Request a new one'],
   [{ code: 'same_password' },                               'New password must be different from the old one'],
+  [{ code: 'pkce_code_verifier_not_found' },                'Open the link on the phone you signed up on, or log in'],
+  [{ code: 'needs_dev_build' },                             'Google sign-in needs the dev build (not Expo Go)'],
   [{ name: 'AuthRetryableFetchError', message: 'x' },       'No connection, try again'],
   [{ name: 'TypeError', message: 'Network request failed' }, 'No connection, try again'],
   [{ code: 'something_new' },                               'Something went wrong, try again'],

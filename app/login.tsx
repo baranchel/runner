@@ -39,8 +39,10 @@ export default function LoginScreen() {
   }
 
   const social = async (fn: () => Promise<string | null>) => {
-    setError(null); setUnconfirmed(false)
+    if (busy) return  // a second tap would open a second sheet
+    setBusy(true); setError(null); setUnconfirmed(false)
     const err = await fn()
+    setBusy(false)
     if (err) setError(err)  // success → gate redirects
   }
 

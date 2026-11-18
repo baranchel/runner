@@ -65,7 +65,12 @@ export async function signInWithApple(): Result {
     if (error) return authErrorMessage(error)
     // Apple sends the name only on the very first sign-in, so save it now or never.
     const name = [cred.fullName?.givenName, cred.fullName?.familyName].filter(Boolean).join(' ')
-    if (name) await supabase.auth.updateUser({ data: { name } })
+    if (name) {
+      // ponytail: one retry only; a name lost after that needs the profile form (RA-11) to recover.
+      const save = () => supabase.auth.updateUser({ data: { name } })
+      const first = await save()
+      if (first.error && (await save()).error) console.warn('Apple name not saved', first.error)
+    }
     return null
   } catch (e) {
     if ((e as { code?: string }).code === 'ERR_REQUEST_CANCELED') return null  // user closed the sheet
@@ -74,9 +79,15 @@ export async function signInWithApple(): Result {
 }
 
 export async function signInWithGoogle(): Result {
+  // Loaded lazily: the native module doesn't exist in Expo Go, and a top-level import would crash it.
+  let google: typeof import('@react-native-google-signin/google-signin')
   try {
-    // Loaded lazily: the native module doesn't exist in Expo Go, and a top-level import would crash it.
-    const { GoogleSignin, isSuccessResponse } = await import('@react-native-google-signin/google-signin')
+    google = await import('@react-native-google-signin/google-signin')
+  } catch {
+    return authErrorMessage({ code: 'needs_dev_build' })
+  }
+  const { GoogleSignin, isSuccessResponse } = google
+  try {
     GoogleSignin.configure({
       webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
       iosClientId: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID,
@@ -94,7 +105,6 @@ export async function signInWithGoogle(): Result {
 export const resendConfirmation = (email: string): Result =>
   run(() => supabase.auth.resend({ type: 'signup', email, options: { emailRedirectTo: linkTo('auth-callback') } }))
 
-/** Exchanges the ?code= from an email link for a session (PKCE). */
 /** Permanently deletes the current user (and, via ON DELETE CASCADE, their data). */
 export async function deleteAccount(): Result {
   try {
@@ -114,13 +124,17 @@ export const updatePassword = (password: string): Result =>
   run(() => supabase.auth.updateUser({ password }))
 
 // Opening an email link wakes the app from Safari; iOS cancels requests sent before it is active.
+// Gives up waiting after 10 s so the screen shows a result (or an error) instead of spinning forever.
 const whenActive = () =>
   AppState.currentState === 'active'
     ? Promise.resolve()
     : new Promise<void>(resolve => {
-        const sub = AppState.addEventListener('change', s => { if (s === 'active') { sub.remove(); resolve() } })
+        const done = () => { sub.remove(); clearTimeout(timer); resolve() }
+        const sub = AppState.addEventListener('change', s => { if (s === 'active') done() })
+        const timer = setTimeout(done, 10_000)
       })
 
+/** Exchanges the ?code= from an email link for a session (PKCE). */
 // No retry possible: a failed exchange deletes the stored PKCE verifier (auth-js), so the first try must count.
 export const exchangeAuthCode = (code: string): Result =>
   run(async () => {
