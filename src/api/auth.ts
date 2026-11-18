@@ -52,6 +52,12 @@ export const resendConfirmation = (email: string): Result =>
   run(() => supabase.auth.resend({ type: 'signup', email, options: { emailRedirectTo: linkTo('auth-callback') } }))
 
 /** Exchanges the ?code= from an email link for a session (PKCE). */
+export const resetPassword = (email: string): Result =>
+  run(() => supabase.auth.resetPasswordForEmail(email, { redirectTo: linkTo('reset-password') }))
+
+export const updatePassword = (password: string): Result =>
+  run(() => supabase.auth.updateUser({ password }))
+
 // Opening an email link wakes the app from Safari; iOS cancels requests sent before it is active.
 const whenActive = () =>
   AppState.currentState === 'active'
