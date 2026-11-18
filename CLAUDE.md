@@ -16,13 +16,16 @@ iOS running tracker app. Reads workouts from Apple HealthKit, lets user classify
 - **expo-router** — file-based navigation. Screens live in `app/`. Tabs in `app/(tabs)/`.
 - **Zustand** — global state. Stores in `src/store/`. One store per domain (runs, run types, user).
 - **expo-sqlite** — local persistence. Schema + queries in `src/db/`.
+- **Supabase** — auth + cloud Postgres. Client and all calls in `src/api/` only; screens/stores import from `src/api/auth.ts`, never `@supabase/supabase-js`. Keys in `.env` (local) and EAS env (builds).
 - **@kingstinct/react-native-healthkit** — reads HealthKit workouts. Logic in `src/healthkit/`.
 - **react-native-svg** — SVG area/line charts. Shared `Chart` component in `src/components/`.
 
 ## Development Workflow
 
 - **Expo Go**: use for all UI work with mock data. Works on Windows → iPhone without any build step.
-- **EAS dev build**: required for HealthKit. Run `eas build --profile development --platform ios` once, install `.ipa` on iPhone. Live reload continues over Wi-Fi after that.
+- **EAS dev build**: installed on Bar's iPhone (2026-11-18). Required for HealthKit and native Google/Apple sign-in. Run with `npx expo start --dev-client`. Rebuild (`eas build --profile development --platform ios`) only after adding native packages or changing `app.json`.
+- **Auth email links**: Supabase rejects redirect addresses with an IP host, so in Expo Go use `npx expo start --tunnel` (`exps://`); the dev build uses `chronodrom://`. See `architecture.md` → Development Workflow.
+- After switching branches, run `npm install` (branches have different dependencies).
 - **EAS production**: `eas build --profile production --platform ios` → TestFlight.
 
 ## Design Tokens

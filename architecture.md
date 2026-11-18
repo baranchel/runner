@@ -58,21 +58,33 @@ react-native-gesture-handler
 react-native-reanimated
 @kingstinct/react-native-healthkit
 zustand
+@supabase/supabase-js
+@react-native-async-storage/async-storage   ← Supabase session storage
+expo-apple-authentication
+@react-native-google-signin/google-signin
+expo-dev-client
+ws (dev)                                     ← v8 for Expo's tunnel (@expo/ws-tunnel); RN/Metro keep their own v7
 ```
 
 ### Development Workflow
 
 1. **Expo Go** — build all screens with mock data (no native build needed)
-2. **EAS dev build** — one-time `eas build --profile development --platform ios` when wiring real HealthKit data; install `.ipa` on iPhone, then live reload over Wi-Fi continues
-3. **EAS production build** — `eas build --profile production --platform ios` → TestFlight / App Store
+2. **EAS dev build** — set up 2026-11-18 (`eas.json`, iPhone registered). Needed for native Google/Apple sign-in and HealthKit. Rebuild only when native packages or `app.json` change; run with `npx expo start --dev-client`. Cloud builds read env vars from EAS (`eas env:create`), not `.env`.
+3. **EAS production build** — `eas build --profile production --platform ios` → TestFlight / App Store (add the env vars for `--environment production` first)
+
+**Auth email links (confirm, reset):** Supabase only redirects to addresses in its Redirect URLs (`chronodrom://**`, `exp://**`, `exps://**`) and **rejects any address whose host is an IP**. So in Expo Go they only work with `npx expo start --tunnel` (`exps://…on.expo.app`). In the dev build they use `chronodrom://`. Email is sent through custom SMTP (Gmail app password for dev; the built-in mailer is rate-limited and only delivers to team members, so production needs a real provider with its own domain).
 
 ### File Structure
 
 ```
 app/
-  _layout.tsx                  ← root layout: font loading, auth gate
-  index.tsx                    ← redirects to (tabs)/dashboard
-  login.tsx                    ← auth screen
+  _layout.tsx                  ← root layout: splash hold + auth gate (Stack.Protected)
+  index.tsx                    ← redirects by session: dashboard or login
+  login.tsx                    ← email/password, Apple, Google
+  signup.tsx                   ← name, email, password → "check your email"
+  forgot-password.tsx          ← request reset link
+  reset-password.tsx           ← deep-link target: set new password
+  auth-callback.tsx            ← deep-link target: email confirmation
   (tabs)/
     _layout.tsx                ← bottom tab bar (Insights, Running, All runs, Compare, You)
     insights.tsx               ← placeholder until Figma "Data & insights" is built
@@ -90,7 +102,8 @@ app/
 
 src/
   components/                  ← RunCard, RunPickerList (shared month-grouped list pieces + run picker), CompareView, Chart, SplitsTable, SegmentsTable
-  store/                       ← useRunStore, useRunTypeStore, useUserStore (Zustand)
+  api/                         ← supabase.ts (client), auth.ts, authErrors.ts — the ONLY code that talks to Supabase
+  store/                       ← useAuthStore, useRunStore, useRunTypeStore, useUserStore (Zustand)
   db/                          ← schema.ts, queries.ts (expo-sqlite)
   healthkit/                   ← permissions.ts, sync.ts
   types/                       ← index.ts (Run, RunType, User interfaces)
