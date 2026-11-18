@@ -52,6 +52,18 @@ export const resendConfirmation = (email: string): Result =>
   run(() => supabase.auth.resend({ type: 'signup', email, options: { emailRedirectTo: linkTo('auth-callback') } }))
 
 /** Exchanges the ?code= from an email link for a session (PKCE). */
+/** Permanently deletes the current user (and, via ON DELETE CASCADE, their data). */
+export async function deleteAccount(): Result {
+  try {
+    const { error } = await supabase.rpc('delete_account')
+    if (error) return authErrorMessage(error)
+    await supabase.auth.signOut({ scope: 'local' })  // user no longer exists server-side; just clear the device
+    return null
+  } catch (e) {
+    return authErrorMessage(e as AuthErrorLike)
+  }
+}
+
 export const resetPassword = (email: string): Result =>
   run(() => supabase.auth.resetPasswordForEmail(email, { redirectTo: linkTo('reset-password') }))
 

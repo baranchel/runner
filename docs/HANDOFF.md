@@ -65,7 +65,7 @@ Site `baranchel.atlassian.net`, project **Run App** (key `RA`), cloudId `0b1d9b1
   - **Before launch:** warning `WebCrypto API is not supported` means PKCE falls back to `plain` instead of `S256`. Add a WebCrypto polyfill (e.g. `expo-crypto` / `react-native-get-random-values`, check the Supabase RN guide).
   - Note: confirmed in `node_modules/@supabase/auth-js` that `resend()` does send the PKCE code challenge in v2.119 — resent emails are fine.
 - **Task 3** forgot/reset password — implemented as written in the plan (2026-11-18): `app/forgot-password.tsx`, `app/reset-password.tsx`, `resetPassword`/`updatePassword` in `src/api/auth.ts`. Reuses `exchangeAuthCode`, so it gets the wait-for-active fix. tsc passes. **Device-tested 2026-11-18:** forgot → email → link → new password → logged in. Not explicitly checked: old password rejected, reused link shows "Link expired".
-- **Task 4** delete account — not started.
+- **Task 4** delete account — implemented as written in the plan (2026-11-18): `deleteAccount()` in `src/api/auth.ts`, Settings has a "type DELETE" confirm. `public.delete_account()` confirmed to exist and to refuse anonymous callers (anon RPC → 42501 permission denied). tsc passes. **Device-tested 2026-11-18:** account deleted and gone from Supabase. Cancel button made bigger with more space above it (Bar's request).
 - **Task 5** native Google + Apple + EAS dev build — not started. Client IDs already filled into the plan.
 - **Task 6** docs update — not started.
 
