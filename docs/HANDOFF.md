@@ -34,8 +34,15 @@ Read this first, together with `CLAUDE.md` and `architecture.md`. It captures th
 ## Jira
 
 Site `baranchel.atlassian.net`, project **Run App** (key `RA`), cloudId `0b1d9b12-7ac5-4f49-9460-7a62e28ffb36`. Accessed through the claude.ai Atlassian connector.
-- User stories written so far: **RA-18, RA-34, RA-3.**
-- Remaining tickets have titles only. Plan: write stories for RA-11/RA-9 at the end of their design session; others later, one at a time, asking Bar what he meant.
+- **All tickets have content (2026-11-18 session with Bar).** Key decisions captured in the tickets:
+  - New story **RA-38 Insights** (Insights tab): RA-29 More Health Data + RA-31 VO2max moved under it. Apple Health metrics first, calculated metrics/race predictions at the end.
+  - **Merged/dropped (Bar closes them in Jira):** RA-19 → RA-6 Preferences; RA-30 → RA-12 My Devices; RA-32 dropped (goals live in RA-23, the app never plans runs).
+  - RA-21: changing zones recalculates past runs (HR re-read from Apple Health). Zone names will be renamed later.
+  - RA-9: 4 zone methods (% HRmax default, Karvonen, LTHR, manual), always 5 zones, chart preview per method.
+  - RA-11: required first/last name + DOB; everything else optional and prefilled from Health.
+  - RA-8 Shoes: own brand/model/recommended-km catalogue in Supabase (no public API exists), default shoe per run type, 90% alert.
+  - RA-15: suggest type with confirm/change, learns per user; past-runs backfill undecided.
+  - RA-20 social and RA-31 predictions are end-of-roadmap. RA-4 Design stays open until the end.
 
 ## Current task: RA-18 User Auth — `feature/user-auth`
 
