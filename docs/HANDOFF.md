@@ -27,7 +27,7 @@ Read this first, together with `CLAUDE.md` and `architecture.md`. It captures th
 | # | Branch | Jira | Status |
 |---|---|---|---|
 | 1 | `feature/user-auth` | RA-18 Login | **In progress** (see below) |
-| 2 | `feature/manage-db` | RA-34 Manage DB | Not started (story written) |
+| 2 | `feature/manage-db` | RA-34 Manage DB | **Design approved 2026-11-18** — spec `docs/superpowers/specs/2026-11-18-manage-db-design.md` (awaiting Bar's spec review → implementation plan) |
 | 3 | `feature/healthkit` | RA-3 Apple Connectivity | Not started (story written) |
 | 4 | `feature/add-personal-info` | RA-11 Personal Info + RA-9 Custom HR Zones (+ RA-10 Edit Profile) | Brainstorm paused; stories not yet written |
 
