@@ -1,6 +1,7 @@
 // All auth operations. Each returns null on success or a message to show the user.
 import type { Session } from '@supabase/supabase-js'
 import * as Linking from 'expo-linking'
+import { AppState } from 'react-native'
 import { supabase } from './supabase'
 import { authErrorMessage, type AuthErrorLike } from './authErrors'
 
@@ -25,11 +26,8 @@ export function onSessionChange(cb: (session: Session | null) => void): () => vo
 export const signOut = (): Result => run(() => supabase.auth.signOut())
 
 // Expo Go → exp://<ip>:8081/--/<path>; dev/prod build → chronodrom://<path>
-const linkTo = (path: string) => {
-  const url = Linking.createURL(path)
-  console.log('[auth] emailRedirectTo =', url) // TEMP: debugging RA-18 redirect bug, remove after
-  return url
-}
+// Supabase rejects redirects whose host is an IP, so Expo Go email tests need `expo start --tunnel`.
+const linkTo = (path: string) => Linking.createURL(path)
 
 export async function signUp(name: string, email: string, password: string): Result {
   try {
@@ -54,5 +52,17 @@ export const resendConfirmation = (email: string): Result =>
   run(() => supabase.auth.resend({ type: 'signup', email, options: { emailRedirectTo: linkTo('auth-callback') } }))
 
 /** Exchanges the ?code= from an email link for a session (PKCE). */
+// Opening an email link wakes the app from Safari; iOS cancels requests sent before it is active.
+const whenActive = () =>
+  AppState.currentState === 'active'
+    ? Promise.resolve()
+    : new Promise<void>(resolve => {
+        const sub = AppState.addEventListener('change', s => { if (s === 'active') { sub.remove(); resolve() } })
+      })
+
+// No retry possible: a failed exchange deletes the stored PKCE verifier (auth-js), so the first try must count.
 export const exchangeAuthCode = (code: string): Result =>
-  run(() => supabase.auth.exchangeCodeForSession(code))
+  run(async () => {
+    await whenActive()
+    return supabase.auth.exchangeCodeForSession(code)
+  })
