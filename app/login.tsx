@@ -5,7 +5,8 @@ import {
 } from 'react-native'
 import { router } from 'expo-router'
 import { colors } from '../src/utils/tokens'
-import { signIn, resendConfirmation } from '../src/api/auth'
+import * as AppleAuthentication from 'expo-apple-authentication'
+import { signIn, resendConfirmation, signInWithGoogle, signInWithApple } from '../src/api/auth'
 import { EMAIL_NOT_CONFIRMED } from '../src/api/authErrors'
 
 export default function LoginScreen() {
@@ -35,6 +36,12 @@ export default function LoginScreen() {
     const err = await resendConfirmation(email.trim())
     if (err) setError(err)
     else setResent(true)
+  }
+
+  const social = async (fn: () => Promise<string | null>) => {
+    setError(null); setUnconfirmed(false)
+    const err = await fn()
+    if (err) setError(err)  // success → gate redirects
   }
 
   return (
@@ -115,7 +122,15 @@ export default function LoginScreen() {
             <View style={s.dividerLine} />
           </View>
 
-          <TouchableOpacity style={s.googleBtn} activeOpacity={0.82}>
+          <AppleAuthentication.AppleAuthenticationButton
+            buttonType={AppleAuthentication.AppleAuthenticationButtonType.CONTINUE}
+            buttonStyle={AppleAuthentication.AppleAuthenticationButtonStyle.WHITE}
+            cornerRadius={10}
+            style={s.appleBtn}
+            onPress={() => social(signInWithApple)}
+          />
+
+          <TouchableOpacity style={s.googleBtn} onPress={() => social(signInWithGoogle)} activeOpacity={0.82}>
             <Image source={require('../assets/google-icon.png')} style={s.googleIcon} resizeMode="contain" />
             <Text style={s.googleBtnText}>Continue with Google</Text>
           </TouchableOpacity>
@@ -183,6 +198,7 @@ const s = StyleSheet.create({
 
   googleBtn:     { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, backgroundColor: colors.bgSurface, borderWidth: 1, borderColor: colors.borderDefault, borderRadius: 10, paddingVertical: 15 },
   googleIcon:    { width: 22, height: 22 },
+  appleBtn:      { height: 50 },
   googleBtnText: { color: colors.textPrimary, fontSize: 15, fontWeight: '600' },
 
   switchLink: { fontSize: 14, color: colors.textSecondary, textAlign: 'center', marginTop: 2 },

@@ -8,7 +8,8 @@ import { colors } from '../src/utils/tokens'
 import { PRIVACY_POLICY } from '../src/legal/privacyPolicy'
 import { TERMS_OF_SERVICE } from '../src/legal/termsOfService'
 import { PASSWORD_RULES, passwordValid } from '../src/utils/password'
-import { signUp, resendConfirmation } from '../src/api/auth'
+import * as AppleAuthentication from 'expo-apple-authentication'
+import { signUp, resendConfirmation, signInWithGoogle, signInWithApple } from '../src/api/auth'
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -66,6 +67,12 @@ export default function SignupScreen() {
     const err = await resendConfirmation(sentTo)
     if (err) setError(err)
     else setResent(true)
+  }
+
+  const social = async (fn: () => Promise<string | null>) => {
+    setError(null)
+    const err = await fn()
+    if (err) setError(err)  // success → gate redirects
   }
 
   if (sentTo) {
@@ -216,7 +223,15 @@ export default function SignupScreen() {
             <View style={s.dividerLine} />
           </View>
 
-          <TouchableOpacity style={s.googleBtn} activeOpacity={0.82}>
+          <AppleAuthentication.AppleAuthenticationButton
+            buttonType={AppleAuthentication.AppleAuthenticationButtonType.SIGN_UP}
+            buttonStyle={AppleAuthentication.AppleAuthenticationButtonStyle.WHITE}
+            cornerRadius={10}
+            style={s.appleBtn}
+            onPress={() => social(signInWithApple)}
+          />
+
+          <TouchableOpacity style={s.googleBtn} onPress={() => social(signInWithGoogle)} activeOpacity={0.82}>
             <Image source={require('../assets/google-icon.png')} style={s.googleIcon} resizeMode="contain" />
             <Text style={s.googleBtnText}>Continue with Google</Text>
           </TouchableOpacity>
@@ -337,6 +352,7 @@ const s = StyleSheet.create({
   dividerText:    { fontSize: 11, color: colors.textGhost },
   googleBtn:      { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, backgroundColor: colors.bgSurface, borderWidth: 1, borderColor: colors.borderDefault, borderRadius: 10, paddingVertical: 12 },
   googleIcon:     { width: 20, height: 20 },
+  appleBtn:       { height: 46 },
   googleBtnText:  { color: colors.textPrimary, fontSize: 14, fontWeight: '600' },
   switchLink:     { fontSize: 12, color: colors.textSecondary, textAlign: 'center' },
 
