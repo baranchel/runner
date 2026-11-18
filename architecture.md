@@ -63,6 +63,7 @@ zustand
 expo-apple-authentication
 @react-native-google-signin/google-signin
 expo-dev-client
+expo-crypto                                  ← WebCrypto shim for Supabase PKCE (src/api/supabase.ts) + Apple nonce
 ws (dev)                                     ← v8 for Expo's tunnel (@expo/ws-tunnel); RN/Metro keep their own v7
 ```
 

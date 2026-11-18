@@ -1,6 +1,7 @@
 // All auth operations. Each returns null on success or a message to show the user.
 import type { Session } from '@supabase/supabase-js'
 import * as AppleAuthentication from 'expo-apple-authentication'
+import * as Crypto from 'expo-crypto'
 import * as Linking from 'expo-linking'
 import { AppState } from 'react-native'
 import { supabase } from './supabase'
@@ -54,14 +55,18 @@ export const signIn = (email: string, password: string): Result =>
 
 export async function signInWithApple(): Result {
   try {
+    // Nonce: Apple puts SHA-256(nonce) into the token; Supabase hashes the raw nonce and compares,
+    // so a copied token can't be replayed without this attempt's secret.
+    const nonce = Crypto.randomUUID()
     const cred = await AppleAuthentication.signInAsync({
       requestedScopes: [
         AppleAuthentication.AppleAuthenticationScope.FULL_NAME,
         AppleAuthentication.AppleAuthenticationScope.EMAIL,
       ],
+      nonce: await Crypto.digestStringAsync(Crypto.CryptoDigestAlgorithm.SHA256, nonce),
     })
     if (!cred.identityToken) return authErrorMessage({ code: 'no_identity_token' })
-    const { error } = await supabase.auth.signInWithIdToken({ provider: 'apple', token: cred.identityToken })
+    const { error } = await supabase.auth.signInWithIdToken({ provider: 'apple', token: cred.identityToken, nonce })
     if (error) return authErrorMessage(error)
     // Apple sends the name only on the very first sign-in, so save it now or never.
     const name = [cred.fullName?.givenName, cred.fullName?.familyName].filter(Boolean).join(' ')
