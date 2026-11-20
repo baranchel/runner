@@ -35,6 +35,7 @@ export default function RootLayout() {
         </Stack.Protected>
 
         <Stack.Protected guard={!loading && !!session}>
+          <Stack.Screen name="health-access" />
           <Stack.Screen name="(tabs)" />
           <Stack.Screen name="run/[id]" />
           <Stack.Screen name="run/[id]/segments" options={{ presentation: 'modal' }} />

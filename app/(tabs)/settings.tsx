@@ -1,10 +1,11 @@
-import { useState } from 'react'
+import { useCallback, useState } from 'react'
 import { Alert, View, Text, TextInput, TouchableOpacity, StyleSheet } from 'react-native'
+import { useFocusEffect, useRouter } from 'expo-router'
+import { needsHealthPrompt } from '../../src/healthkit/permissions'
 import { colors, fonts } from '../../src/utils/tokens'
 import { signOut, deleteAccount } from '../../src/api/auth'
 import { clearAll, pendingCount } from '../../src/db/queries'
 import { syncNow } from '../../src/db/sync'
-import { useRunStore } from '../../src/store/useRunStore'
 
 export default function Settings() {
   const [error,      setError]      = useState<string | null>(null)
@@ -12,9 +13,12 @@ export default function Settings() {
   const [typed,      setTyped]      = useState('')
   const [busy,       setBusy]       = useState(false)
 
-  const seedSampleRuns = useRunStore(s => s.seedSampleRuns)
-
   const [loggingOut, setLoggingOut] = useState(false)
+
+  const router = useRouter()
+  const [canConnect, setCanConnect] = useState(false)
+  // Tab stays mounted, so re-check on every focus (the user may have just connected).
+  useFocusEffect(useCallback(() => { needsHealthPrompt().then(setCanConnect) }, []))
 
   // gate redirects to login on success; an explicit logout wipes the phone's copy
   const doLogOut = async () => {
@@ -40,11 +44,6 @@ export default function Settings() {
     )
   }
 
-  const seed = () => {
-    const err = seedSampleRuns()
-    Alert.alert(err ?? 'Sample runs added')
-  }
-
   const remove = async () => {
     if (typed !== 'DELETE' || busy) return
     setBusy(true); setError(null)
@@ -58,11 +57,19 @@ export default function Settings() {
     <View style={s.container}>
       <Text style={s.title}>Settings</Text>
 
-      {__DEV__ && (
-        <TouchableOpacity style={s.btn} onPress={seed} activeOpacity={0.82}>
-          <Text style={s.btnText}>Load sample runs (dev)</Text>
-        </TouchableOpacity>
-      )}
+      <View style={s.healthBox}>
+        <Text style={s.healthTitle}>Apple Health</Text>
+        {canConnect ? (
+          <TouchableOpacity style={s.btn} onPress={() => router.push('/health-access')} activeOpacity={0.82}>
+            <Text style={s.btnText}>Connect Apple Health</Text>
+          </TouchableOpacity>
+        ) : (
+          <Text style={s.body}>
+            Runs missing? Open the iPhone Settings app → Health → Data Access & Devices → Chronodrom, and turn on all categories.
+            New runs are imported when you open the app or pull down on All runs.
+          </Text>
+        )}
+      </View>
 
       <TouchableOpacity style={s.btn} onPress={logOut} activeOpacity={0.82}>
         <Text style={s.btnText}>{loggingOut ? 'Syncing…' : 'Log out'}</Text>
@@ -98,6 +105,8 @@ const s = StyleSheet.create({
   title:     { color: colors.textPrimary, fontFamily: fonts.body, fontSize: 22, fontWeight: '700', marginBottom: 10 },
   btn:       { backgroundColor: colors.bgSurface, borderWidth: 1, borderColor: colors.borderDefault, borderRadius: 10, paddingVertical: 15, alignItems: 'center' },
   btnText:   { color: colors.textPrimary, fontFamily: fonts.body, fontSize: 15, fontWeight: '600' },
+  healthBox: { backgroundColor: colors.bgCard, borderRadius: 12, padding: 16, gap: 10 },
+  healthTitle: { color: colors.textPrimary, fontFamily: fonts.body, fontSize: 15, fontWeight: '600' },
   dangerBox: { backgroundColor: colors.bgCard, borderWidth: 1, borderColor: colors.danger, borderRadius: 12, padding: 16, gap: 10 },
   body:      { color: colors.textSecondary, fontFamily: fonts.body, fontSize: 13, lineHeight: 19 },
   input:     { backgroundColor: colors.bgSurface, borderWidth: 1, borderColor: colors.borderFocus, borderRadius: 10, paddingVertical: 12, paddingHorizontal: 14, color: colors.textPrimary, fontSize: 15 },

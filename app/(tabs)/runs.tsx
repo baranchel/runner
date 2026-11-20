@@ -1,4 +1,4 @@
-import { Alert, Image, SectionList, StyleSheet, Text, TouchableOpacity, View } from 'react-native'
+import { Alert, Image, RefreshControl, SectionList, StyleSheet, Text, TouchableOpacity, View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { useEffect, useState } from 'react'
 import { useLocalSearchParams, useRouter } from 'expo-router'
@@ -7,6 +7,7 @@ import {
   FilterPill, MonthHeader, SORTS, buildSections, pick, pickType, typeLabel,
   type RunSection, type SortKey,
 } from '../../src/components/RunPickerList'
+import { importNewRuns } from '../../src/healthkit/importRuns'
 import { useRunStore } from '../../src/store/useRunStore'
 import type { Run } from '../../src/types'
 import { fmtDate } from '../../src/utils/format'
@@ -21,6 +22,13 @@ export default function Runs() {
   const [selectedTypeId, setSelectedTypeId] = useState<string | null>(null)
   const [sort, setSort] = useState<SortKey>('newest')
   const sections = buildSections(runs, selectedTypeId, sort)
+
+  const [refreshing, setRefreshing] = useState(false)
+  const refresh = async () => {
+    setRefreshing(true)
+    await importNewRuns()  // syncs first
+    setRefreshing(false)
+  }
 
   const router = useRouter()
   const { select } = useLocalSearchParams<{ select?: string }>()
@@ -103,6 +111,7 @@ export default function Runs() {
         sections={sections}
         keyExtractor={run => run.id}
         stickySectionHeadersEnabled
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={colors.textSecondary} />}
         renderSectionHeader={({ section }) => (
           <MonthHeader section={section as RunSection} selectedTypeId={selectedTypeId} />
         )}
