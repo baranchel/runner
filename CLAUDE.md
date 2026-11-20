@@ -63,6 +63,7 @@ Every task is done on its own branch. At the start of every session and every ne
 2. If on `main` or on the wrong branch for the current task, stop and tell Bar which branch to create or switch to before writing any code
 3. Branch names follow the pattern: `feature/<short-task-name>` (e.g. `feature/mock-data`, `feature/app-shell`, `feature/dashboard`)
 4. Never write code until the branch check passes
+5. Rename the Claude session to the branch name (e.g. `feature/healthkit`) so Bar can find it again later
 
 ## Phases
 
