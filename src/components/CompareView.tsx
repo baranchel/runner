@@ -2,7 +2,8 @@ import { useState } from 'react'
 import { useRouter } from 'expo-router'
 import { Modal, ScrollView, StyleSheet, Switch, Text, TouchableOpacity, View } from 'react-native'
 import { Circle, Line, Polyline, Svg, Text as SvgText } from 'react-native-svg'
-import { RunPickerList, TYPE_MAP } from './RunPickerList'
+import { RunPickerList } from './RunPickerList'
+import { useTypeMap } from '../store/useRunTypeStore'
 import type { Run } from '../types'
 import { COMPARE_METRICS, betterValue, distanceLabel, paceOf, paceTakeaway } from '../utils/compare'
 import { fmtDate, fmtDistance, fmtMMSS, fmtPace } from '../utils/format'
@@ -21,7 +22,8 @@ function splitPaces(run: Run): number[] {
 }
 
 function SlotCard({ slot, run, onPress }: { slot: Slot; run: Run | null; onPress: () => void }) {
-  const type = run?.typeId ? TYPE_MAP[run.typeId] : undefined
+  const typeMap = useTypeMap()
+  const type = run?.typeId ? typeMap[run.typeId] : undefined
   return (
     <TouchableOpacity style={s.slot} activeOpacity={0.7} onPress={onPress}>
       <View style={s.slotTop}>

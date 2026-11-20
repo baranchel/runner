@@ -1,8 +1,9 @@
 import { useState } from 'react'
 import { ActionSheetIOS, SectionList, StyleSheet, Text, TouchableOpacity, View } from 'react-native'
 import { RunCard } from './RunCard'
-import { MOCK_RUNS, MOCK_RUN_TYPES } from '../mockData'
-import type { Run, RunType } from '../types'
+import { useRunStore } from '../store/useRunStore'
+import { useRunTypeStore, useTypeMap } from '../store/useRunTypeStore'
+import type { Run } from '../types'
 import { fmtDistance, fmtDuration } from '../utils/format'
 import { buttons, colors, fonts, runTypeColor } from '../utils/tokens'
 
@@ -10,7 +11,6 @@ import { buttons, colors, fonts, runTypeColor } from '../utils/tokens'
 
 // ponytail: hardcoded until useUserStore lands; replace with store selector
 const UNIT: 'km' | 'mi' = 'km'
-export const TYPE_MAP: Record<string, RunType> = Object.fromEntries(MOCK_RUN_TYPES.map(t => [t.id, t]))
 
 const MONTH_NAMES = ['January','February','March','April','May','June',
   'July','August','September','October','November','December']
@@ -76,7 +76,8 @@ function fmtStats(stats: SectionStats): string {
 }
 
 export function MonthHeader({ section, selectedTypeId }: { section: RunSection; selectedTypeId: string | null }) {
-  const filteredType = selectedTypeId ? (TYPE_MAP[selectedTypeId] ?? null) : null
+  const typeMap = useTypeMap()
+  const filteredType = selectedTypeId ? (typeMap[selectedTypeId] ?? null) : null
   return (
     <View style={s.monthHeader}>
       <View style={s.rowBetween}>
@@ -112,12 +113,13 @@ export function FilterPill({ label, onPress }: { label: string; onPress: () => v
 }
 
 export function pickType(onPick: (typeId: string | null) => void) {
-  pick('Run type', ['All types', ...MOCK_RUN_TYPES.map(t => t.name)],
-    i => onPick(i === 0 ? null : MOCK_RUN_TYPES[i - 1].id))
+  const types = useRunTypeStore.getState().types
+  pick('Run type', ['All types', ...types.map(t => t.name)],
+    i => onPick(i === 0 ? null : types[i - 1].id))
 }
 
 export function typeLabel(typeId: string | null) {
-  return typeId ? TYPE_MAP[typeId]?.name ?? 'All types' : 'All types'
+  return typeId ? useRunTypeStore.getState().typeMap[typeId]?.name ?? 'All types' : 'All types'
 }
 
 // Picker list for choosing a run (compare). disabledIds = runs that can't be picked.
@@ -126,7 +128,8 @@ export function RunPickerList({ onPressRun, disabledIds = [] }: {
   disabledIds?: string[]
 }) {
   const [selectedTypeId, setSelectedTypeId] = useState<string | null>(null)
-  const sections = buildSections(MOCK_RUNS, selectedTypeId)
+  const runs = useRunStore(s => s.runs)
+  const sections = buildSections(runs, selectedTypeId)
 
   return (
     <View style={s.flex}>

@@ -41,6 +41,7 @@ export function parseMMSS(str: string): number | null {
 
 // mm:ss, or hh:mm:ss when ≥ 1 hour — for split times and segment durations
 export function fmtMMSS(sec: number): string {
+  sec = Math.round(sec)  // round first, or 239.6 s would show as "3:60"
   const h = Math.floor(sec / 3600)
   const m = Math.floor((sec % 3600) / 60)
   const s = Math.round(sec % 60)

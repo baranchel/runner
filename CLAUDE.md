@@ -15,7 +15,7 @@ iOS running tracker app. Reads workouts from Apple HealthKit, lets user classify
 
 - **expo-router** — file-based navigation. Screens live in `app/`. Tabs in `app/(tabs)/`.
 - **Zustand** — global state. Stores in `src/store/`. One store per domain (runs, run types, user).
-- **expo-sqlite** — local persistence. Schema + queries in `src/db/`.
+- **expo-sqlite** — offline copy + outbox. Schema, queries and sync in `src/db/` (self-check: `node src/db/sync.check.ts`).
 - **Supabase** — auth + cloud Postgres. Client and all calls in `src/api/` only; screens/stores import from `src/api/auth.ts`, never `@supabase/supabase-js`. Keys in `.env` (local) and EAS env (builds).
 - **@kingstinct/react-native-healthkit** — reads HealthKit workouts. Logic in `src/healthkit/`.
 - **react-native-svg** — SVG area/line charts. Shared `Chart` component in `src/components/`.
@@ -40,14 +40,14 @@ Palette comes from the Strides Figma file (dark): https://www.figma.com/design/w
 ## Data Rules
 
 - HealthKit is **read-only**. Never write back to it.
-- SQLite stores only: run type classification, notes, RunType definitions, and manual run edits (`run_overrides`, keyed by `healthkitUuid` — see `architecture.md` → Manual Run Edits).
-- User edits are overrides on top of HealthKit data; HealthKit sync must never overwrite them.
-- Deduplication: check `healthkitUuid` before inserting a run from HealthKit.
+- Supabase Postgres is the source of truth (`supabase/schema.sql`). SQLite is the phone's offline copy of runs + run types plus the outbox (`pending_ops`). Every user change goes through `writeChange` in `src/db/queries.ts`, then `syncNow()` — see `architecture.md` → Sync.
+- Manual edits live in `runs.edits` on top of HealthKit data; HealthKit sync must never overwrite them, nor `type_id` / `notes`.
+- Deduplication: Apple Health runs use the HealthKit workout UUID as `runs.id`; imports use `writeChange('runs', 'insert', …)`, which inserts only if missing.
 - `typeId` is nullable — null means unclassified.
 
 ## Conventions
 
-- All monetary/distance/pace display respects `user.unit` ('km' | 'mi') from `useUserStore`.
+- All monetary/distance/pace display respects `user.unit` ('km' | 'mi') (screens hardcode `'km'` until RA-6 adds the setting; the cloud `profiles.unit` column exists).
 - Pace display: `fmtPace(secPerKm)` from `src/utils/format.ts`.
 - Chart data is deterministic: same run always produces same chart via seeded LCG in `src/utils/chart.ts`.
 - Run type colors: `oklch(0.66 0.17 <hue>)` where hue comes from `RunType.hue`.

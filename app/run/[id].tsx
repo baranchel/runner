@@ -3,8 +3,9 @@ import { FlatList, Image, KeyboardAvoidingView, Modal, Platform, ScrollView, Sty
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router'
 import { RunCard } from '../../src/components/RunCard'
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
-import { MOCK_RUNS, MOCK_RUN_TYPES } from '../../src/mockData'
-import type { Run, Segment, Split } from '../../src/types'
+import { useRunStore } from '../../src/store/useRunStore'
+import { useTypeMap } from '../../src/store/useRunTypeStore'
+import type { EditFields, Run, RunEdits, Segment, Split } from '../../src/types'
 import { fmtDateFull, fmtDistance, fmtDuration, fmtMMSS, fmtPace, parseMMSS } from '../../src/utils/format'
 import { buttons, colors, fonts, runTypeColor, spacing } from '../../src/utils/tokens'
 import { computePrimaryZone } from '../../src/utils/zones'
@@ -15,7 +16,6 @@ import { SegmentsTable } from '../../src/components/SegmentsTable'
 import { hrSeries } from '../../src/utils/chart'
 
 const UNIT = 'km' as const
-const TYPE_MAP = Object.fromEntries(MOCK_RUN_TYPES.map(t => [t.id, t]))
 
 const SOURCE_LABEL: Record<string, string> = {
   apple_health: 'Apple Health',
@@ -243,20 +243,24 @@ function MapPlaceholder() {
 
 // ─── Edit Modal ──────────────────────────────────────────────────────────────
 
-type EditFields = 'name' | 'distanceKm' | 'timeSec' | 'avgHr' | 'minHr' | 'maxHr' | 'elevGain'
-
 // blank → null, otherwise a non-negative integer (NaN signals invalid)
 function optInt(str: string): number | null {
   if (str.trim() === '') return null
   return /^\d+$/.test(str.trim()) ? Number(str) : NaN
 }
 
+// Run field → the modal's text field it comes from
+const FORM_KEY = {
+  name: 'name', distanceKm: 'distance', timeSec: 'time',
+  avgHr: 'avgHr', minHr: 'minHr', maxHr: 'maxHr', elevGain: 'elevGain',
+} as const satisfies Record<EditFields, string>
+
 function EditRunModal({ run, onClose, onSave }: {
   run: Run
   onClose: () => void
-  onSave: (patch: Pick<Run, EditFields>) => void
+  onSave: (patch: RunEdits) => void
 }) {
-  const [f, setF] = useState({
+  const prefill = {
     name:     run.name,
     distance: String(run.distanceKm),
     time:     fmtMMSS(run.timeSec),
@@ -264,7 +268,9 @@ function EditRunModal({ run, onClose, onSave }: {
     minHr:    run.minHr?.toString() ?? '',
     maxHr:    run.maxHr?.toString() ?? '',
     elevGain: run.elevGain?.toString() ?? '',
-  })
+  }
+  const [start] = useState(prefill)  // what the user saw when the modal opened
+  const [f, setF] = useState(prefill)
   const set = (k: keyof typeof f) => (v: string) => setF(prev => ({ ...prev, [k]: v }))
 
   const distanceKm = Number(f.distance.replace(',', '.'))
@@ -299,7 +305,13 @@ function EditRunModal({ run, onClose, onSave }: {
           <Text style={ed.title}>Edit Run</Text>
           <TouchableOpacity
             disabled={!!error}
-            onPress={() => onSave({ name: f.name.trim(), distanceKm, timeSec: timeSec!, ...ints })}
+            onPress={() => {
+              // send only fields the user touched: the text round-trip (rounded time, trimmed name)
+              // must not turn untouched HealthKit values into edits
+              const all: RunEdits = { name: f.name.trim(), distanceKm, timeSec: timeSec!, ...ints }
+              onSave(Object.fromEntries(Object.entries(all)
+                .filter(([k]) => f[FORM_KEY[k as EditFields]] !== start[FORM_KEY[k as EditFields]])) as RunEdits)
+            }}
           >
             <View style={[buttons.primary, !!error && { opacity: 0.4 }]}><Text style={buttons.primaryText}>Save</Text></View>
           </TouchableOpacity>
@@ -331,8 +343,10 @@ function EditRunModal({ run, onClose, onSave }: {
 
 function CompareSheet({ run, visible, onClose }: { run: Run; visible: boolean; onClose: () => void }) {
   const router = useRouter()
-  const typeName = run.typeId ? (TYPE_MAP[run.typeId]?.name ?? 'Unclassified') : 'unclassified'
-  const others = MOCK_RUNS
+  const typeMap = useTypeMap()
+  const runs = useRunStore(s => s.runs)
+  const typeName = run.typeId ? (typeMap[run.typeId]?.name ?? 'Unclassified') : 'unclassified'
+  const others = runs
     .filter(r => r.id !== run.id && r.typeId === run.typeId)
     .sort((x, y) => y.date.localeCompare(x.date))
 
@@ -386,8 +400,9 @@ export default function RunDetail() {
   const insets = useSafeAreaInsets()
   const [editing, setEditing] = useState(false)
   const [sheetOpen, setSheetOpen] = useState(false)
-  const [, rerender] = useState(0)
-  const run = MOCK_RUNS.find(r => r.id === id)
+  const run = useRunStore(s => s.runs.find(r => r.id === id))
+  const editRun = useRunStore(s => s.editRun)
+  const typeMap = useTypeMap()
 
   if (!run) {
     return (
@@ -397,7 +412,7 @@ export default function RunDetail() {
     )
   }
 
-  const type = run.typeId ? TYPE_MAP[run.typeId] : null
+  const type = run.typeId ? typeMap[run.typeId] : null
   const typeColor = type ? runTypeColor(type.hue) : colors.textGhost
   const fast = fastestKm(run.splits)
 
@@ -464,11 +479,8 @@ export default function RunDetail() {
           run={run}
           onClose={() => setEditing(false)}
           onSave={patch => {
-            // ponytail: mutates the mock in place (visible app-wide on next render);
-            // move to a runs store + SQLite overrides when src/store and src/db land
-            Object.assign(run, patch)
+            editRun(run.id, patch)
             setEditing(false)
-            rerender(n => n + 1)
           }}
         />
       )}

@@ -1,11 +1,9 @@
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native'
 import { useRouter } from 'expo-router'
-import { MOCK_RUN_TYPES } from '../mockData'
+import { useTypeMap } from '../store/useRunTypeStore'
 import type { Run } from '../types'
 import { fmtDate, fmtDistance, fmtDuration, fmtPace } from '../utils/format'
 import { colors, fonts, runTypeColor } from '../utils/tokens'
-
-const TYPE_MAP = Object.fromEntries(MOCK_RUN_TYPES.map(t => [t.id, t]))
 
 // Run row from the Strides Figma: type tile · name / date · type / distance · time · pace · achievements slot
 // checked: undefined = normal row; true/false = selection mode (shows a check circle)
@@ -17,7 +15,8 @@ export function RunCard({ run, unit, checked, onPress, disabled }: {
   disabled?: boolean
 }) {
   const router = useRouter()
-  const type = run.typeId ? TYPE_MAP[run.typeId] : null
+  const typeMap = useTypeMap()
+  const type = run.typeId ? typeMap[run.typeId] : null
   const typeColor = type ? runTypeColor(type.hue) : colors.textGhost
 
   return (
