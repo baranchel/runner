@@ -1,4 +1,4 @@
-# Chronodrom — Session Handoff (2026-11-16)
+# Chronodrom — Session Handoff (2026-11-20)
 
 Read this first, together with `CLAUDE.md` and `architecture.md`. It captures the state of work and the decisions made in the previous Claude Code (CLI) session, which a new session cannot see.
 
@@ -26,9 +26,9 @@ Read this first, together with `CLAUDE.md` and `architecture.md`. It captures th
 
 | # | Branch | Jira | Status |
 |---|---|---|---|
-| 1 | `feature/user-auth` | RA-18 Login | **In progress** (see below) |
-| 2 | `feature/manage-db` | RA-34 Manage DB | **Design approved 2026-11-18** — spec `docs/superpowers/specs/2026-11-18-manage-db-design.md` · plan `docs/superpowers/plans/2026-11-18-manage-db.md` · **code done 2026-11-20, awaiting device test** (see RA-34 section) |
-| 3 | `feature/healthkit` | RA-3 Apple Connectivity | Not started (story written) |
+| 1 | `feature/user-auth` | RA-18 Login | **Done**, merged |
+| 2 | `feature/manage-db` | RA-34 Manage DB | **Done**, merged 2026-11-20 (see RA-34 section) |
+| 3 | `feature/healthkit` | RA-3 Apple Connectivity | **Current** — branch created 2026-11-20, nothing started (see below) |
 | 4 | `feature/add-personal-info` | RA-11 Personal Info + RA-9 Custom HR Zones (+ RA-10 Edit Profile) | Brainstorm paused; stories not yet written |
 
 ## Jira
@@ -44,7 +44,7 @@ Site `baranchel.atlassian.net`, project **Run App** (key `RA`), cloudId `0b1d9b1
   - RA-15: suggest type with confirm/change, learns per user; past-runs backfill undecided.
   - RA-20 social and RA-31 predictions are end-of-roadmap. RA-4 Design stays open until the end.
 
-## Current task: RA-18 User Auth — `feature/user-auth`
+## Done: RA-18 User Auth — `feature/user-auth` (merged)
 
 - Spec: `docs/superpowers/specs/2026-11-08-user-auth-design.md`
 - Plan: `docs/superpowers/plans/2026-11-08-user-auth.md` (6 tasks), executed with subagent-driven development (implementer → spec review → code-quality review per task, then stop for Bar to test and commit).
@@ -82,15 +82,30 @@ Site `baranchel.atlassian.net`, project **Run App** (key `RA`), cloudId `0b1d9b1
 
 After all tasks: final whole-branch code review, then the finishing-a-development-branch flow (Bar handles git).
 
-## Current task: RA-34 Manage DB — `feature/manage-db`
+## Done: RA-34 Manage DB — `feature/manage-db` (merged 2026-11-20)
 
 - Spec `docs/superpowers/specs/2026-11-18-manage-db-design.md`, plan `docs/superpowers/plans/2026-11-18-manage-db.md`. Design: Supabase = truth, SQLite copy + outbox, `syncNow()` push→pull; edits in `runs.edits`; 7 default types per user (DB trigger); dev "Load sample runs" button in Settings.
 - **2026-11-20:** Tasks 1–9 implemented (subagents), tsc clean, `node src/db/sync.check.ts` passes. Opus review of the sync core found 1 critical + 3 important issues, all fixed: `runs` PK is `(user_id, id)` (a second account on one phone would silently lose its runs), metric columns `double precision` (HealthKit sends fractions), pending inserts no longer block pulled rows, keyset paging + 60 s overlap on pull, epoch guard so a logout mid-sync can't leak rows into the next user.
 - **2026-11-20 device-tested (dev build), all pass:** schema applied (anon gets `permission denied`, 7 types per existing account via backfill), seed → 47 runs, re-seed no duplicates, all screens on real data, offline edit → synced as `edits: {"distanceKm": 8}` with `distance_km` untouched, logout/login restores history from the cloud, unsynced-changes warning, second account isolated, delete account cascades.
 - **Final review (2026-11-20):** no critical issues. Fixed: a forced sign-out (rejected refresh token) no longer wipes unsent edits (only explicit logout / delete calls `clearAll()`); Edit Run sends only the fields the user touched; `fmtMMSS` rounds first (no "3:60"); logout double-tap guard + "Syncing…". Left as is (minor): the type filter label reads `getState()` (stale if a type is renamed mid-session), `MOCK_RUNS` ships in the prod bundle until RA-3 removes the seed, no dedicated empty state on Dashboard "Recent runs" / All runs ("No runs match this filter.").
-- **Next:** Bar re-tests the edit + logout fixes, commits in 6 steps and merges. Then RA-3 (`feature/healthkit`).
+- Re-tested after the final-review fixes (edit stores only the changed field, logout OK). Committed, PR merged into `main` 2026-11-20. Bar moves RA-34 to Done in Jira.
 - **Test on the first TestFlight/preview build:** open the app with no internet (airplane mode) → saved runs show, an edit made offline survives a restart and syncs when back online. Can't be tested in the dev build: it loads its JS from Metro, so it won't open without Wi-Fi.
 - **Decide in RA-3:** `runs.date` is a `date` (no start time) — consider `timestamptz` before real HealthKit data arrives (touches every screen that uses `run.date`). HealthKit → Run mapping must give `id` = workout UUID.
+
+## Current task: RA-3 Apple Connectivity — `feature/healthkit`
+
+Bar is on `feature/healthkit` (created from `main` after the RA-34 merge). Nothing designed or built yet. **Start with the brainstorming skill** (read the RA-3 story in Jira first), then spec → plan → subagent-driven development, same flow as RA-34.
+
+Known inputs from earlier work:
+- **Package:** `@kingstinct/react-native-healthkit` is in the stack (`CLAUDE.md`) but **not installed yet**. It's native → needs `app.json` HealthKit entitlement + usage strings and a **new EAS dev build** (`eas build --profile development --platform ios`). Logic goes in `src/healthkit/` (empty folder).
+- **Onboarding (target):** Signup → Health permission (RA-3) → Personal info form (RA-11) → Dashboard.
+- **Import must use the RA-34 data layer:** map each HKWorkout → `Run`, `id` = HealthKit workout UUID, save with `writeChange('runs', 'insert', runToRow(run))` (insert-if-missing: never overwrites type/notes/edits), then `useRunStore.getState().load()` + `syncNow()`. HealthKit is read-only.
+- **Replace the dev seed:** remove the `__DEV__` "Load sample runs" button (Settings) + `seedSampleRuns` / `seedRows` / mock import in `useRunStore` — this also drops `MOCK_RUNS` from the prod bundle.
+- **Decide early:** `runs.date` is a `date` (no start time). Consider `timestamptz` before real data arrives — touches every screen that uses `run.date` and needs a Supabase migration (the cloud `runs` table only holds sample data now, so dropping/recreating it is cheap).
+- Metric columns are `double precision`, so fractional HealthKit values are fine. Splits / segments / zones / weather come from HealthKit samples — decide what is computed at import time vs on demand (raw HR/GPS streams are not stored, Phase 3 decision).
+- `src/utils/zones.ts` still uses `MOCK_HR_MAX = 190` (replaced by RA-11/RA-9, not RA-3).
+
+Open items carried over: RA-24 white flash on logout (below); first TestFlight build must check offline app start (see RA-34 section).
 
 ## Open bugs — RA-24 Bug Fixes (`feature/bug-fixes`, not started)
 
