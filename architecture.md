@@ -81,9 +81,11 @@ ws (dev)                                     ← v8 for Expo's tunnel (@expo/ws-
 ```
 supabase/
   schema.sql                   ← cloud tables, RLS, triggers (run by hand in the Supabase SQL Editor)
+  migrations/                  ← one-off changes to an existing cloud DB (run by hand, e.g. 2026-11-20-started-at.sql)
 app/
   _layout.tsx                  ← root layout: splash hold + auth gate (Stack.Protected)
-  index.tsx                    ← redirects by session: dashboard or login
+  index.tsx                    ← redirects by session: login, health-access (prompt not shown yet, not skipped) or dashboard
+  health-access.tsx            ← "Connect Apple Health" → iOS prompt → first import with progress
   login.tsx                    ← email/password, Apple, Google
   signup.tsx                   ← name, email, password → "check your email"
   forgot-password.tsx          ← request reset link
@@ -106,7 +108,7 @@ src/
   api/                         ← supabase.ts (client), auth.ts, authErrors.ts, sync.ts (push/pull rows) — the ONLY code that talks to Supabase
   store/                       ← useAuthStore (also drives the data lifecycle), useRunStore, useRunTypeStore (Zustand)
   db/                          ← schema.ts (SQLite tables), queries.ts (reads/writes + outbox), merge.ts (pure, `node src/db/sync.check.ts`), sync.ts (syncNow)
-  healthkit/                   ← (RA-3) permissions + HealthKit import
+  healthkit/                   ← native.ts (lazy module load), permissions.ts, importRuns.ts, bodyData.ts (for RA-11); pure: mapWorkout.ts, dedupe.ts (`node src/healthkit/import.check.ts`)
   types/                       ← index.ts (Run, RunType, User interfaces)
   utils/                       ← format.ts, chart.ts, stats.ts, zones.ts, compare.ts (metrics + per-row "better" rule)
 ```
@@ -139,7 +141,8 @@ interface Run {
   healthkitUuid: string
   typeId: string | null   // run_types.id; null until classified
   name: string            // default "<TypeName>: <Distance>km", user-editable
-  date: string            // 'YYYY-MM-DD'
+  date: string            // 'YYYY-MM-DD', local day of the start
+  startedAt: string | null // ISO start time (RA-3); breaks same-day sort ties; null for older rows
   distanceKm: number
   timeSec: number
   avgHr: number | null
@@ -184,7 +187,7 @@ The Run Detail **Edit** button fixes bad HealthKit readings (name, distance, tim
 - Edits live in `runs.edits` (jsonb, e.g. `{"distanceKm":10.02,"avgHr":151}`); HealthKit values stay untouched in their own columns.
 - Displayed run = HealthKit values + `edits` on top (`rowToRun` in `src/db/merge.ts`).
 - Saving a value equal to the HealthKit value removes that edit (`diffEdits`). Revert = `edits = {}` (no UI yet).
-- Imports (seed now, HealthKit in RA-3) insert-if-missing, so they never touch `edits`, `type_id` or `notes`.
+- HealthKit imports insert-if-missing, so they never touch `edits`, `type_id` or `notes`.
 - Splits, segments, zones and charts stay on the recorded HealthKit data (not rescaled by edits).
 
 ### Sync (RA-34)
@@ -195,6 +198,20 @@ The Run Detail **Edit** button fixes bad HealthKit readings (name, distance, tim
 - **When:** login, app foreground, after each change. Single-flight; never throws.
 - **Logout:** Settings pushes first and warns if changes are unsent; an explicit logout or account deletion then runs `clearAll()` (an epoch counter stops a sync that was still running). A forced sign-out (e.g. rejected refresh token) only empties the stores, so unsent edits survive and push when the same user logs back in. Local data has an `owner`; a different user logging in starts clean.
 - **Limits:** last write wins per field; `edits` merges as one field.
+
+### HealthKit import (RA-3)
+
+- **Permission:** one read-only prompt for workouts, HR, distance, steps and body data (DOB, sex, height, weight, resting HR, VO2max). `needsHealthPrompt()` asks iOS whether it is still to come (per install). iOS never reveals a refused *read*, so refused = no data. "Not now" is stored as `health_skipped` in `sync_state`; Settings offers Connect while iOS can still prompt.
+- **When:** after the Health screen's Connect, then on login / app foreground (after `syncNow()`, so cloud runs are known) and on pull-to-refresh in All runs. Single-flight; never throws; does nothing until the prompt has been shown.
+- **What:** anchored workout query (running only, anchor `healthkit_anchor` in `sync_state`). Workouts < 0.1 km or < 60 s are skipped. Every detail (splits, HR min/avg/max, zones, cadence, elevation, weather) is computed once at import by `mapWorkout` and stored; `segments` stay null (follow-up ticket).
+- **Duplicates:** same UUID already saved → skip. Same run written by several apps (Watch + Strava) → overlapping time range = duplicate; the Apple Watch copy wins, else the earliest (`pickNew`). User source choice → RA-12.
+- **Sources:** distance and step samples are taken only from the workout's own source (iPhone and Watch both log them); HR from all sources.
+- **Anchor rule:** saved at the end of a successful import, and only if an anchor already existed or the query returned workouts. An interrupted import re-reads and skips what was saved. An anchor saved while access was refused would otherwise hide the whole history once access is turned on.
+- **Expo Go:** the native module is imported lazily (`src/healthkit/native.ts`), so Expo Go runs without it: no Health screen, import is a no-op.
+- **Zones** use `MOCK_HR_MAX` until RA-9; RA-21 recalculates past runs.
+- **Matches Fitness:** splits = Apple's own km segment events (type 7) minus pauses (fallback: rebuilt from distance samples); HR avg/min/max = the workout's HR statistic; calories = `totalEnergyBurned` (active kcal); time/elevation/temperature/calories truncated like Fitness; `date` in the run's `HKTimeZone`.
+- **Intervals:** custom-workout steps = workout `activities` → `segments` "Step N" (+ "Open"), coloured rep/rest by pace group. HealthKit's API here has no step names.
+- **Re-import:** mapping changes don't touch runs already saved (insert-if-missing). During development, delete cloud runs and log out/in to re-import.
 
 ---
 

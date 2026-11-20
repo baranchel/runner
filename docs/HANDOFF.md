@@ -28,7 +28,7 @@ Read this first, together with `CLAUDE.md` and `architecture.md`. It captures th
 |---|---|---|---|
 | 1 | `feature/user-auth` | RA-18 Login | **Done**, merged |
 | 2 | `feature/manage-db` | RA-34 Manage DB | **Done**, merged 2026-11-20 (see RA-34 section) |
-| 3 | `feature/healthkit` | RA-3 Apple Connectivity | **Current** — branch created 2026-11-20, nothing started (see below) |
+| 3 | `feature/healthkit` | RA-3 Apple Connectivity | **Current** — code done 2026-11-20, waiting for device test (see below) |
 | 4 | `feature/add-personal-info` | RA-11 Personal Info + RA-9 Custom HR Zones (+ RA-10 Edit Profile) | Brainstorm paused; stories not yet written |
 
 ## Jira
@@ -94,9 +94,21 @@ After all tasks: final whole-branch code review, then the finishing-a-developmen
 
 ## Current task: RA-3 Apple Connectivity — `feature/healthkit`
 
-Bar is on `feature/healthkit` (created from `main` after the RA-34 merge). Nothing designed or built yet. **Start with the brainstorming skill** (read the RA-3 story in Jira first), then spec → plan → subagent-driven development, same flow as RA-34.
+Claude session name: `feature/healthkit`.
 
-Known inputs from earlier work:
+- **2026-11-20:** spec `docs/superpowers/specs/2026-11-20-healthkit-design.md`, plan `docs/superpowers/plans/2026-11-20-healthkit.md`. Tasks 1–8 done (subagents + review), tsc clean, both self-checks pass (`node src/healthkit/import.check.ts`, `node src/db/sync.check.ts`). Dev seed + `src/mockData.ts` removed. Design summary in `architecture.md` → HealthKit import.
+- **Bar to do before testing, in this order:** (1) run `supabase/migrations/2026-11-20-started-at.sql` in the Supabase SQL Editor **before the new build first opens** — a push rejected for the missing column is marked `failed` for good (never retried), so those runs would stay local-only; (2) delete the old dev sample runs from the cloud (`delete from public.runs where started_at is null;` — every row before RA-3 is seed data); (3) new dev build `eas build --profile development --platform ios` (HealthKit is native) and reinstall.
+- **Final review (Opus) fixes applied:** HealthKit UUIDs are uppercase but Postgres returns uuids lowercase → every run would have shown twice; now lowercased everywhere (+ check). Import stops if a logout happens mid-import (epoch guard, like sync) and a new login starts its own import. HealthKit errors can no longer leave index / the Health screen stuck. `importNewRuns()` now syncs first itself (callers simplified), so cloud runs are known before dedupe. All progress listeners get updates. Unit `"meters"` (what the library really sends) handled.
+- **Device test round 1 (2026-11-20):** import works. Compared one run with Fitness → now matched exactly: splits come from Apple's own km **segment events** (type 7; km + mile chains, km chain = ceil(km) links) minus pause/resume time; HR avg/min/max from the workout's HR statistic (`getStatistic`); new `calories` column (active kcal, `totalEnergyBurned`; migration `2026-11-20-calories.sql`, SQLite v3); Fitness truncates (time, elevation, temperature, calories), we do too; date uses `HKTimeZone`. Real run is now a fixture in `import.check.ts`. Re-import needed for existing rows (`delete from public.runs;` then log out/in).
+- **Intervals (done, option 1 chosen by Bar):** custom-workout steps are HealthKit **activities** (start/end/duration only — the library exposes no step names). Saved as `segments` labelled "Step N" + "Open" (time after the last step); time = activity duration (pause-free), distance = distance samples in range, HR = mean; colour by pace group (biggest pace gap ≥ 30 s/km splits rep/rest, else all main). Segment tables now show `seg.label`. Debug logger removed. Note: Fitness shows the *goal* time for time-goal steps (e.g. 2:30 vs our 2:29).
+- **Precise distances (2026-11-20, Bar's ask):** `fmtDistance` is the only distance format app-wide (dashboard, cards, Compare, Run Detail, splits, intervals): "374 m" under 1 km, else 2 decimals ("9.07 km", whole km stays "1 km"), 0 stays "0 km". JS only, no rebuild.
+- **Jira created 2026-11-20:** RA-39 Set Run Type Manually, RA-40 Real Interval Step Names (spike, native patch), RA-41 Guess Interval Step Names (optional, rules → ML with RA-15).
+- **Left as is (minor):** Watch samples that sync after the workout object are missed (anchor moves on; RA-21 re-reads HR); first import pushes one HTTP upsert per run (RA-34 design), fine for now.
+- **Next:** Task 9 device test (list in the plan). Then commit + merge.
+- **Jira follow-ups (draft wording first, Bar approves):** new ticket for interval **segments** from HealthKit (left null in RA-3); note on **RA-12** about letting the user pick which source wins when the same run is in Health twice.
+- **Untested on device:** shape of workout metadata (elevation/weather), `productType` Watch detection, humidity scale (0–1 vs 0–100 handled both ways).
+
+Inputs that shaped the design (kept for reference):
 - **Package:** `@kingstinct/react-native-healthkit` is in the stack (`CLAUDE.md`) but **not installed yet**. It's native → needs `app.json` HealthKit entitlement + usage strings and a **new EAS dev build** (`eas build --profile development --platform ios`). Logic goes in `src/healthkit/` (empty folder).
 - **Onboarding (target):** Signup → Health permission (RA-3) → Personal info form (RA-11) → Dashboard.
 - **Import must use the RA-34 data layer:** map each HKWorkout → `Run`, `id` = HealthKit workout UUID, save with `writeChange('runs', 'insert', runToRow(run))` (insert-if-missing: never overwrites type/notes/edits), then `useRunStore.getState().load()` + `syncNow()`. HealthKit is read-only.
