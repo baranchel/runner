@@ -18,6 +18,10 @@ export interface Split {
   avgHr: number | null
 }
 
+/** Fields the Edit Run modal can change. Stored in runs.edits, applied on top of HealthKit values. */
+export type EditFields = 'name' | 'distanceKm' | 'timeSec' | 'avgHr' | 'minHr' | 'maxHr' | 'elevGain'
+export type RunEdits = Partial<Pick<Run, EditFields>>
+
 export interface Run {
   id: string
   healthkitUuid: string
@@ -37,6 +41,7 @@ export interface Run {
   splits: Split[]
   weather: { tempC: number; humidity: number } | null
   zones: [number, number, number, number, number] | null  // seconds per zone 1–5
+  edits?: RunEdits        // manual edits; the other fields already include them
 }
 
 export interface MonthStats {
