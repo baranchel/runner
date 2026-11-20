@@ -1,7 +1,10 @@
 import { useState } from 'react'
-import { View, Text, TextInput, TouchableOpacity, StyleSheet } from 'react-native'
+import { Alert, View, Text, TextInput, TouchableOpacity, StyleSheet } from 'react-native'
 import { colors, fonts } from '../../src/utils/tokens'
 import { signOut, deleteAccount } from '../../src/api/auth'
+import { clearAll, pendingCount } from '../../src/db/queries'
+import { syncNow } from '../../src/db/sync'
+import { useRunStore } from '../../src/store/useRunStore'
 
 export default function Settings() {
   const [error,      setError]      = useState<string | null>(null)
@@ -9,7 +12,38 @@ export default function Settings() {
   const [typed,      setTyped]      = useState('')
   const [busy,       setBusy]       = useState(false)
 
-  const logOut = async () => { setError(null); setError(await signOut()) }  // gate redirects to login on success
+  const seedSampleRuns = useRunStore(s => s.seedSampleRuns)
+
+  const [loggingOut, setLoggingOut] = useState(false)
+
+  // gate redirects to login on success; an explicit logout wipes the phone's copy
+  const doLogOut = async () => {
+    const err = await signOut()
+    if (!err) clearAll()
+    setError(err)
+  }
+
+  // Try to upload first; warn if changes would be lost.
+  const logOut = async () => {
+    if (loggingOut) return
+    setError(null); setLoggingOut(true)
+    await syncNow()
+    setLoggingOut(false)
+    if (pendingCount() === 0) return doLogOut()
+    Alert.alert(
+      'Unsynced changes',
+      "Some changes haven't reached the cloud yet. Logging out now will lose them.",
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Log out anyway', style: 'destructive', onPress: doLogOut },
+      ],
+    )
+  }
+
+  const seed = () => {
+    const err = seedSampleRuns()
+    Alert.alert(err ?? 'Sample runs added')
+  }
 
   const remove = async () => {
     if (typed !== 'DELETE' || busy) return
@@ -17,14 +51,21 @@ export default function Settings() {
     const err = await deleteAccount()
     setBusy(false)
     if (err) setError(err)  // on success the gate redirects to login
+    else clearAll()
   }
 
   return (
     <View style={s.container}>
       <Text style={s.title}>Settings</Text>
 
+      {__DEV__ && (
+        <TouchableOpacity style={s.btn} onPress={seed} activeOpacity={0.82}>
+          <Text style={s.btnText}>Load sample runs (dev)</Text>
+        </TouchableOpacity>
+      )}
+
       <TouchableOpacity style={s.btn} onPress={logOut} activeOpacity={0.82}>
-        <Text style={s.btnText}>Log out</Text>
+        <Text style={s.btnText}>{loggingOut ? 'Syncing…' : 'Log out'}</Text>
       </TouchableOpacity>
 
       {!confirming ? (

@@ -1,7 +1,7 @@
 import { ScrollView, StyleSheet, Text, View, TouchableOpacity } from 'react-native'
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { MOCK_RUNS } from '../../../src/mockData'
+import { useRunStore } from '../../../src/store/useRunStore'
 import { fmtDistance, fmtMMSS, fmtPace } from '../../../src/utils/format'
 import { colors, fonts } from '../../../src/utils/tokens'
 
@@ -17,7 +17,7 @@ export default function SplitsScreen() {
   const { id } = useLocalSearchParams<{ id: string }>()
   const router = useRouter()
   const insets = useSafeAreaInsets()
-  const run = MOCK_RUNS.find(r => r.id === id)
+  const run = useRunStore(s => s.runs.find(r => r.id === id))
 
   if (!run) {
     return (

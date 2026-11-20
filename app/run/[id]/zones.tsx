@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { ScrollView, StyleSheet, Text, View, TouchableOpacity } from 'react-native'
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { MOCK_RUNS } from '../../../src/mockData'
+import { useRunStore } from '../../../src/store/useRunStore'
 import { fmtMMSS } from '../../../src/utils/format'
 import { colors, fonts, spacing, zoneColor } from '../../../src/utils/tokens'
 import { ZONE_NAMES, zoneRangeLabel } from '../../../src/utils/zones'
@@ -14,7 +14,7 @@ export default function ZonesScreen() {
   const router = useRouter()
   const insets = useSafeAreaInsets()
   const [trackW, setTrackW] = useState(0)
-  const run = MOCK_RUNS.find(r => r.id === id)
+  const run = useRunStore(s => s.runs.find(r => r.id === id))
 
   if (!run) {
     return (

@@ -2,19 +2,16 @@ import { Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'rea
 import { useRouter } from 'expo-router'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { RunCard } from '../../src/components/RunCard'
-import { MOCK_RUNS } from '../../src/mockData'
+import { useRunStore } from '../../src/store/useRunStore'
+import type { Run } from '../../src/types'
 import { fmtDate, fmtDistance, fmtDuration, fmtPace } from '../../src/utils/format'
 import { getPeriodStats } from '../../src/utils/stats'
 import { colors, fonts, spacing, buttons } from '../../src/utils/tokens'
 
-// ─── Module-level constants (stable mock data) ────────────────────────────────
+// ─── Module-level constants ───────────────────────────────────────────────────
 
 const TODAY = new Date()
 const UNIT: 'km' | 'mi' = 'km'
-
-const RECENT_RUNS = [...MOCK_RUNS]
-  .sort((a, b) => b.date.localeCompare(a.date))
-  .slice(0, 4)
 
 // Local-date ISO (toISOString would shift to UTC)
 const iso = (d: Date) =>
@@ -26,21 +23,21 @@ const splitDist = (km: number) => fmtDistance(km, UNIT).split(' ')
 
 // ─── Week stats (calendar week, Mon–Sun) ──────────────────────────────────────
 
-function getWeek(today: Date) {
+function getWeek(runs: Run[], today: Date) {
   const monday = addDays(today, -((today.getDay() + 6) % 7))
   const days = Array.from({ length: 7 }, (_, i) => iso(addDays(monday, i)))
-  const inRange = (from: string, to: string) => MOCK_RUNS.filter(r => r.date >= from && r.date <= to)
+  const inRange = (from: string, to: string) => runs.filter(r => r.date >= from && r.date <= to)
 
-  const runs = inRange(days[0], days[6])
-  const dayKm = days.map(d => runs.filter(r => r.date === d).reduce((s, r) => s + r.distanceKm, 0))
-  const dist = runs.reduce((s, r) => s + r.distanceKm, 0)
-  const time = runs.reduce((s, r) => s + r.timeSec, 0)
+  const week = inRange(days[0], days[6])
+  const dayKm = days.map(d => week.filter(r => r.date === d).reduce((s, r) => s + r.distanceKm, 0))
+  const dist = week.reduce((s, r) => s + r.distanceKm, 0)
+  const time = week.reduce((s, r) => s + r.timeSec, 0)
   // Last week up to the same weekday, so mid-week isn't compared against a full week
   const lastDist = inRange(iso(addDays(monday, -7)), iso(addDays(today, -7))).reduce((s, r) => s + r.distanceKm, 0)
 
   return {
     days, dayKm, dist, time,
-    runCount: runs.length,
+    runCount: week.length,
     pace: dist > 0 ? time / dist : 0,
     pct: lastDist > 0 ? Math.round((dist - lastDist) / lastDist * 100) : null,
   }
@@ -50,7 +47,8 @@ const DAY_LETTERS = ['M', 'T', 'W', 'T', 'F', 'S', 'S']
 const TRACK_H = 64
 
 function WeekCard() {
-  const w = getWeek(TODAY)
+  const runs = useRunStore(s => s.runs)
+  const w = getWeek(runs, TODAY)
   const max = Math.max(...w.dayKm)
   const [num, unit] = splitDist(w.dist)
 
@@ -152,7 +150,8 @@ function StatCell({ label, value, dir, delta }: Stat) {
 }
 
 function ThirtyDayCard() {
-  const { current: c, previous: p } = getPeriodStats(MOCK_RUNS, TODAY)
+  const runs = useRunStore(s => s.runs)
+  const { current: c, previous: p } = getPeriodStats(runs, TODAY)
   const hasPrev = p.runCount > 0
   const d = (dir: DeltaDir, delta: string) => hasPrev ? { dir, delta } : { dir: 'flat' as DeltaDir, delta: '' }
 
@@ -200,6 +199,7 @@ function ThirtyDayCard() {
 // ─── Recent Runs ──────────────────────────────────────────────────────────────
 
 function RecentRuns({ router }: { router: ReturnType<typeof useRouter> }) {
+  const recent = useRunStore(s => s.runs).slice(0, 4)  // store is newest first
   return (
     <View style={{ gap: 11 }}>
       <View style={s.rowBetween}>
@@ -208,7 +208,7 @@ function RecentRuns({ router }: { router: ReturnType<typeof useRouter> }) {
           <Text style={s.pillText}>See all →</Text>
         </TouchableOpacity>
       </View>
-      {RECENT_RUNS.map(run => <RunCard key={run.id} run={run} unit={UNIT} />)}
+      {recent.map(run => <RunCard key={run.id} run={run} unit={UNIT} />)}
     </View>
   )
 }

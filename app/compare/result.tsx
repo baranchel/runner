@@ -2,7 +2,7 @@ import { StyleSheet, Text, TouchableOpacity } from 'react-native'
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { CompareView } from '../../src/components/CompareView'
-import { MOCK_RUNS } from '../../src/mockData'
+import { useRunStore } from '../../src/store/useRunStore'
 import { colors, fonts, spacing } from '../../src/utils/tokens'
 
 // Entry from All runs' "Compare ›" and Run Detail's sheet: same view, runs pre-filled.
@@ -10,9 +10,10 @@ export default function CompareResult() {
   const { a, b } = useLocalSearchParams<{ a?: string; b?: string }>()
   const router = useRouter()
   const insets = useSafeAreaInsets()
+  const runs = useRunStore(s => s.runs)
 
   // newer run is always A
-  const [runA, runB] = [MOCK_RUNS.find(r => r.id === a), MOCK_RUNS.find(r => r.id === b)]
+  const [runA, runB] = [runs.find(r => r.id === a), runs.find(r => r.id === b)]
     .sort((x, y) => (y?.date ?? '').localeCompare(x?.date ?? ''))
 
   return (

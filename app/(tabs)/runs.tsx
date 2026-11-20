@@ -7,7 +7,7 @@ import {
   FilterPill, MonthHeader, SORTS, buildSections, pick, pickType, typeLabel,
   type RunSection, type SortKey,
 } from '../../src/components/RunPickerList'
-import { MOCK_RUNS } from '../../src/mockData'
+import { useRunStore } from '../../src/store/useRunStore'
 import type { Run } from '../../src/types'
 import { fmtDate } from '../../src/utils/format'
 import { buttons, colors, fonts } from '../../src/utils/tokens'
@@ -17,9 +17,10 @@ const UNIT: 'km' | 'mi' = 'km'
 const BAR_SPACE = 76 // extra list bottom padding while the compare bar is showing
 
 export default function Runs() {
+  const runs = useRunStore(s => s.runs)
   const [selectedTypeId, setSelectedTypeId] = useState<string | null>(null)
   const [sort, setSort] = useState<SortKey>('newest')
-  const sections = buildSections(MOCK_RUNS, selectedTypeId, sort)
+  const sections = buildSections(runs, selectedTypeId, sort)
 
   const router = useRouter()
   const { select } = useLocalSearchParams<{ select?: string }>()
@@ -60,7 +61,7 @@ export default function Runs() {
   // newer run first → A, older → B
   const pair = selectedIds.length === 2
     ? selectedIds
-        .map(id => MOCK_RUNS.find(r => r.id === id))
+        .map(id => runs.find(r => r.id === id))
         .filter((r): r is Run => r !== undefined)
         .sort((x, y) => y.date.localeCompare(x.date))
     : null
