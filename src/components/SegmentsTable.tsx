@@ -36,7 +36,7 @@ export function SegmentsTable({ run, typeColor, unit, limit, showHr, style }: {
           <View key={i} style={[st.row, st.rowCenter, st.borderTop]}>
             <View style={[st.cell, { flex: 1.4, flexDirection: 'row', alignItems: 'center', gap: 6 }]}>
               <View style={[sg.dot, { backgroundColor: dotColor }]} />
-              <Text style={[st.val, { color: dotColor }]} numberOfLines={1}>{display.label}</Text>
+              <Text style={[st.val, { color: dotColor }]} numberOfLines={1}>{seg.label || display.label}</Text>
             </View>
             <Text style={[st.cell, st.val]} numberOfLines={1}>{fmtDistance(seg.distanceKm, unit)}</Text>
             <Text style={[st.cell, st.val]} numberOfLines={1}>{pace > 0 ? fmtPace(pace, unit) : '—'}</Text>
