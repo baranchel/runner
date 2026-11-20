@@ -61,6 +61,11 @@ DB
 - **Logout:** `clearAll()` wipes `sync_state` incl. anchor → next login re-reads history; existing runs skipped by UUID / overlap.
 - **Edits / type / notes:** insert-if-missing never touches existing rows.
 - **No HR samples:** HR fields and zones `null`.
+- *(added while planning)* **Refused, then turned on later:** the anchor is saved only once a query has returned workouts (or an anchor already exists). Otherwise an anchor saved while access was off would hide the whole history once it's turned on.
+- *(added while planning)* **"Not now":** saved as `health_skipped` in `sync_state`, so the Health screen doesn't show on every launch. While iOS can still prompt, Settings shows a **Connect Apple Health** button that opens the screen.
+- *(added while planning)* **iPhone + Watch both log distance/steps** for the same run: splits and cadence use only samples from the workout's own source (HR uses all, since only one device measures it). A third-party workout whose app wrote no samples gets no splits/cadence.
+- *(added while planning)* **Expo Go:** the HealthKit module is lazy-loaded (`src/healthkit/native.ts`), like Google sign-in. In Expo Go there's no Health screen and the import does nothing.
+- *(added while planning)* **Order:** on login and foreground, `syncNow()` runs first, then the import, so runs already in the cloud are known and skipped.
 
 ## Tests
 
