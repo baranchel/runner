@@ -7,9 +7,9 @@ function eq(actual: unknown, expected: unknown, msg: string) {
 }
 
 const base: Run = {
-  id: 'x', healthkitUuid: 'x', typeId: null, name: 'x', date: '2026-01-01',
+  id: 'x', healthkitUuid: 'x', typeId: null, name: 'x', date: '2026-01-01', startedAt: null,
   distanceKm: 10, timeSec: 3000, avgHr: 150, maxHr: 170, minHr: 120,
-  elevGain: 50, cadence: 170, source: 'apple_health', notes: null,
+  elevGain: 50, cadence: 170, calories: 600, source: 'apple_health', notes: null,
   segments: null, splits: [], weather: null, zones: null,
 }
 const run = (o: Partial<Run>): Run => ({ ...base, ...o })
@@ -24,7 +24,7 @@ eq(betterValue(metric('Distance'), run({ distanceKm: 10 }), run({ distanceKm: 12
 eq(betterValue(metric('Time'), run({ timeSec: 2900 }), run({ timeSec: 3000 })), 'a', 'lower wins')
 eq(betterValue(metric('Avg Pace'), run({ timeSec: 3000 }), run({ timeSec: 2900 })), 'b', 'faster pace wins')
 eq(betterValue(metric('Avg HR'), run({ avgHr: 150 }), run({ avgHr: 150 })), null, 'tie')
-eq(betterValue(metric('Calories'), run({ distanceKm: 5 }), run({ distanceKm: 10 })), null, 'none rule')
+eq(betterValue(metric('Calories'), run({ calories: 300 }), run({ calories: 600 })), null, 'none rule')
 eq(betterValue(metric('Avg HR'), run({ avgHr: null }), run({ avgHr: 140 })), null, 'missing value')
 eq(metric('Avg Pace').get(run({ distanceKm: 0 })), null, 'zero distance pace')
 eq(metric('Time').fmt(2892, 'km'), '48:12', 'time format')

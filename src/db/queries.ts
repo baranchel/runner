@@ -8,8 +8,8 @@ export interface RunTypeRow { id: string; name: string; hue: number; deleted: nu
 export interface PendingOp { seq: number; tbl: Table; row_id: string; kind: 'insert' | 'update'; patch: string }
 
 const COLS: Record<Table, readonly string[]> = {
-  runs: ['id', 'healthkit_uuid', 'type_id', 'name', 'date', 'distance_km', 'time_sec', 'avg_hr', 'max_hr',
-    'min_hr', 'elev_gain', 'cadence', 'source', 'notes', 'splits', 'segments', 'zones', 'weather', 'edits', 'updated_at'],
+  runs: ['id', 'healthkit_uuid', 'type_id', 'name', 'date', 'started_at', 'distance_km', 'time_sec', 'avg_hr', 'max_hr',
+    'min_hr', 'elev_gain', 'cadence', 'calories','source', 'notes', 'splits', 'segments', 'zones', 'weather', 'edits', 'updated_at'],
   run_types: ['id', 'name', 'hue', 'deleted', 'updated_at'],
 }
 
@@ -30,7 +30,7 @@ function parseRun(r: Record<string, unknown>): RunRow {
 // ─── Reads ───────────────────────────────────────────────────────────────────
 
 export const loadRuns = (): RunRow[] =>
-  db.getAllSync<Record<string, unknown>>('SELECT * FROM runs ORDER BY date DESC').map(parseRun)
+  db.getAllSync<Record<string, unknown>>('SELECT * FROM runs ORDER BY date DESC, started_at DESC').map(parseRun)
 
 export function getRunRow(id: string): RunRow | null {
   const r = db.getFirstSync<Record<string, unknown>>('SELECT * FROM runs WHERE id = ?', [id])
