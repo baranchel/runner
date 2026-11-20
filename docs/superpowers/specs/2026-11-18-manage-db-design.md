@@ -14,6 +14,13 @@ Acceptance criteria (from RA-34):
 - Screens read from the database, not mock data.
 - The app opens and shows saved runs with no internet; offline changes sync when the connection is back.
 
+## Changes after this spec
+
+- **Planning:** no `useUserStore` / local `profiles` yet (nothing changes `unit` until RA-6). No `setType`/`setNotes` actions (no screen sets them yet; only Edit Run writes). Seed lives in `useRunStore.seedSampleRuns()`.
+- **Implementation:** `applyEdits()` became `rowToRun()` + `diffEdits()` in `merge.ts`; the session lifecycle lives in `useAuthStore.ts`, not `app/_layout.tsx`. No local profiles table and no separate `seed.ts` (the seed is `useRunStore.seedSampleRuns()`).
+- **Final review (2026-11-20):** a forced sign-out no longer wipes the phone's copy (only explicit logout / delete does); the Edit Run modal sends only the fields the user changed.
+- **Code review (2026-11-20):** `runs` primary key is `(user_id, id)`, not `id`. Metric columns are `double precision`. Pull uses keyset paging with a 60 s overlap. A pending *insert* never blocks a pulled row (only pending updates do). Logout bumps an epoch so an in-flight sync stops writing.
+
 ## Decisions
 
 | Decision | Choice | Why |

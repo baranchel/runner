@@ -34,10 +34,11 @@ iPhone
   @kingstinct/react-native-healthkit
         │  maps HKWorkout → Run, deduplicates
         ▼
-  expo-sqlite (local)  ←── stores run type classifications + notes + manual edit overrides
-        │
+  expo-sqlite (local)  ←── phone's offline copy of runs + run types, plus the outbox (pending_ops)
+        │      ▲
+        │      └── syncNow() ⇄ Supabase Postgres (source of truth, RLS per user)
         ▼
-  Zustand stores       ←── in-memory state (runs, types, filters, user prefs)
+  Zustand stores       ←── in-memory state (runs with edits applied, run types)
         │
         ▼
   expo-router screens  ←── read from stores, write back on user action
@@ -78,6 +79,8 @@ ws (dev)                                     ← v8 for Expo's tunnel (@expo/ws-
 ### File Structure
 
 ```
+supabase/
+  schema.sql                   ← cloud tables, RLS, triggers (run by hand in the Supabase SQL Editor)
 app/
   _layout.tsx                  ← root layout: splash hold + auth gate (Stack.Protected)
   index.tsx                    ← redirects by session: dashboard or login
@@ -97,16 +100,13 @@ app/
     [id].tsx                   ← Run Detail screen (+ compare sheet)
   compare/
     result.tsx                 ← Comparison screen (?a=<runId>&b=<runId>)
-  settings/
-    manage-types.tsx
-    connected-apps.tsx
 
 src/
   components/                  ← RunCard, RunPickerList (shared month-grouped list pieces + run picker), CompareView, Chart, SplitsTable, SegmentsTable
-  api/                         ← supabase.ts (client), auth.ts, authErrors.ts — the ONLY code that talks to Supabase
-  store/                       ← useAuthStore, useRunStore, useRunTypeStore, useUserStore (Zustand)
-  db/                          ← schema.ts, queries.ts (expo-sqlite)
-  healthkit/                   ← permissions.ts, sync.ts
+  api/                         ← supabase.ts (client), auth.ts, authErrors.ts, sync.ts (push/pull rows) — the ONLY code that talks to Supabase
+  store/                       ← useAuthStore (also drives the data lifecycle), useRunStore, useRunTypeStore (Zustand)
+  db/                          ← schema.ts (SQLite tables), queries.ts (reads/writes + outbox), merge.ts (pure, `node src/db/sync.check.ts`), sync.ts (syncNow)
+  healthkit/                   ← (RA-3) permissions + HealthKit import
   types/                       ← index.ts (Run, RunType, User interfaces)
   utils/                       ← format.ts, chart.ts, stats.ts, zones.ts, compare.ts (metrics + per-row "better" rule)
 ```
@@ -115,8 +115,8 @@ src/
 
 ```ts
 interface RunType {
-  id: string       // e.g. 'long', 'tempo'
-  name: string     // e.g. 'Long Run'
+  id: string       // uuid; one row per type per user (run_types table)
+  name: string     // defaults: Race 20 · Tempo 70 · Hills 120 · Easy 170 · Long 220 · Fartlek 270 · Interval 320 (name · hue)
   hue: number      // oklch hue used for color generation
 }
 
@@ -135,21 +135,24 @@ interface Split {
 }
 
 interface Run {
-  id: string
-  healthkitUuid: string   // deduplication key
-  typeId: string | null   // null until classified
+  id: string              // uuid; for Apple Health runs = the HealthKit workout UUID (dedup key)
+  healthkitUuid: string
+  typeId: string | null   // run_types.id; null until classified
   name: string            // default "<TypeName>: <Distance>km", user-editable
   date: string            // 'YYYY-MM-DD'
   distanceKm: number
   timeSec: number
   avgHr: number | null
   maxHr: number | null
+  minHr: number | null
   elevGain: number | null
   cadence: number | null
   source: 'apple_health' | 'strava' | 'garmin'  // Phase 1 only produces 'apple_health'
   notes: string | null
   segments: Segment[] | null  // null for unstructured runs (easy/long); warmup→reps→cooldown for tempo/interval
   splits: Split[]             // per-km splits, always present
+  weather, zones              // see src/types/index.ts
+  edits?: RunEdits            // manual edits; the other fields already include them
 }
 ```
 
@@ -172,28 +175,26 @@ const aug = getMonthStats(runs, 2026, 8, today.getDate())  // Aug through today
 const jul = getMonthStats(runs, 2026, 7, today.getDate())  // Jul through same day-of-month
 ```
 
-SQLite stores Run + RunType. HealthKit is read-only — never written back to.
+Supabase Postgres is the source of truth (`supabase/schema.sql`: `profiles`, `run_types`, `runs`, RLS own-rows, server-stamped `updated_at`, new-user trigger creates the profile + 7 default types). SQLite holds the phone's copy of `runs` + `run_types` (same snake_case columns) and the outbox. HealthKit is read-only — never written back to.
 
-### Manual Run Edits (planned — build with the DB layer)
+### Manual Run Edits
 
-The Run Detail **Edit** button lets the user fix bad HealthKit readings (name, distance, time, avg/min/max HR, elevation). Pace is never stored — always `timeSec / distanceKm`. Currently (pre-DB) edits mutate the mock run in memory and are lost on restart.
+The Run Detail **Edit** button fixes bad HealthKit readings (name, distance, time, avg/min/max HR, elevation). Pace is never stored — always `timeSec / distanceKm`.
 
-Because HealthKit is read-only, edits are stored as **overrides** layered on top of the HealthKit data:
-
-```sql
-CREATE TABLE run_overrides (
-  healthkit_uuid TEXT PRIMARY KEY,   -- same key used for dedup
-  name TEXT, distance_km REAL, time_sec INTEGER,
-  avg_hr INTEGER, min_hr INTEGER, max_hr INTEGER, elev_gain INTEGER
-);  -- NULL column = use the HealthKit value
-```
-
-- **Load:** HealthKit run → apply non-null override columns → store.
-- **Save:** upsert only the edited fields into `run_overrides`, then update `useRunStore`.
-- **Re-sync:** HealthKit sync never touches `run_overrides`, so edits survive.
-- **Revert to original:** delete the row.
+- Edits live in `runs.edits` (jsonb, e.g. `{"distanceKm":10.02,"avgHr":151}`); HealthKit values stay untouched in their own columns.
+- Displayed run = HealthKit values + `edits` on top (`rowToRun` in `src/db/merge.ts`).
+- Saving a value equal to the HealthKit value removes that edit (`diffEdits`). Revert = `edits = {}` (no UI yet).
+- Imports (seed now, HealthKit in RA-3) insert-if-missing, so they never touch `edits`, `type_id` or `notes`.
 - Splits, segments, zones and charts stay on the recorded HealthKit data (not rescaled by edits).
-- When done: remove the in-place mutation in `app/run/[id].tsx` (marked `ponytail:`).
+
+### Sync (RA-34)
+
+- **Write:** `writeChange(tbl, 'insert' | 'update', row)` updates the local row and adds a `pending_ops` row in one SQLite transaction; the store reloads, then `syncNow()` runs in the background.
+- **Push:** ops oldest-first. Insert = upsert ignoring duplicates (runs on `user_id,id`), update = only the patched fields. Network/401/408/429/5xx → stop, retry next sync. Other errors, or an update matching no row → op marked `failed` (kept, skipped).
+- **Pull:** per table, rows with server `updated_at` ≥ last pull − 60 s (keyset paging, 1000/page). Rows with unsent *updates* are skipped (local wins); a pending insert for a row the cloud already has is dropped in favour of the cloud row.
+- **When:** login, app foreground, after each change. Single-flight; never throws.
+- **Logout:** Settings pushes first and warns if changes are unsent; an explicit logout or account deletion then runs `clearAll()` (an epoch counter stops a sync that was still running). A forced sign-out (e.g. rejected refresh token) only empties the stores, so unsent edits survive and push when the same user logs back in. Local data has an `owner`; a different user logging in starts clean.
+- **Limits:** last write wins per field; `edits` merges as one field.
 
 ---
 

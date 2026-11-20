@@ -27,7 +27,7 @@ Read this first, together with `CLAUDE.md` and `architecture.md`. It captures th
 | # | Branch | Jira | Status |
 |---|---|---|---|
 | 1 | `feature/user-auth` | RA-18 Login | **In progress** (see below) |
-| 2 | `feature/manage-db` | RA-34 Manage DB | **Design approved 2026-11-18** — spec `docs/superpowers/specs/2026-11-18-manage-db-design.md` (awaiting Bar's spec review → implementation plan) |
+| 2 | `feature/manage-db` | RA-34 Manage DB | **Design approved 2026-11-18** — spec `docs/superpowers/specs/2026-11-18-manage-db-design.md` · plan `docs/superpowers/plans/2026-11-18-manage-db.md` · **code done 2026-11-20, awaiting device test** (see RA-34 section) |
 | 3 | `feature/healthkit` | RA-3 Apple Connectivity | Not started (story written) |
 | 4 | `feature/add-personal-info` | RA-11 Personal Info + RA-9 Custom HR Zones (+ RA-10 Edit Profile) | Brainstorm paused; stories not yet written |
 
@@ -81,6 +81,20 @@ Site `baranchel.atlassian.net`, project **Run App** (key `RA`), cloudId `0b1d9b1
 - **RA-18 complete. Next:** Bar commits + merges, then RA-34 (`feature/manage-db`).
 
 After all tasks: final whole-branch code review, then the finishing-a-development-branch flow (Bar handles git).
+
+## Current task: RA-34 Manage DB — `feature/manage-db`
+
+- Spec `docs/superpowers/specs/2026-11-18-manage-db-design.md`, plan `docs/superpowers/plans/2026-11-18-manage-db.md`. Design: Supabase = truth, SQLite copy + outbox, `syncNow()` push→pull; edits in `runs.edits`; 7 default types per user (DB trigger); dev "Load sample runs" button in Settings.
+- **2026-11-20:** Tasks 1–9 implemented (subagents), tsc clean, `node src/db/sync.check.ts` passes. Opus review of the sync core found 1 critical + 3 important issues, all fixed: `runs` PK is `(user_id, id)` (a second account on one phone would silently lose its runs), metric columns `double precision` (HealthKit sends fractions), pending inserts no longer block pulled rows, keyset paging + 60 s overlap on pull, epoch guard so a logout mid-sync can't leak rows into the next user.
+- **2026-11-20 device-tested (dev build), all pass:** schema applied (anon gets `permission denied`, 7 types per existing account via backfill), seed → 47 runs, re-seed no duplicates, all screens on real data, offline edit → synced as `edits: {"distanceKm": 8}` with `distance_km` untouched, logout/login restores history from the cloud, unsynced-changes warning, second account isolated, delete account cascades.
+- **Final review (2026-11-20):** no critical issues. Fixed: a forced sign-out (rejected refresh token) no longer wipes unsent edits (only explicit logout / delete calls `clearAll()`); Edit Run sends only the fields the user touched; `fmtMMSS` rounds first (no "3:60"); logout double-tap guard + "Syncing…". Left as is (minor): the type filter label reads `getState()` (stale if a type is renamed mid-session), `MOCK_RUNS` ships in the prod bundle until RA-3 removes the seed, no dedicated empty state on Dashboard "Recent runs" / All runs ("No runs match this filter.").
+- **Next:** Bar re-tests the edit + logout fixes, commits in 6 steps and merges. Then RA-3 (`feature/healthkit`).
+- **Test on the first TestFlight/preview build:** open the app with no internet (airplane mode) → saved runs show, an edit made offline survives a restart and syncs when back online. Can't be tested in the dev build: it loads its JS from Metro, so it won't open without Wi-Fi.
+- **Decide in RA-3:** `runs.date` is a `date` (no start time) — consider `timestamptz` before real HealthKit data arrives (touches every screen that uses `run.date`). HealthKit → Run mapping must give `id` = workout UUID.
+
+## Open bugs — RA-24 Bug Fixes (`feature/bug-fixes`, not started)
+
+- **White flash on logout (found 2026-11-20).** Logging out shows a white screen for a moment before the login screen. Cause: when the tabs are removed, the app briefly falls back to `app/index.tsx` (which redirects to login); during that switch the bottom layer is React Navigation's default theme background (`#f2f2f2`), because only the screens paint `colors.bgApp`. Fix: in `app/_layout.tsx` wrap the `Stack` in `<ThemeProvider value={{ ...DarkTheme, colors: { ...DarkTheme.colors, background: colors.bgApp, card: colors.bgCard } }}>` (`import { DarkTheme, ThemeProvider } from 'expo-router'` — Expo 58 bundles React Navigation inside expo-router; there is no separate `@react-navigation/native` package). JS-only, no rebuild. Not caused by RA-34 (navigation untouched there).
 
 ## Personal Info feature (RA-11 + RA-9) — notes so far
 
