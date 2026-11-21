@@ -3,7 +3,7 @@ import * as SQLite from 'expo-sqlite'
 
 export const db = SQLite.openDatabaseSync('chronodrom.db')
 
-const VERSION = 3// bump + add an `if (v < N)` block to change the schema later
+const VERSION = 4  // bump + add an `if (v < N)` block to change the schema later
 
 const v = db.getFirstSync<{ user_version: number }>('PRAGMA user_version')?.user_version ?? 0
 if (v < 1) {
@@ -32,3 +32,11 @@ if (v < 1) {
 }
 if (v >= 1 && v < 2) db.execSync('ALTER TABLE runs ADD COLUMN started_at TEXT;')
 if (v >= 1 && v < 3) db.execSync(`ALTER TABLE runs ADD COLUMN calories INTEGER; PRAGMA user_version = ${VERSION};`)
+if (v < 4) db.execSync(`
+  CREATE TABLE IF NOT EXISTS profiles (
+    id TEXT PRIMARY KEY, unit TEXT, first_name TEXT, last_name TEXT, dob TEXT, sex TEXT,
+    height_cm REAL, weight_kg REAL, resting_hr REAL, vo2max REAL, hr_max REAL,
+    hr_max_manual INTEGER NOT NULL DEFAULT 0, updated_at TEXT
+  );
+  PRAGMA user_version = ${VERSION};
+`)

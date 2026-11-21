@@ -5,9 +5,19 @@
 -- ─── Tables ──────────────────────────────────────────────────────────────────
 
 create table public.profiles (
-  user_id    uuid primary key default auth.uid() references auth.users on delete cascade,
-  unit       text not null default 'km' check (unit in ('km', 'mi')),
-  updated_at timestamptz not null default now()
+  user_id       uuid primary key default auth.uid() references auth.users on delete cascade,
+  unit          text not null default 'km' check (unit in ('km', 'mi')),
+  first_name    text,                                   -- RA-11: required by the form, not the DB
+  last_name     text,
+  dob           date,
+  sex           text check (sex in ('female', 'male', 'undisclosed')),  -- undisclosed = "Prefer not to say"
+  height_cm     double precision,
+  weight_kg     double precision,
+  resting_hr    double precision,
+  vo2max        double precision,
+  hr_max        double precision,                       -- user's value, or highest HR from runs
+  hr_max_manual boolean not null default false,         -- true = user typed it; auto-updates stop
+  updated_at    timestamptz not null default now()
 );
 
 create table public.run_types (

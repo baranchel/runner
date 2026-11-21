@@ -67,3 +67,10 @@ export function diffEdits(raw: Run, current: RunEdits, patch: RunEdits): RunEdit
 export function filterPulled<T extends { id: string }>(rows: T[], pendingIds: Set<string>): T[] {
   return rows.filter(r => !pendingIds.has(r.id))
 }
+
+/** Column that identifies a row in the cloud. profiles has no id: one row per user, keyed by user_id. */
+export const cloudKey = (tbl: string): 'id' | 'user_id' => (tbl === 'profiles' ? 'user_id' : 'id')
+
+/** Pulled cloud rows → local shape (every local table is keyed by id). */
+export const fromCloud = (tbl: string, rows: Record<string, unknown>[]): Record<string, unknown>[] =>
+  cloudKey(tbl) === 'id' ? rows : rows.map(r => ({ ...r, id: r.user_id }))
