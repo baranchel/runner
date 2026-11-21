@@ -1,4 +1,4 @@
-# Chronodrom — Session Handoff (2026-11-20)
+# Chronodrom — Session Handoff (2026-11-21)
 
 Read this first, together with `CLAUDE.md` and `architecture.md`. It captures the state of work and the decisions made in the previous Claude Code (CLI) session, which a new session cannot see.
 
@@ -28,8 +28,8 @@ Read this first, together with `CLAUDE.md` and `architecture.md`. It captures th
 |---|---|---|---|
 | 1 | `feature/user-auth` | RA-18 Login | **Done**, merged |
 | 2 | `feature/manage-db` | RA-34 Manage DB | **Done**, merged 2026-11-20 (see RA-34 section) |
-| 3 | `feature/healthkit` | RA-3 Apple Connectivity | **Current** — code done 2026-11-20, waiting for device test (see below) |
-| 4 | `feature/add-personal-info` | RA-11 Personal Info + RA-9 Custom HR Zones (+ RA-10 Edit Profile) | Brainstorm paused; stories not yet written |
+| 3 | `feature/healthkit` | RA-3 Apple Connectivity | **Committed, not merged** — only test left: a new run (2026-11-21) via pull to refresh. Pass → merge into `main`. |
+| 4 | `feature/add-personal-info` | RA-11 Personal Info + RA-9 Custom HR Zones (+ RA-10 Edit Profile) | **Next.** Branched from `feature/healthkit` (2026-11-21), because it needs `src/healthkit/bodyData.ts` + the Health permissions. Merge `feature/healthkit` into `main` first, then this one. Brainstorm paused; stories not yet written. |
 
 ## Jira
 
@@ -104,7 +104,9 @@ Claude session name: `feature/healthkit`.
 - **Precise distances (2026-11-20, Bar's ask):** `fmtDistance` is the only distance format app-wide (dashboard, cards, Compare, Run Detail, splits, intervals): "374 m" under 1 km, else 2 decimals ("9.07 km", whole km stays "1 km"), 0 stays "0 km". JS only, no rebuild.
 - **Jira created 2026-11-20:** RA-39 Set Run Type Manually, RA-40 Real Interval Step Names (spike, native patch), RA-41 Guess Interval Step Names (optional, rules → ML with RA-15).
 - **Left as is (minor):** Watch samples that sync after the workout object are missed (anchor moves on; RA-21 re-reads HR); first import pushes one HTTP upsert per run (RA-34 design), fine for now.
-- **Next:** Task 9 device test (list in the plan). Then commit + merge.
+- **Committed 2026-11-20** (6 commits, tree clean; not merged). Device-tested so far: import, Fitness match (17 Nov run), intervals, precise distances, "Not now" reinstall path (2026-11-21; Dashboard shows the cloud runs after login, as it should).
+- **Next:** only a new run via pull to refresh (2026-11-21) is left; Bar is skipping the other Task 9 items (duplicates after reopen, Watch+other-app, offline, older runs' weather, non-Watch run). Edit+type-kept waits for RA-39. If the new run fails, fix it on `feature/healthkit` (switch back), then merge.
+- **For RA-11 (next branch):** `readBodyData()` in `src/healthkit/bodyData.ts` already reads DOB, sex, height, body mass, resting HR, VO2max (permission already asked in RA-3) — not called anywhere yet. `src/utils/zones.ts` still uses `MOCK_HR_MAX = 190`.
 - **Jira follow-ups (draft wording first, Bar approves):** new ticket for interval **segments** from HealthKit (left null in RA-3); note on **RA-12** about letting the user pick which source wins when the same run is in Health twice.
 - **Untested on device:** shape of workout metadata (elevation/weather), `productType` Watch detection, humidity scale (0–1 vs 0–100 handled both ways).
 
