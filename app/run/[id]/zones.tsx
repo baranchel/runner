@@ -3,11 +3,10 @@ import { ScrollView, StyleSheet, Text, View, TouchableOpacity } from 'react-nati
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useRunStore } from '../../../src/store/useRunStore'
-import { useProfileStore } from '../../../src/store/useProfileStore'
-import { effectiveHrMax } from '../../../src/utils/profile'
+import { useZoneStarts } from '../../../src/store/useProfileStore'
 import { fmtMMSS } from '../../../src/utils/format'
 import { colors, fonts, spacing, zoneColor } from '../../../src/utils/tokens'
-import { ZONE_NAMES, zoneRangeLabel } from '../../../src/utils/zones'
+import { ZONE_NAMES, zoneRangeLabel, zoneTimes } from '../../../src/utils/zones'
 import { hrSeries } from '../../../src/utils/chart'
 import { HrRangeBarsChart } from '../../../src/components/Chart'
 
@@ -17,9 +16,7 @@ export default function ZonesScreen() {
   const insets = useSafeAreaInsets()
   const [trackW, setTrackW] = useState(0)
   const run = useRunStore(s => s.runs.find(r => r.id === id))
-  const runs = useRunStore(s => s.runs)
-  const profile = useProfileStore(s => s.profile)
-  const hrMax = effectiveHrMax(profile, runs, new Date())
+  const starts = useZoneStarts()
 
   if (!run) {
     return (
@@ -29,7 +26,7 @@ export default function ZonesScreen() {
     )
   }
 
-  const zones = run.zones
+  const zones = zoneTimes(run.hrHist, starts)
   const total = zones ? zones.reduce((a, b) => a + b, 0) : 0
 
   return (
@@ -62,7 +59,7 @@ export default function ZonesScreen() {
                     <Text style={[s.zoneNum, { color: zoneColor(i) }]}>{i + 1}</Text>
                     <View style={s.zoneText}>
                       <Text style={s.zoneName} numberOfLines={1}>{ZONE_NAMES[i]}</Text>
-                      <Text style={s.zoneRange} numberOfLines={1}>{zoneRangeLabel(i, hrMax)}</Text>
+                      <Text style={s.zoneRange} numberOfLines={1}>{zoneRangeLabel(i, starts)}</Text>
                     </View>
                   </View>
                   <View
@@ -111,7 +108,7 @@ const s = StyleSheet.create({
 
   zones: { gap: 10 },
   zoneRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  zoneLabel: { width: 92, flexDirection: 'row', alignItems: 'center', gap: 8 },
+  zoneLabel: { width: 104, flexDirection: 'row', alignItems: 'center', gap: 8 },
   zoneNum: { fontFamily: fonts.mono, fontSize: 16, fontWeight: '700' },
   zoneText: { flexShrink: 1 },
   zoneName: { fontFamily: fonts.body, fontSize: 12, color: colors.textSecondary },
@@ -120,5 +117,5 @@ const s = StyleSheet.create({
   barFill: { height: 26, borderRadius: 6, flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', paddingHorizontal: 8 },
   pctIn:  { fontFamily: fonts.mono, fontSize: 12, color: colors.bgApp },
   pctOut: { fontFamily: fonts.mono, fontSize: 12, color: colors.textSecondary, paddingLeft: 6 },
-  zoneTime: { width: 52, textAlign: 'right', fontFamily: fonts.mono, fontSize: 13, color: colors.textPrimary },
+  zoneTime: { width: 66, textAlign: 'right', fontFamily: fonts.mono, fontSize: 13, color: colors.textPrimary },
 })

@@ -4,6 +4,7 @@ import { Modal, ScrollView, StyleSheet, Switch, Text, TouchableOpacity, View } f
 import { Circle, Line, Polyline, Svg, Text as SvgText } from 'react-native-svg'
 import { RunPickerList } from './RunPickerList'
 import { useTypeMap } from '../store/useRunTypeStore'
+import { useZoneStarts } from '../store/useProfileStore'
 import type { Run } from '../types'
 import { COMPARE_METRICS, betterValue, distanceLabel, paceOf, paceTakeaway } from '../utils/compare'
 import { fmtDate, fmtDistance, fmtMMSS, fmtPace } from '../utils/format'
@@ -106,6 +107,7 @@ function PaceChart({ a, b }: { a: Run; b: Run }) {
 function MetricsTable({ a, b }: { a: Run; b: Run }) {
   const [highlight, setHighlight] = useState(false)
   const router = useRouter()
+  const starts = useZoneStarts()
   return (
     <View style={s.tableWrap}>
       <View style={s.toggleRow}>
@@ -123,9 +125,9 @@ function MetricsTable({ a, b }: { a: Run; b: Run }) {
         <Text style={[s.tHead, s.tCol]} onPress={() => router.push(`/run/${b.id}`)}>{fmtDate(b.date).toUpperCase()} ›</Text>
       </View>
       {COMPARE_METRICS.map(m => {
-        const va = m.get(a)
-        const vb = m.get(b)
-        const better = highlight ? betterValue(m, a, b) : null
+        const va = m.get(a, starts)
+        const vb = m.get(b, starts)
+        const better = highlight ? betterValue(m, a, b, starts) : null
         return (
           <View key={m.label} style={[s.tRow, s.tDivider]}>
             <Text style={[s.tLabel, s.tLabelCol]}>{m.label}</Text>

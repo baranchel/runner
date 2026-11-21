@@ -4,6 +4,7 @@ import { Stack, useLocalSearchParams, useRouter } from 'expo-router'
 import { RunCard } from '../../src/components/RunCard'
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useRunStore } from '../../src/store/useRunStore'
+import { useZoneStarts } from '../../src/store/useProfileStore'
 import { useTypeMap } from '../../src/store/useRunTypeStore'
 import type { EditFields, Run, RunEdits, Segment, Split } from '../../src/types'
 import { fmtDateFull, fmtDistance, fmtDuration, fmtMMSS, fmtPace, parseMMSS } from '../../src/utils/format'
@@ -112,7 +113,7 @@ function StatCard({ icon, label, value, sub }: StatCardProps) {
 
 function StatGrid({ run, unit }: { run: Run; unit: 'km' | 'mi' }) {
   const paceRange = getPaceRange(run.splits)
-  const zone = computePrimaryZone(run)
+  const zone = computePrimaryZone(run.hrHist, useZoneStarts())
   const cards: StatCardProps[] = [
     {
       icon: ICONS.pace, label: 'PACE RANGE',
