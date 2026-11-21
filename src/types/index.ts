@@ -18,12 +18,17 @@ export interface Split {
   avgHr: number | null
 }
 
+/** Fields the Edit Run modal can change. Stored in runs.edits, applied on top of HealthKit values. */
+export type EditFields = 'name' | 'distanceKm' | 'timeSec' | 'avgHr' | 'minHr' | 'maxHr' | 'elevGain'
+export type RunEdits = Partial<Pick<Run, EditFields>>
+
 export interface Run {
   id: string
   healthkitUuid: string
   typeId: string | null
   name: string            // default "<TypeName>: <Distance>km", user-editable
   date: string            // 'YYYY-MM-DD'
+  startedAt: string | null  // ISO start time; null for runs saved before RA-3
   distanceKm: number
   timeSec: number
   avgHr: number | null
@@ -31,12 +36,14 @@ export interface Run {
   minHr: number | null          // lowest HR recorded
   elevGain: number | null
   cadence: number | null
+  calories: number | null       // active kcal from HealthKit (RA-3); null for older rows
   source: 'apple_health' | 'strava' | 'garmin'
   notes: string | null
   segments: Segment[] | null
   splits: Split[]
   weather: { tempC: number; humidity: number } | null
   zones: [number, number, number, number, number] | null  // seconds per zone 1–5
+  edits?: RunEdits        // manual edits; the other fields already include them
 }
 
 export interface MonthStats {

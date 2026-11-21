@@ -12,10 +12,12 @@ export function fmtPace(secPerKm: number, unit: 'km' | 'mi'): string {
   return `${m}:${String(r).padStart(2, '0')}${suffix}`
 }
 
+/** Precise distance like the Fitness app: "374 m" under 1 km, else "1.46 km" (mi: "0.23 mi"). */
 export function fmtDistance(km: number, unit: 'km' | 'mi'): string {
-  const val = unit === 'mi' ? km * 0.621371 : km
-  const suffix = unit === 'mi' ? ' mi' : ' km'
-  return `${Math.round(val * 10) / 10}${suffix}`
+  if (unit === 'mi') return `${(km * 0.621371).toFixed(2)} mi`
+  if (km > 0 && km < 1) return `${Math.round(km * 1000)} m`  // 0 stays "0 km" (empty week)
+  const v = Math.round(km * 100) / 100
+  return Number.isInteger(v) ? `${v} km` : `${v.toFixed(2)} km`  // whole km splits stay "1 km"
 }
 
 const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
@@ -41,6 +43,7 @@ export function parseMMSS(str: string): number | null {
 
 // mm:ss, or hh:mm:ss when ≥ 1 hour — for split times and segment durations
 export function fmtMMSS(sec: number): string {
+  sec = Math.round(sec)  // round first, or 239.6 s would show as "3:60"
   const h = Math.floor(sec / 3600)
   const m = Math.floor((sec % 3600) / 60)
   const s = Math.round(sec % 60)

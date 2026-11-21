@@ -1,32 +1,104 @@
 import { Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native'
 import { useRouter } from 'expo-router'
 import { SafeAreaView } from 'react-native-safe-area-context'
-import { MOCK_RUNS, MOCK_RUN_TYPES } from '../../src/mockData'
+import { RunCard } from '../../src/components/RunCard'
+import { useRunStore } from '../../src/store/useRunStore'
+import type { Run } from '../../src/types'
 import { fmtDate, fmtDistance, fmtDuration, fmtPace } from '../../src/utils/format'
 import { getPeriodStats } from '../../src/utils/stats'
-import { colors, fonts, runTypeColor, spacing } from '../../src/utils/tokens'
+import { colors, fonts, spacing, buttons } from '../../src/utils/tokens'
 
-// ─── Module-level constants (stable mock data) ────────────────────────────────
+// ─── Module-level constants ───────────────────────────────────────────────────
 
 const TODAY = new Date()
 const UNIT: 'km' | 'mi' = 'km'
 
-const WEEK_CUTOFF = (() => {
-  const d = new Date(TODAY)
-  d.setDate(d.getDate() - 6)
-  return d.toISOString().slice(0, 10)
-})()
-const WEEK_RUNS = MOCK_RUNS.filter(r => r.date >= WEEK_CUTOFF)
+// Local-date ISO (toISOString would shift to UTC)
+const iso = (d: Date) =>
+  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+const addDays = (d: Date, n: number) => new Date(d.getFullYear(), d.getMonth(), d.getDate() + n)
 
-const RECENT_RUNS = [...MOCK_RUNS]
-  .sort((a, b) => b.date.localeCompare(a.date))
-  .slice(0, 4)
+// Split "24.8 km" into ["24.8", "km"] so the number and unit can be styled apart
+const splitDist = (km: number) => fmtDistance(km, UNIT).split(' ')
 
-const TYPE_MAP = Object.fromEntries(MOCK_RUN_TYPES.map(t => [t.id, t]))
+// ─── Week stats (calendar week, Mon–Sun) ──────────────────────────────────────
 
-const HAS_PREV = getPeriodStats(MOCK_RUNS, TODAY).previous.runCount > 0
+function getWeek(runs: Run[], today: Date) {
+  const monday = addDays(today, -((today.getDay() + 6) % 7))
+  const days = Array.from({ length: 7 }, (_, i) => iso(addDays(monday, i)))
+  const inRange = (from: string, to: string) => runs.filter(r => r.date >= from && r.date <= to)
 
-// ─── Summary Card (30-day) ────────────────────────────────────────────────────
+  const week = inRange(days[0], days[6])
+  const dayKm = days.map(d => week.filter(r => r.date === d).reduce((s, r) => s + r.distanceKm, 0))
+  const dist = week.reduce((s, r) => s + r.distanceKm, 0)
+  const time = week.reduce((s, r) => s + r.timeSec, 0)
+  // Last week up to the same weekday, so mid-week isn't compared against a full week
+  const lastDist = inRange(iso(addDays(monday, -7)), iso(addDays(today, -7))).reduce((s, r) => s + r.distanceKm, 0)
+
+  return {
+    days, dayKm, dist, time,
+    runCount: week.length,
+    pace: dist > 0 ? time / dist : 0,
+    pct: lastDist > 0 ? Math.round((dist - lastDist) / lastDist * 100) : null,
+  }
+}
+
+const DAY_LETTERS = ['M', 'T', 'W', 'T', 'F', 'S', 'S']
+const TRACK_H = 64
+
+function WeekCard() {
+  const runs = useRunStore(s => s.runs)
+  const w = getWeek(runs, TODAY)
+  const max = Math.max(...w.dayKm)
+  const [num, unit] = splitDist(w.dist)
+
+  return (
+    <View style={s.weekCard}>
+      <Text style={s.weekTitle}>This week</Text>
+      <Text style={s.weekRange}>{fmtDate(w.days[0])} – {fmtDate(w.days[6])}</Text>
+
+      <View style={s.heroRow}>
+        <View style={s.heroNum}>
+          <Text style={s.heroValue}>{num}</Text>
+          <Text style={s.heroUnit}>{unit}</Text>
+        </View>
+        {w.pct != null && (
+          <View style={s.growth}>
+            <View style={s.growthPill}>
+              <Text style={s.growthText}>{w.pct >= 0 ? '↗' : '↘'}  {Math.abs(w.pct)}%</Text>
+            </View>
+            <Text style={s.growthLabel}>vs. last week</Text>
+          </View>
+        )}
+      </View>
+
+      <View style={s.bars}>
+        {w.dayKm.map((km, i) => {
+          const isMax = km > 0 && km === max
+          return (
+            <View key={i} style={s.barCol}>
+              <View style={s.track}>
+                {km > 0 && (
+                  <View style={[s.bar, { height: TRACK_H * km / max }, isMax && { backgroundColor: colors.lime }]} />
+                )}
+              </View>
+              <Text style={[s.barLabel, isMax && { color: colors.ink }]}>{DAY_LETTERS[i]}</Text>
+            </View>
+          )
+        })}
+      </View>
+
+      <View style={s.weekDivider} />
+      <View style={s.weekFooter}>
+        <Text style={s.footerStrong}>{w.runCount} runs</Text>
+        <Text style={s.footerText}>{fmtDuration(w.time)}</Text>
+        <Text style={s.footerText}>{w.pace > 0 ? fmtPace(w.pace, UNIT) : '—'} avg. pace</Text>
+      </View>
+    </View>
+  )
+}
+
+// ─── 30-day card ──────────────────────────────────────────────────────────────
 
 type DeltaDir = 'up' | 'down' | 'flat'
 
@@ -61,128 +133,64 @@ const ARROW = {
   down: require('../../assets/down-arrow.png'),
   flat: require('../../assets/straight-arrow.png'),
 }
-const DELTA_COLORS: Record<DeltaDir, string> = {
-  up: colors.elevLine, down: colors.danger, flat: colors.textFaint,
-}
 
-function DeltaRow({ dir, label }: { dir: DeltaDir; label: string }) {
+interface Stat { label: string; value: string; dir: DeltaDir; delta: string }
+
+function StatCell({ label, value, dir, delta }: Stat) {
   return (
-    <View style={s.deltaRow}>
-      <Image source={ARROW[dir]} style={[s.deltaIcon, { tintColor: DELTA_COLORS[dir] }]} />
-      {dir !== 'flat' && <Text style={[s.deltaText, { color: DELTA_COLORS[dir] }]}>{label}</Text>}
+    <View style={s.cell}>
+      <Text style={s.cellLabel}>{label}</Text>
+      <Text style={s.cellValue}>{value}</Text>
+      <View style={s.deltaRow}>
+        <Image source={ARROW[dir]} style={s.deltaIcon} />
+        {dir !== 'flat' && <Text style={s.deltaText}>{delta}</Text>}
+      </View>
     </View>
   )
 }
 
-interface StatColProps {
-  topIcon: ReturnType<typeof require>; topIconColor: string; topLabel: string
-  topValue: string; topDelta: { dir: DeltaDir; label: string }
-  bottomIcon: ReturnType<typeof require>; bottomIconColor: string; bottomLabel: string
-  bottomValue: string; bottomDelta: { dir: DeltaDir; label: string }
-}
-function StatCol({ topIcon, topIconColor, topLabel, topValue, topDelta, bottomIcon, bottomIconColor, bottomLabel, bottomValue, bottomDelta }: StatColProps) {
-  return (
-    <View style={s.col}>
-      <View style={s.colLabelRow}>
-        <Image source={topIcon} style={[s.colLabelIcon, { tintColor: topIconColor }]} />
-        <Text style={s.colLabel}>{topLabel}</Text>
-      </View>
-      <Text style={s.colValue}>{topValue}</Text>
-      <DeltaRow dir={topDelta.dir} label={topDelta.label} />
-      <View style={s.colDivider} />
-      <View style={s.colLabelRow}>
-        <Image source={bottomIcon} style={[s.colLabelIcon, { tintColor: bottomIconColor }]} />
-        <Text style={s.colLabel}>{bottomLabel}</Text>
-      </View>
-      <Text style={s.colValue}>{bottomValue}</Text>
-      <DeltaRow dir={bottomDelta.dir} label={bottomDelta.label} />
-    </View>
-  )
-}
-
-function SummaryCard({ unit }: { unit: 'km' | 'mi' }) {
-  const { current: c, previous: p } = getPeriodStats(MOCK_RUNS, TODAY)
+function ThirtyDayCard() {
+  const runs = useRunStore(s => s.runs)
+  const { current: c, previous: p } = getPeriodStats(runs, TODAY)
   const hasPrev = p.runCount > 0
-  const flat = { dir: 'flat' as DeltaDir, label: '' }
+  const d = (dir: DeltaDir, delta: string) => hasPrev ? { dir, delta } : { dir: 'flat' as DeltaDir, delta: '' }
 
-  const distTopDelta = hasPrev ? { dir: deltaDir(c.totalDistanceKm, p.totalDistanceKm), label: fmtDelta(c.totalDistanceKm, p.totalDistanceKm, n => fmtDistance(n, unit)) } : flat
-  const distBotDelta = hasPrev ? { dir: deltaDir(c.avgDistanceKm, p.avgDistanceKm),     label: fmtDelta(c.avgDistanceKm, p.avgDistanceKm, n => fmtDistance(n, unit)) }     : flat
-  const timeTopDelta = hasPrev ? { dir: deltaDir(c.totalTimeSec, p.totalTimeSec),        label: fmtDelta(c.totalTimeSec, p.totalTimeSec, fmtDuration) }                    : flat
-  const timeBotDelta = hasPrev ? { dir: deltaDir(c.avgTimeSec, p.avgTimeSec),            label: fmtDelta(c.avgTimeSec, p.avgTimeSec, fmtDuration) }                        : flat
-  const runsDelta    = hasPrev ? { dir: deltaDir(c.runCount, p.runCount, false, true),   label: fmtDelta(c.runCount, p.runCount, n => String(Math.round(n))) }              : flat
-  const paceDir      = hasPrev ? deltaDir(c.avgPaceSecPerKm, p.avgPaceSecPerKm, true) : 'flat' as DeltaDir
-  const paceDelta    = hasPrev && paceDir !== 'flat'
-    ? { dir: paceDir, label: `${paceDir === 'up' ? 'Faster' : 'Slower'} by ${fmtPaceDelta(c.avgPaceSecPerKm, p.avgPaceSecPerKm, unit)}` }
-    : flat
-
-  return (
-    <View style={s.summaryCard}>
-      <View style={s.summaryColumns}>
-        <StatCol
-          topIcon={require('../../assets/distance.png')} topIconColor={colors.iconGold}
-          topLabel="Total Distance" topValue={fmtDistance(c.totalDistanceKm, unit)} topDelta={distTopDelta}
-          bottomIcon={require('../../assets/distance.png')} bottomIconColor={colors.iconGold}
-          bottomLabel="Avg Distance" bottomValue={fmtDistance(c.avgDistanceKm, unit)} bottomDelta={distBotDelta}
-        />
-        <View style={s.colSep} />
-        <StatCol
-          topIcon={require('../../assets/time.png')} topIconColor={colors.iconTeal}
-          topLabel="Total Time" topValue={fmtDuration(c.totalTimeSec)} topDelta={timeTopDelta}
-          bottomIcon={require('../../assets/time.png')} bottomIconColor={colors.iconTeal}
-          bottomLabel="Avg Time" bottomValue={fmtDuration(c.avgTimeSec)} bottomDelta={timeBotDelta}
-        />
-        <View style={s.colSep} />
-        <StatCol
-          topIcon={require('../../assets/counter.png')} topIconColor={colors.accent}
-          topLabel="Number of Runs" topValue={String(c.runCount)} topDelta={runsDelta}
-          bottomIcon={require('../../assets/pace.png')} bottomIconColor={colors.iconOrange}
-          bottomLabel="Avg Pace" bottomValue={c.avgPaceSecPerKm > 0 ? fmtPace(c.avgPaceSecPerKm, unit) : '—'} bottomDelta={paceDelta}
-        />
-      </View>
-    </View>
-  )
-}
-
-// ─── Weekly Stats Grid ────────────────────────────────────────────────────────
-
-function WeeklyGrid() {
-  const dist = WEEK_RUNS.reduce((s, r) => s + r.distanceKm, 0)
-  const time = WEEK_RUNS.reduce((s, r) => s + r.timeSec, 0)
-  const pace = dist > 0 ? time / dist : 0
-
-  const stats = [
-    { label: 'Total Distance',  value: fmtDistance(dist, UNIT),            icon: require('../../assets/distance.png'), color: colors.iconGold },
-    { label: 'Total Time',     value: fmtDuration(time),                   icon: require('../../assets/time.png'),     color: colors.iconTeal },
-    { label: 'Number of Runs', value: String(WEEK_RUNS.length),            icon: require('../../assets/counter.png'), color: colors.accent },
-    { label: 'Avg Pace',       value: pace > 0 ? fmtPace(pace, UNIT) : '—', icon: require('../../assets/pace.png'), color: colors.iconOrange },
+  const paceDir = deltaDir(c.avgPaceSecPerKm, p.avgPaceSecPerKm, true)
+  const stats: Stat[] = [
+    { label: 'Total time', value: fmtDuration(c.totalTimeSec),
+      ...d(deltaDir(c.totalTimeSec, p.totalTimeSec), fmtDelta(c.totalTimeSec, p.totalTimeSec, fmtDuration)) },
+    { label: 'Runs', value: String(c.runCount),
+      ...d(deltaDir(c.runCount, p.runCount, false, true), fmtDelta(c.runCount, p.runCount, n => String(Math.round(n)))) },
+    { label: 'Avg pace', value: c.avgPaceSecPerKm > 0 ? fmtPace(c.avgPaceSecPerKm, UNIT) : '—',
+      ...d(paceDir, `${paceDir === 'up' ? 'Faster' : 'Slower'} ${fmtPaceDelta(c.avgPaceSecPerKm, p.avgPaceSecPerKm, UNIT)}`) },
+    { label: 'Avg distance', value: fmtDistance(c.avgDistanceKm, UNIT),
+      ...d(deltaDir(c.avgDistanceKm, p.avgDistanceKm), fmtDelta(c.avgDistanceKm, p.avgDistanceKm, n => fmtDistance(n, UNIT))) },
+    { label: 'Avg time', value: fmtDuration(c.avgTimeSec),
+      ...d(deltaDir(c.avgTimeSec, p.avgTimeSec), fmtDelta(c.avgTimeSec, p.avgTimeSec, fmtDuration)) },
   ]
 
+  const distPct = hasPrev && p.totalDistanceKm > 0
+    ? Math.round((c.totalDistanceKm - p.totalDistanceKm) / p.totalDistanceKm * 100)
+    : null
+
   return (
-    <View>
-      <Text style={s.sectionLabel}>THIS WEEK</Text>
-      <View style={s.gridRow}>
-        {stats.slice(0, 2).map(({ label, value, icon, color }) => (
-          <TouchableOpacity key={label} style={s.statCard} activeOpacity={0.7}>
-            <View style={s.statLabelRow}>
-              <Image source={icon} style={[s.statIcon, { tintColor: color }]} />
-              <Text style={s.statLabel}>{label}</Text>
-              <Text style={s.statChevron}>›</Text>
-            </View>
-            <Text style={s.statValue}>{value}</Text>
-          </TouchableOpacity>
-        ))}
+    <View style={s.limeCard}>
+      <Text style={s.limeEyebrow}>LAST 30 DAYS</Text>
+      <View style={s.limeHero}>
+        <View>
+          <Text style={s.limeValue}>{fmtDistance(c.totalDistanceKm, UNIT)}</Text>
+          {hasPrev && <Text style={s.limeSub}>vs. {fmtDistance(p.totalDistanceKm, UNIT)} prev 30 days</Text>}
+        </View>
+        {distPct != null && (
+          <View style={s.limeRight}>
+            <Text style={s.limePct}>{distPct >= 0 ? '+' : '−'}{Math.abs(distPct)}%</Text>
+            <Text style={s.limeSub}>{distPct >= 0 ? 'more' : 'less'} distance</Text>
+          </View>
+        )}
       </View>
-      <View style={[s.gridRow, { marginTop: 10 }]}>
-        {stats.slice(2).map(({ label, value, icon, color }) => (
-          <TouchableOpacity key={label} style={s.statCard} activeOpacity={0.7}>
-            <View style={s.statLabelRow}>
-              <Image source={icon} style={[s.statIcon, { tintColor: color }]} />
-              <Text style={s.statLabel}>{label}</Text>
-              <Text style={s.statChevron}>›</Text>
-            </View>
-            <Text style={s.statValue}>{value}</Text>
-          </TouchableOpacity>
-        ))}
+      <View style={s.limeDivider} />
+      <View style={s.grid}>
+        {stats.map(st => <StatCell key={st.label} {...st} />)}
       </View>
     </View>
   )
@@ -190,35 +198,17 @@ function WeeklyGrid() {
 
 // ─── Recent Runs ──────────────────────────────────────────────────────────────
 
-function RecentRuns({ onSeeAll, router }: { onSeeAll: () => void; router: ReturnType<typeof useRouter> }) {
+function RecentRuns({ router }: { router: ReturnType<typeof useRouter> }) {
+  const recent = useRunStore(s => s.runs).slice(0, 4)  // store is newest first
   return (
-    <View>
+    <View style={{ gap: 11 }}>
       <View style={s.rowBetween}>
-        <Text style={s.sectionLabel}>RECENT RUNS</Text>
-        <TouchableOpacity onPress={onSeeAll}>
-          <Text style={s.seeAll}>See all →</Text>
+        <Text style={s.sectionTitle}>Recent runs</Text>
+        <TouchableOpacity style={s.pill} onPress={() => router.push('/(tabs)/runs')}>
+          <Text style={s.pillText}>See all →</Text>
         </TouchableOpacity>
       </View>
-      <View style={s.runList}>
-        {RECENT_RUNS.map(run => {
-          const type = run.typeId ? TYPE_MAP[run.typeId] : null
-          const barColor = type ? runTypeColor(type.hue) : colors.textGhost
-          const pace = run.timeSec / run.distanceKm
-          return (
-            <TouchableOpacity key={run.id} style={s.runRow} activeOpacity={0.7} onPress={() => router.push(`/run/${run.id}`)}>
-              <View style={[s.typeBar, { backgroundColor: barColor }]} />
-              <View style={s.runCenter}>
-                <Text style={s.runType}>{type?.name ?? 'Unclassified'}</Text>
-                <Text style={s.runDate}>{fmtDate(run.date)}</Text>
-                <Text style={s.runMeta}>
-                  {fmtDistance(run.distanceKm, UNIT)} · {fmtPace(pace, UNIT)} · {fmtDuration(run.timeSec)}
-                </Text>
-              </View>
-              <Text style={s.chevron}>›</Text>
-            </TouchableOpacity>
-          )
-        })}
-      </View>
+      {recent.map(run => <RunCard key={run.id} run={run} unit={UNIT} />)}
     </View>
   )
 }
@@ -230,15 +220,9 @@ export default function Dashboard() {
   return (
     <SafeAreaView style={s.safe} edges={['top', 'left', 'right']}>
       <ScrollView contentContainerStyle={s.content}>
-        <View>
-          <View style={s.rowBetween}>
-            <Text style={[s.sectionLabel, { marginBottom: 0 }]}>LAST 30 DAYS</Text>
-            {HAS_PREV && <Text style={s.prevLabel}>vs prev 30 days</Text>}
-          </View>
-          <SummaryCard unit={UNIT} />
-        </View>
-        <WeeklyGrid />
-        <RecentRuns onSeeAll={() => router.push('/(tabs)/runs')} router={router} />
+        <WeekCard />
+        <ThirtyDayCard />
+        <RecentRuns router={router} />
       </ScrollView>
     </SafeAreaView>
   )
@@ -248,138 +232,53 @@ export default function Dashboard() {
 
 const s = StyleSheet.create({
   safe:    { flex: 1, backgroundColor: colors.bgApp },
-  content: { padding: spacing.screenH, gap: spacing.gap },
+  content: { paddingHorizontal: 24, paddingVertical: spacing.screenH, gap: 22 },
 
-  sectionLabel: {
-    fontFamily: fonts.body,
-    fontSize: 12,
-    color: colors.textDim,
-    letterSpacing: 0.6,
-    marginBottom: 10,
-  },
+  // Week card (lavender)
+  weekCard:   { backgroundColor: colors.accent, borderRadius: 26, padding: 22 },
+  weekTitle:  { fontFamily: fonts.body, fontSize: 14, fontWeight: '600', color: colors.ink },
+  weekRange:  { fontFamily: fonts.body, fontSize: 11, fontWeight: '500', color: colors.ink, opacity: 0.7, marginTop: 6 },
+  heroRow:    { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginTop: 8 },
+  heroNum:    { flexDirection: 'row', alignItems: 'baseline', gap: 10 },
+  heroValue:  { fontFamily: fonts.mono, fontSize: 56, fontWeight: '600', color: colors.ink },
+  heroUnit:   { fontFamily: fonts.body, fontSize: 17, fontWeight: '500', color: colors.ink },
+  growth:     { alignItems: 'center', marginTop: 15, gap: 8 },
+  growthPill: { backgroundColor: colors.lime, borderRadius: 14, paddingHorizontal: 17, paddingVertical: 7, minWidth: 98 },
+  growthText: { fontFamily: fonts.mono, fontSize: 12, fontWeight: '600', color: colors.ink },
+  growthLabel:{ fontFamily: fonts.body, fontSize: 10, color: colors.ink, opacity: 0.75 },
 
-  prevLabel: {
-    fontFamily: fonts.body,
-    fontSize: 11,
-    color: colors.textFaint,
-  },
+  bars:      { flexDirection: 'row', justifyContent: 'space-between', marginTop: 18, paddingHorizontal: 4 },
+  barCol:    { alignItems: 'center', gap: 8 },
+  track:     { width: 28, height: TRACK_H, borderRadius: 7, backgroundColor: 'rgba(29,23,44,0.06)', justifyContent: 'flex-end', overflow: 'hidden' },
+  bar:       { width: 28, borderRadius: 7, backgroundColor: 'rgba(29,23,44,0.6)' },
+  barLabel:  { fontFamily: fonts.body, fontSize: 10, fontWeight: '500', color: 'rgba(29,23,44,0.65)' },
 
-  // Weekly grid
-  gridRow: {
-    flexDirection: 'row',
-    gap: 10,
-  },
-  statCard: {
-    flex: 1,
-    backgroundColor: colors.bgSurface,
-    borderWidth: 1,
-    borderColor: colors.borderDefault,
-    borderRadius: spacing.radius,
-    padding: 14,
-  },
-  statLabelRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 4,
-  },
-  statChevron: {
-    fontSize: 14,
-    color: colors.textGhost,
-    marginLeft: 'auto',
-  },
-  statIcon: {
-    width: 12,
-    height: 12,
-  },
-  statLabel: {
-    fontFamily: fonts.body,
-    fontSize: 11,
-    color: colors.textDim,
-  },
-  statValue: {
-    fontFamily: fonts.mono,
-    fontSize: 22,
-    fontWeight: '700',
-    color: colors.textPrimary,
-    marginTop: 4,
-  },
+  weekDivider: { height: 1, backgroundColor: 'rgba(29,23,44,0.14)', marginTop: 13 },
+  weekFooter:  { flexDirection: 'row', justifyContent: 'space-between', marginTop: 13 },
+  footerStrong:{ fontFamily: fonts.body, fontSize: 11, fontWeight: '600', color: colors.ink },
+  footerText:  { fontFamily: fonts.mono, fontSize: 11, fontWeight: '500', color: colors.ink },
+
+  // 30-day card (lime)
+  limeCard:    { backgroundColor: colors.lime, borderRadius: 22, padding: 18 },
+  limeEyebrow: { fontFamily: fonts.body, fontSize: 10, fontWeight: '600', color: colors.ink },
+  limeHero:    { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginTop: 8 },
+  limeValue:   { fontFamily: fonts.mono, fontSize: 26, fontWeight: '600', color: colors.ink },
+  limeSub:     { fontFamily: fonts.body, fontSize: 11, fontWeight: '500', color: colors.ink, marginTop: 4 },
+  limeRight:   { alignItems: 'flex-start' },
+  limePct:     { fontFamily: fonts.mono, fontSize: 25, fontWeight: '600', color: colors.ink },
+  limeDivider: { height: 1, backgroundColor: 'rgba(29,23,44,0.14)', marginVertical: 14 },
+  grid:        { flexDirection: 'row', flexWrap: 'wrap', rowGap: 12 },
+  cell:        { width: '33.33%' },
+  cellLabel:   { fontFamily: fonts.body, fontSize: 10, fontWeight: '500', color: colors.ink, opacity: 0.7 },
+  cellValue:   { fontFamily: fonts.mono, fontSize: 16, fontWeight: '600', color: colors.ink, marginTop: 3 },
+  deltaRow:    { flexDirection: 'row', alignItems: 'center', gap: 3, marginTop: 3 },
+  deltaIcon:   { width: 11, height: 11, tintColor: colors.ink },
+  deltaText:   { fontFamily: fonts.body, fontSize: 10, color: colors.ink },
 
   // Recent runs
-  rowBetween: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 10,
-  },
-  seeAll: {
-    fontFamily: fonts.body,
-    fontSize: 12,
-    color: colors.accent,
-  },
-  runList: {
-    gap: 8,
-  },
-  runRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.bgSurface,
-    borderWidth: 1,
-    borderColor: colors.borderDefault,
-    borderRadius: spacing.radius,
-    padding: 12,
-    gap: 12,
-  },
-  typeBar: {
-    width: 8,
-    height: 36,
-    borderRadius: 4,
-  },
-  runCenter: {
-    flex: 1,
-    gap: 1,
-  },
-  runType: {
-    fontFamily: fonts.body,
-    fontSize: 14,
-    fontWeight: '600',
-    color: colors.textPrimary,
-  },
-  runDate: {
-    fontFamily: fonts.body,
-    fontSize: 11,
-    color: colors.textFaint,
-  },
-  runMeta: {
-    fontFamily: fonts.body,
-    fontSize: 12,
-    color: colors.textMuted,
-    marginTop: 2,
-  },
-  chevron: {
-    fontFamily: fonts.body,
-    fontSize: 18,
-    color: colors.textGhost,
-  },
+  rowBetween:   { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  sectionTitle: { fontFamily: fonts.body, fontSize: 19, fontWeight: '600', color: colors.textPrimary },
+  pill:         buttons.outline,
+  pillText:     buttons.outlineText,
 
-  // Summary card
-  summaryCard: {
-    backgroundColor: colors.bgSurface,
-    borderWidth: 1,
-    borderColor: colors.borderDefault,
-    borderRadius: spacing.radius,
-    padding: 18,
-    paddingBottom: 10,
-  },
-  summaryColumns: { flexDirection: 'row', alignItems: 'flex-start' },
-  col:            { flex: 1, alignItems: 'center' },
-  colSep:         { width: 1, backgroundColor: colors.borderSubtle, marginHorizontal: 8, alignSelf: 'stretch' },
-  colLabelRow:    { flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 6 },
-  colLabelIcon:   { width: 13, height: 13 },
-  colLabel:       { fontFamily: fonts.body, fontSize: 10, color: colors.textDim, letterSpacing: 0.4 },
-  colValue:       { fontFamily: fonts.mono, fontSize: 18, fontWeight: '700', color: colors.textPrimary },
-  colDivider:     { width: '80%', height: 1, backgroundColor: colors.borderSubtle, marginTop: 4, marginBottom: 10 },
-  deltaRow:       { flexDirection: 'row', alignItems: 'center', gap: 3, marginTop: 3, marginBottom: 6 },
-  deltaIcon:      { width: 12, height: 12 },
-  deltaText:      { fontFamily: fonts.body, fontSize: 11 },
 })

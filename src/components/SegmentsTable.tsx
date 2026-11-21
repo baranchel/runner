@@ -22,26 +22,26 @@ export function SegmentsTable({ run, typeColor, unit, limit, showHr, style }: {
   return (
     <View style={[st.card, style]}>
       <View style={[st.row, st.headerRow]}>
-        <Text style={[st.cell, st.hdr, { flex: 1.4 }]}>Type</Text>
-        <Text style={[st.cell, st.hdr, { color: colors.iconGold }]}>Dist</Text>
-        <Text style={[st.cell, st.hdr, { color: colors.iconOrange }]}>Pace</Text>
-        <Text style={[st.cell, st.hdr, { color: colors.iconTeal }]}>Time</Text>
-        {showHr && <Text style={[st.cell, st.hdr, { color: colors.hrLine }]}>HR</Text>}
+        <Text style={[st.cell, st.hdr, { flex: 1.4 }]}>TYPE</Text>
+        <Text style={[st.cell, st.hdr]}>DIST</Text>
+        <Text style={[st.cell, st.hdr]}>PACE</Text>
+        <Text style={[st.cell, st.hdr]}>TIME</Text>
+        {showHr && <Text style={[st.cell, st.hdr]}>HR</Text>}
       </View>
       {segments.map((seg, i) => {
         const display = SEGMENT_DISPLAY[seg.type] ?? { label: seg.type, color: () => colors.textMuted }
         const dotColor = display.color(typeColor)
         const pace = seg.distanceKm > 0 ? seg.timeSec / seg.distanceKm : 0
         return (
-          <View key={i} style={[st.row, st.rowCenter, i > 0 && st.borderTop]}>
+          <View key={i} style={[st.row, st.rowCenter, st.borderTop]}>
             <View style={[st.cell, { flex: 1.4, flexDirection: 'row', alignItems: 'center', gap: 6 }]}>
               <View style={[sg.dot, { backgroundColor: dotColor }]} />
-              <Text style={[st.val, { color: dotColor }]} numberOfLines={1}>{display.label}</Text>
+              <Text style={[st.val, { color: dotColor }]} numberOfLines={1}>{seg.label || display.label}</Text>
             </View>
-            <Text style={[st.cell, st.val, { color: colors.iconGold }]} numberOfLines={1}>{fmtDistance(seg.distanceKm, unit)}</Text>
-            <Text style={[st.cell, st.val, { color: colors.iconOrange }]} numberOfLines={1}>{pace > 0 ? fmtPace(pace, unit) : '—'}</Text>
-            <Text style={[st.cell, st.val, { color: colors.iconTeal }]} numberOfLines={1}>{fmtMMSS(seg.timeSec)}</Text>
-            {showHr && <Text style={[st.cell, st.val, { color: colors.hrLine }]} numberOfLines={1}>{seg.avgHr ?? '—'}</Text>}
+            <Text style={[st.cell, st.val]} numberOfLines={1}>{fmtDistance(seg.distanceKm, unit)}</Text>
+            <Text style={[st.cell, st.val]} numberOfLines={1}>{pace > 0 ? fmtPace(pace, unit) : '—'}</Text>
+            <Text style={[st.cell, st.val]} numberOfLines={1}>{fmtMMSS(seg.timeSec)}</Text>
+            {showHr && <Text style={[st.cell, st.val]} numberOfLines={1}>{seg.avgHr ?? '—'}</Text>}
           </View>
         )
       })}

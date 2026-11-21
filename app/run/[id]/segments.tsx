@@ -1,13 +1,13 @@
 import { ScrollView, StyleSheet, Text, View, TouchableOpacity } from 'react-native'
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { MOCK_RUNS, MOCK_RUN_TYPES } from '../../../src/mockData'
+import { useRunStore } from '../../../src/store/useRunStore'
+import { useTypeMap } from '../../../src/store/useRunTypeStore'
 import { SEGMENT_DISPLAY } from '../../../src/components/SegmentsTable'
 import { fmtDistance, fmtMMSS, fmtPace } from '../../../src/utils/format'
 import { colors, fonts, runTypeColor } from '../../../src/utils/tokens'
 
 const UNIT = 'km' as const
-const TYPE_MAP = Object.fromEntries(MOCK_RUN_TYPES.map(t => [t.id, t]))
 
 const ROW_H = 54
 const HEADER_H = 38
@@ -19,7 +19,8 @@ export default function SegmentsScreen() {
   const { id } = useLocalSearchParams<{ id: string }>()
   const router = useRouter()
   const insets = useSafeAreaInsets()
-  const run = MOCK_RUNS.find(r => r.id === id)
+  const run = useRunStore(s => s.runs.find(r => r.id === id))
+  const typeMap = useTypeMap()
 
   if (!run || !run.segments) {
     return (
@@ -29,7 +30,7 @@ export default function SegmentsScreen() {
     )
   }
 
-  const type = run.typeId ? TYPE_MAP[run.typeId] : null
+  const type = run.typeId ? typeMap[run.typeId] : null
   const typeColor = type ? runTypeColor(type.hue) : colors.textGhost
   const segments = run.segments
 
@@ -55,7 +56,7 @@ export default function SegmentsScreen() {
                 <View key={i} style={[s.pinRow, i > 0 && s.sep]}>
                   <Text style={s.idx}>{i + 1}</Text>
                   <View style={[s.dot, { backgroundColor: dotColor }]} />
-                  <Text style={[s.name, { color: dotColor }]} numberOfLines={1}>{display.label}</Text>
+                  <Text style={[s.name, { color: dotColor }]} numberOfLines={1}>{seg.label || display.label}</Text>
                 </View>
               )
             })}
