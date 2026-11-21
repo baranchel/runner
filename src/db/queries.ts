@@ -10,10 +10,10 @@ export interface PendingOp { seq: number; tbl: Table; row_id: string; kind: 'ins
 
 const COLS: Record<Table, readonly string[]> = {
   runs: ['id', 'healthkit_uuid', 'type_id', 'name', 'date', 'started_at', 'distance_km', 'time_sec', 'avg_hr', 'max_hr',
-    'min_hr', 'elev_gain', 'cadence', 'calories','source', 'notes', 'splits', 'segments', 'zones', 'weather', 'edits', 'updated_at'],
+    'min_hr', 'elev_gain', 'cadence', 'calories','source', 'notes', 'splits', 'segments', 'hr_hist', 'weather', 'edits', 'updated_at'],
   run_types: ['id', 'name', 'hue', 'deleted', 'updated_at'],
   profiles: ['id', 'unit', 'first_name', 'last_name', 'dob', 'sex', 'height_cm', 'weight_kg', 'resting_hr',
-    'vo2max', 'hr_max', 'hr_max_manual', 'updated_at'],
+    'vo2max', 'hr_max', 'hr_max_manual', 'zone_method', 'lthr', 'zone_bounds', 'updated_at'],
 }
 
 // JS value → SQLite value: objects/arrays as JSON text, booleans as 0/1
@@ -35,7 +35,12 @@ function parseRun(r: Record<string, unknown>): RunRow {
 /** The signed-in user's profile (the phone holds one user's data), or null before the first pull. */
 export function loadProfile(): ProfileRow | null {
   const r = db.getFirstSync<Record<string, unknown>>('SELECT * FROM profiles LIMIT 1')
-  return r ? ({ ...r, hr_max_manual: r.hr_max_manual === 1 } as unknown as ProfileRow) : null
+  if (!r) return null
+  return {
+    ...r,
+    hr_max_manual: r.hr_max_manual === 1,
+    zone_bounds: r.zone_bounds == null ? null : JSON.parse(r.zone_bounds as string),
+  } as unknown as ProfileRow
 }
 
 export const loadRuns = (): RunRow[] =>

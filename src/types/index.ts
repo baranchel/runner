@@ -42,7 +42,7 @@ export interface Run {
   segments: Segment[] | null
   splits: Split[]
   weather: { tempC: number; humidity: number } | null
-  zones: [number, number, number, number, number] | null  // seconds per zone 1–5
+  hrHist: Record<string, number> | null  // seconds at each bpm (rounded); zones are computed from it (RA-9)
   edits?: RunEdits        // manual edits; the other fields already include them
 }
 

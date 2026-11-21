@@ -2,7 +2,7 @@
 import type { Run, RunEdits } from '../types/index.ts'
 
 /** Columns holding JSON: TEXT in SQLite, jsonb in Postgres. */
-export const JSON_COLS = ['splits', 'segments', 'zones', 'weather', 'edits'] as const
+export const JSON_COLS = ['splits', 'segments', 'hr_hist', 'weather', 'edits'] as const
 
 /** A run as stored (same snake_case columns locally and in the cloud), JSON columns parsed. */
 export interface RunRow {
@@ -24,7 +24,7 @@ export interface RunRow {
   notes: string | null
   splits: Run['splits']
   segments: Run['segments']
-  zones: Run['zones']
+  hr_hist: Run['hrHist']
   weather: Run['weather']
   edits: RunEdits
   updated_at?: string | null
@@ -36,7 +36,7 @@ export function rowToRun(r: RunRow): Run {
     id: r.id, healthkitUuid: r.healthkit_uuid ?? '', typeId: r.type_id, name: r.name, date: r.date, startedAt: r.started_at ?? null,
     distanceKm: r.distance_km, timeSec: r.time_sec, avgHr: r.avg_hr, maxHr: r.max_hr, minHr: r.min_hr,
     elevGain: r.elev_gain, cadence: r.cadence, calories: r.calories ?? null, source: r.source, notes: r.notes,
-    splits: r.splits, segments: r.segments, zones: r.zones, weather: r.weather,
+    splits: r.splits, segments: r.segments, hrHist: r.hr_hist ?? null, weather: r.weather,
     ...r.edits,
     edits: r.edits,
   }
@@ -48,7 +48,7 @@ export function runToRow(r: Run): RunRow {
     id: r.id, healthkit_uuid: r.healthkitUuid || null, type_id: r.typeId, name: r.name, date: r.date, started_at: r.startedAt,
     distance_km: r.distanceKm, time_sec: r.timeSec, avg_hr: r.avgHr, max_hr: r.maxHr, min_hr: r.minHr,
     elev_gain: r.elevGain, cadence: r.cadence, calories: r.calories, source: r.source, notes: r.notes,
-    splits: r.splits, segments: r.segments, zones: r.zones, weather: r.weather,
+    splits: r.splits, segments: r.segments, hr_hist: r.hrHist, weather: r.weather,
     edits: {},
   }
 }

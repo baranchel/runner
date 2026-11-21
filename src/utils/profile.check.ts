@@ -12,6 +12,7 @@ function eq(actual: unknown, expected: unknown, msg: string) {
 const base: ProfileRow = {
   id: 'u1', unit: 'km', first_name: 'Bar', last_name: 'Anchel', dob: '1990-06-15', sex: null,
   height_cm: null, weight_kg: null, resting_hr: null, vo2max: null, hr_max: null, hr_max_manual: false,
+  zone_method: null, lthr: null, zone_bounds: null,
 }
 const today = new Date(2026, 10, 21)  // 21 Nov 2026, local
 
