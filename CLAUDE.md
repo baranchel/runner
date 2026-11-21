@@ -14,8 +14,8 @@ iOS running tracker app. Reads workouts from Apple HealthKit, lets user classify
 ## Stack (Phase 1)
 
 - **expo-router** — file-based navigation. Screens live in `app/`. Tabs in `app/(tabs)/`.
-- **Zustand** — global state. Stores in `src/store/`. One store per domain (runs, run types, user).
-- **expo-sqlite** — offline copy + outbox. Schema, queries and sync in `src/db/` (self-check: `node src/db/sync.check.ts`).
+- **Zustand** — global state. Stores in `src/store/`. One store per domain (runs, run types, profile, auth).
+- **expo-sqlite** — offline copy + outbox. Schema, queries and sync in `src/db/` (self-check: `node src/db/sync.check.ts`). Profiles sync too (`user_id` in the cloud ↔ `id` locally).
 - **Supabase** — auth + cloud Postgres. Client and all calls in `src/api/` only; screens/stores import from `src/api/auth.ts`, never `@supabase/supabase-js`. Keys in `.env` (local) and EAS env (builds).
 - **@kingstinct/react-native-healthkit** (v16, Nitro) — reads HealthKit workouts. Logic in `src/healthkit/`; the module is lazy-loaded via `src/healthkit/native.ts` (Expo Go has none — never import it at top level). Self-check: `node src/healthkit/import.check.ts`. See `architecture.md` → HealthKit import.
 - **react-native-svg** — SVG area/line charts. Shared `Chart` component in `src/components/`.
@@ -52,6 +52,7 @@ Palette comes from the Strides Figma file (dark): https://www.figma.com/design/w
 - Pace display: `fmtPace(secPerKm)` from `src/utils/format.ts`.
 - Chart data is deterministic: same run always produces same chart via seeded LCG in `src/utils/chart.ts`.
 - Run type colors: `oklch(0.66 0.17 <hue>)` where hue comes from `RunType.hue`.
+- HR zones: always `effectiveHrMax(profile, runs, today)` from `src/utils/profile.ts` (self-check `node src/utils/profile.check.ts`); never a hardcoded HRmax.
 
 ## Git
 
