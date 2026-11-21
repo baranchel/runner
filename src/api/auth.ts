@@ -6,6 +6,7 @@ import * as Linking from 'expo-linking'
 import { AppState } from 'react-native'
 import { supabase } from './supabase'
 import { authErrorMessage, type AuthErrorLike } from './authErrors'
+import { splitName } from '../utils/profile'
 
 export type { Session }
 type Result = Promise<string | null>
@@ -27,16 +28,30 @@ export function onSessionChange(cb: (session: Session | null) => void): () => vo
 
 export const signOut = (): Result => run(() => supabase.auth.signOut())
 
+/** What the personal-info form shows about the sign-in: email, method, and the name to prefill. */
+export function signInInfo(session: Session) {
+  const m = session.user.user_metadata ?? {}
+  const provider = session.user.app_metadata?.provider
+  // Old email accounts stored one `name`; Google stores `full_name` / `name`.
+  const split = splitName(String(m.full_name ?? m.name ?? ''))
+  return {
+    email: session.user.email ?? '',
+    method: provider === 'apple' ? 'Apple' : provider === 'google' ? 'Google' : 'Email',
+    firstName: String(m.first_name || split.first),
+    lastName: String(m.last_name || split.last),
+  }
+}
+
 // Expo Go → exp://<ip>:8081/--/<path>; dev/prod build → chronodrom://<path>
 // Supabase rejects redirects whose host is an IP, so Expo Go email tests need `expo start --tunnel`.
 const linkTo = (path: string) => Linking.createURL(path)
 
-export async function signUp(name: string, email: string, password: string): Result {
+export async function signUp(firstName: string, lastName: string, email: string, password: string): Result {
   try {
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
-      options: { data: { name }, emailRedirectTo: linkTo('auth-callback') },
+      options: { data: { first_name: firstName, last_name: lastName }, emailRedirectTo: linkTo('auth-callback') },
     })
     if (error) return authErrorMessage(error)
     // With email confirmation on, an existing email returns a user with no identities (no error).
@@ -69,10 +84,10 @@ export async function signInWithApple(): Result {
     const { error } = await supabase.auth.signInWithIdToken({ provider: 'apple', token: cred.identityToken, nonce })
     if (error) return authErrorMessage(error)
     // Apple sends the name only on the very first sign-in, so save it now or never.
-    const name = [cred.fullName?.givenName, cred.fullName?.familyName].filter(Boolean).join(' ')
-    if (name) {
-      // ponytail: one retry only; a name lost after that needs the profile form (RA-11) to recover.
-      const save = () => supabase.auth.updateUser({ data: { name } })
+    const first_name = cred.fullName?.givenName ?? '', last_name = cred.fullName?.familyName ?? ''
+    if (first_name || last_name) {
+      // ponytail: one retry only; a name lost after that is typed in the personal-info form (RA-11).
+      const save = () => supabase.auth.updateUser({ data: { first_name, last_name } })
       const first = await save()
       if (first.error && (await save()).error) console.warn('Apple name not saved', first.error)
     }

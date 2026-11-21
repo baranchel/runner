@@ -57,6 +57,11 @@ export default function Settings() {
     <View style={s.container}>
       <Text style={s.title}>Settings</Text>
 
+      <TouchableOpacity style={s.btn} activeOpacity={0.82}
+        onPress={() => router.push({ pathname: '/personal-info', params: { mode: 'edit' } })}>
+        <Text style={s.btnText}>Personal info</Text>
+      </TouchableOpacity>
+
       <View style={s.healthBox}>
         <Text style={s.healthTitle}>Apple Health</Text>
         {canConnect ? (

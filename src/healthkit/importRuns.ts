@@ -4,7 +4,8 @@ import { runToRow } from '../db/merge'
 import { getEpoch, getMeta, setMeta, writeChange } from '../db/queries'
 import { syncNow } from '../db/sync'
 import { useRunStore } from '../store/useRunStore'
-import { MOCK_HR_MAX } from '../utils/zones'
+import { useProfileStore } from '../store/useProfileStore'
+import { effectiveHrMax } from '../utils/profile'
 import { pickNew, type Candidate } from './dedupe'
 import { mapWorkout, meters, seconds, type Q, type Sample } from './mapWorkout'
 import { hk } from './native'
@@ -65,6 +66,8 @@ async function run(epoch: number): Promise<number> {
   }))
   const todo = pickNew(cands, saved)
   const progress = (done: number) => listeners.forEach(cb => cb(done, todo.length))
+  // ponytail: zones of this batch use the HRmax from before it; a new higher max applies from the next import (RA-21 re-reads old runs).
+  const hrMax = effectiveHrMax(useProfileStore.getState().profile, useRunStore.getState().runs, new Date())
 
   for (let i = 0; i < todo.length; i++) {
     const w = byUuid.get(todo[i].uuid)!
@@ -98,7 +101,7 @@ async function run(epoch: number): Promise<number> {
           HKWeatherHumidity: quantity(w.metadata?.HKWeatherHumidity),
         },
       },
-      toSamples(hr), toSamples(own(dist)), toSamples(own(steps)), MOCK_HR_MAX,
+      toSamples(hr), toSamples(own(dist)), toSamples(own(steps)), hrMax,
     )
     writeChange('runs', 'insert', { ...runToRow(mapped) })
     if ((i + 1) % PROGRESS_EVERY === 0) progress(i + 1)
@@ -109,7 +112,11 @@ async function run(epoch: number): Promise<number> {
   // returns nothing, and an anchor saved then would hide the whole history after access is turned on.
   // ponytail: Watch samples that sync after the workout are missed (anchor moves on); RA-21 re-reads HR.
   if (anchor || res.workouts.length > 0) setMeta(ANCHOR, res.newAnchor)
-  if (todo.length > 0) { useRunStore.getState().load(); syncNow() }
+  if (todo.length > 0) {
+    useRunStore.getState().load()
+    useProfileStore.getState().bumpAutoHrMax(useRunStore.getState().runs)
+    syncNow()
+  }
   return todo.length
 }
 

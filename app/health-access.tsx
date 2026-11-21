@@ -6,10 +6,12 @@ import { requestHealthAccess, skipHealth } from '../src/healthkit/permissions'
 import { buttons, colors, fonts } from '../src/utils/tokens'
 
 // After login: why we need Apple Health → iOS prompt → first import → Dashboard.
-// (RA-11's personal-info form will slot in before the Dashboard.)
+// Then index sends the user on: personal info (RA-11) if not filled yet, else Dashboard.
 export default function HealthAccess() {
   const router = useRouter()
   const [progress, setProgress] = useState<string | null>(null)
+
+  const done = () => (router.canGoBack() ? router.back() : router.replace('/'))  // Settings → back; onboarding → index
 
   const connect = async () => {
     if (progress) return
@@ -17,13 +19,13 @@ export default function HealthAccess() {
     try {
       await requestHealthAccess()
       setProgress('Importing your runs…')
-      await importNewRuns((done, total) => setProgress(`Importing ${done} / ${total} runs`))
+      await importNewRuns((n, total) => setProgress(`Importing ${n} / ${total} runs`))
     } finally {
-      router.replace('/(tabs)/dashboard')  // never strand the user here (both calls already swallow errors)
+      done()  // never strand the user here (both calls already swallow errors)
     }
   }
 
-  const later = () => { skipHealth(); router.replace('/(tabs)/dashboard') }
+  const later = () => { skipHealth(); done() }
 
   return (
     <View style={s.container}>
