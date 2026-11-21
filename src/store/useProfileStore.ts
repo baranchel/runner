@@ -1,7 +1,9 @@
 import { create } from 'zustand'
 import { ensureProfileRow, loadProfile, writeChange } from '../db/queries'
 import { syncNow } from '../db/sync'
-import { nextAutoHrMax, type ProfileRow } from '../utils/profile'
+import { useRunStore } from './useRunStore'
+import { effectiveHrMax, nextAutoHrMax, type ProfileRow } from '../utils/profile'
+import { zoneStarts, type Starts } from '../utils/zones'
 
 type Patch = Partial<Omit<ProfileRow, 'id' | 'updated_at'>>
 
@@ -32,3 +34,10 @@ export const useProfileStore = create<State>((set, get) => ({
     if (p && next != null) get().save(p.id, { hr_max: next })
   },
 }))
+
+/** The user's zone starts (Z2..Z5). Every screen that shows zones uses this, so a method change shows everywhere. */
+export function useZoneStarts(): Starts {
+  const profile = useProfileStore(s => s.profile)
+  const runs = useRunStore(s => s.runs)
+  return zoneStarts(profile, effectiveHrMax(profile, runs, new Date()))
+}
