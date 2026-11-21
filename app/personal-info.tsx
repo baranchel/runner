@@ -77,7 +77,7 @@ export default function PersonalInfo() {
       hr_max: nums.hr_max ?? fromRuns, hr_max_manual: nums.hr_max != null,
     })
     if (editing) router.back()
-    else router.replace('/')  // index: complete profile → dashboard
+    else router.replace('/')  // index: complete profile → HR zones (if not chosen yet) → dashboard
   }
 
   return (
