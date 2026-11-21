@@ -87,6 +87,7 @@ app/
   index.tsx                    ← picks the screen after login: login → health-access (prompt not shown, not skipped) → personal-info (profile incomplete) → dashboard
   health-access.tsx            ← "Connect Apple Health" → iOS prompt → first import with progress → back to index (or back to Settings)
   personal-info.tsx            ← RA-11 form after onboarding; RA-10 edit from Settings (?mode=edit)
+  hr-zones.tsx                 ← RA-9 zone method picker after personal info; Settings → Heart-rate zones (?mode=edit)
   login.tsx                    ← email/password, Apple, Google
   signup.tsx                   ← first + last name, email, password → "check your email"
   forgot-password.tsx          ← request reset link
@@ -111,7 +112,7 @@ src/
   db/                          ← schema.ts (SQLite tables), queries.ts (reads/writes + outbox), merge.ts (pure, `node src/db/sync.check.ts`), sync.ts (syncNow)
   healthkit/                   ← native.ts (lazy module load), permissions.ts, importRuns.ts, bodyData.ts (personal-info prefill); pure: mapWorkout.ts, dedupe.ts (`node src/healthkit/import.check.ts`)
   types/                       ← index.ts (Run, RunType, User interfaces)
-  utils/                       ← format.ts, chart.ts, stats.ts, zones.ts, compare.ts (metrics + per-row "better" rule), profile.ts (pure profile + HRmax logic, `node src/utils/profile.check.ts`)
+  utils/                       ← format.ts, chart.ts, stats.ts, zones.ts (pure zone math, `node src/utils/zones.check.ts`), compare.ts (metrics + per-row "better" rule), profile.ts (pure profile + HRmax logic, `node src/utils/profile.check.ts`)
 ```
 
 ### Data Model
@@ -155,7 +156,7 @@ interface Run {
   notes: string | null
   segments: Segment[] | null  // null for unstructured runs (easy/long); warmup→reps→cooldown for tempo/interval
   splits: Split[]             // per-km splits, always present
-  weather, zones              // see src/types/index.ts
+  weather, hrHist             // hrHist = seconds at each bpm (RA-9); see src/types/index.ts
   edits?: RunEdits            // manual edits; the other fields already include them
 }
 ```
@@ -183,12 +184,20 @@ Supabase Postgres is the source of truth (`supabase/schema.sql`: `profiles`, `ru
 
 ### Profile (RA-11 / RA-10)
 
-`profiles` (one row per user, created by the signup trigger): `unit`, `first_name`, `last_name`, `dob`, `sex` (`female` / `male` / `undisclosed` = "Prefer not to say"), `height_cm`, `weight_kg`, `resting_hr`, `vo2max`, `hr_max`, `hr_max_manual`. Metric only until RA-6.
+`profiles` (one row per user, created by the signup trigger): `unit`, `first_name`, `last_name`, `dob`, `sex` (`female` / `male` / `undisclosed` = "Prefer not to say"), `height_cm`, `weight_kg`, `resting_hr`, `vo2max`, `hr_max`, `hr_max_manual`, `zone_method` / `lthr` / `zone_bounds` (RA-9, see HR zones). Metric only until RA-6.
 
 - **Form** (`app/personal-info.tsx`): required first name, last name, DOB (red `*`); the rest optional. Prefill per field: saved value → Apple Health (`readBodyData`) → sign-in name (`signInInfo`: `first_name`/`last_name` from signup or Apple, else the old `name` / Google `full_name` split at the first space).
 - **Shown** whenever `isComplete(profile)` is false (first name + last name + DOB). On a phone with no local profile row, `index` waits for one sync first, so a profile filled on another device skips the form.
 - **HRmax:** saved `hr_max` is either the user's own value (`hr_max_manual = true`) or the highest `max_hr` of all runs (never the 220 − age estimate). After each import a higher run raises it unless manual (`nextAutoHrMax`). Zones use `effectiveHrMax` = saved → highest from runs → 220 − age → 190.
-- **Known limit:** zone times are computed at import with the HRmax of that moment; the first full import runs before the form, so old runs keep zones from 190 / 220 − age until RA-21 recalculates them.
+
+### HR zones (RA-9)
+
+- **Stored per run:** `hr_hist` = seconds at each bpm (floored: zone starts are whole bpm, so 156.6 stays below 157 as in Fitness), built at import with the same time weighting as avg HR, paused time excluded (~0.5–1 KB/run). Zone totals are **never stored**, so changing the zones re-shows every past run instantly, offline and on every device, with no Apple Health re-read.
+- **Profile:** `zone_method` (`hrmax` | `hrr` | `lthr` | `manual`; null = not chosen yet → onboarding shows the picker, zones use `hrmax` meanwhile), `lthr`, `zone_bounds` (Manual: 4 bpm where Z2–Z5 start).
+- **Methods** (`src/utils/zones.ts`, integer percents, whole bpm): % Max 60/70/80/90 % × HRmax · Reserve rest + 60/70/80/90 % × (HRmax − rest) · LTHR 85/90/95/100 % × LTHR · Manual as typed (40–230, increasing). A method whose value is missing falls back to % Max. A bpm exactly on a start belongs to the upper zone.
+- **One source:** `useZoneStarts()` (`src/store/useProfileStore.ts`) → `zoneTimes(run.hrHist, starts)` / `zoneRangeLabel` / `computePrimaryZone`. Used by the run's Heart Rate screen, Run Detail's Primary zone and Compare.
+- **Onboarding:** Health + first import → Personal info → HR zones → Dashboard (`app/index.tsx`). The import runs first so the picker previews zones at HRmax from real runs.
+- **Picker** (`app/hr-zones.tsx`): 4 vertical columns on one bpm axis; card = explanation + ranges (Manual: "starts at" −/+ fields, "Start from" chips); confirm pop-up with the ranges before saving.
 
 ### Manual Run Edits
 
@@ -198,7 +207,7 @@ The Run Detail **Edit** button fixes bad HealthKit readings (name, distance, tim
 - Displayed run = HealthKit values + `edits` on top (`rowToRun` in `src/db/merge.ts`).
 - Saving a value equal to the HealthKit value removes that edit (`diffEdits`). Revert = `edits = {}` (no UI yet).
 - HealthKit imports insert-if-missing, so they never touch `edits`, `type_id` or `notes`.
-- Splits, segments, zones and charts stay on the recorded HealthKit data (not rescaled by edits).
+- Splits, segments, the HR histogram and charts stay on the recorded HealthKit data (not rescaled by edits).
 
 ### Sync (RA-34)
 
@@ -208,18 +217,18 @@ The Run Detail **Edit** button fixes bad HealthKit readings (name, distance, tim
 - **When:** login, app foreground, after each change. Single-flight; never throws.
 - **Logout:** Settings pushes first and warns if changes are unsent; an explicit logout or account deletion then runs `clearAll()` (an epoch counter stops a sync that was still running). A forced sign-out (e.g. rejected refresh token) only empties the stores, so unsent edits survive and push when the same user logs back in. Local data has an `owner`; a different user logging in starts clean.
 - **Limits:** last write wins per field; `edits` merges as one field.
-- **Tables:** `profiles` → `run_types` → `runs`. `profiles` is keyed by `user_id` in the cloud and by `id` (= user id) locally; `cloudKey` / `fromCloud` in `src/db/merge.ts` map between them. SQLite schema v4.
+- **Tables:** `profiles` → `run_types` → `runs`. `profiles` is keyed by `user_id` in the cloud and by `id` (= user id) locally; `cloudKey` / `fromCloud` in `src/db/merge.ts` map between them. SQLite schema v5.
 
 ### HealthKit import (RA-3)
 
 - **Permission:** one read-only prompt for workouts, HR, distance, steps and body data (DOB, sex, height, weight, resting HR, VO2max). `needsHealthPrompt()` asks iOS whether it is still to come (per install). iOS never reveals a refused *read*, so refused = no data. "Not now" is stored as `health_skipped` in `sync_state`; Settings offers Connect while iOS can still prompt.
 - **When:** after the Health screen's Connect, then on login / app foreground (after `syncNow()`, so cloud runs are known) and on pull-to-refresh in All runs. Single-flight; never throws; does nothing until the prompt has been shown.
-- **What:** anchored workout query (running only, anchor `healthkit_anchor` in `sync_state`). Workouts < 0.1 km or < 60 s are skipped. Every detail (splits, HR min/avg/max, zones, cadence, elevation, weather) is computed once at import by `mapWorkout` and stored; `segments` stay null (follow-up ticket).
+- **What:** anchored workout query (running only, anchor `healthkit_anchor` in `sync_state`). Workouts < 0.1 km or < 60 s are skipped. Every detail (splits, HR min/avg/max, HR histogram, cadence, elevation, weather) is computed once at import by `mapWorkout` and stored; `segments` stay null (follow-up ticket).
 - **Duplicates:** same UUID already saved → skip. Same run written by several apps (Watch + Strava) → overlapping time range = duplicate; the Apple Watch copy wins, else the earliest (`pickNew`). User source choice → RA-12.
 - **Sources:** distance and step samples are taken only from the workout's own source (iPhone and Watch both log them); HR from all sources.
 - **Anchor rule:** saved at the end of a successful import, and only if an anchor already existed or the query returned workouts. An interrupted import re-reads and skips what was saved. An anchor saved while access was refused would otherwise hide the whole history once access is turned on.
 - **Expo Go:** the native module is imported lazily (`src/healthkit/native.ts`), so Expo Go runs without it: no Health screen, import is a no-op.
-- **Zones** use the profile's `effectiveHrMax` at import time (% of HRmax; methods → RA-9); RA-21 recalculates past runs.
+- **Zones** are not stored: the import saves `hr_hist` (seconds per bpm), and zones are computed on screen (see HR zones).
 - **Matches Fitness:** splits = Apple's own km segment events (type 7) minus pauses (fallback: rebuilt from distance samples); HR avg/min/max = the workout's HR statistic; calories = `totalEnergyBurned` (active kcal); time/elevation/temperature/calories truncated like Fitness; `date` in the run's `HKTimeZone`.
 - **Intervals:** custom-workout steps = workout `activities` → `segments` "Step N" (+ "Open"), coloured rep/rest by pace group. HealthKit's API here has no step names.
 - **Re-import:** mapping changes don't touch runs already saved (insert-if-missing). During development, delete cloud runs and log out/in to re-import.
@@ -232,13 +241,13 @@ The Run Detail **Edit** button fixes bad HealthKit readings (name, distance, tim
 
 - **Supabase** (project `cbbalftydzsfbqategub`, region Frankfurt, free tier)
   - **Auth** — email+password (confirmation required), native Google, native Sign in with Apple (App Store 4.8 requires Apple when Google is offered), in-app account deletion (App Store 5.1.1). Spec: `docs/superpowers/specs/2026-11-08-user-auth-design.md`.
-  - **Postgres** — full copy of every run (summary, splits, segments, zones, weather) + profile, run types, classifications, notes, overrides. All tables reference `auth.users(id) ON DELETE CASCADE` and use RLS. Run summaries kept forever (~1–2 KB/run); raw HR/GPS streams not stored yet. Offline: app works on locally cached data and syncs when back online.
+  - **Postgres** — full copy of every run (summary, splits, segments, HR histogram, weather) + profile, run types, classifications, notes, overrides. All tables reference `auth.users(id) ON DELETE CASCADE` and use RLS. Run summaries kept forever (~1–2 KB/run); raw HR/GPS streams not stored yet. Offline: app works on locally cached data and syncs when back online.
 - **Boundary rule:** all Supabase calls live in `src/api/`. Screens and stores never import `@supabase/supabase-js`, so swapping to FastAPI later only rewrites `src/api/`.
 - **FastAPI (Python)** — only for `POST /suggest-type` (scikit-learn ML classifier), added next to Supabase later.
 - **Strava OAuth** — register developer app, fetch `GET /athlete/activities`, map to Run schema (needs a server-side secret → Supabase Edge Function or FastAPI)
 - **Garmin / Coros** — no API needed; both write to Apple Health automatically
 
-**Foundation order:** RA-18 auth (`feature/user-auth`) → RA-34 DB (`feature/manage-db`) → RA-3 HealthKit (`feature/healthkit`) → RA-11 + RA-9 personal info & zones (`feature/add-personal-info`).
+**Foundation order:** RA-18 auth (`feature/user-auth`) → RA-34 DB (`feature/manage-db`) → RA-3 HealthKit (`feature/healthkit`) → RA-11 personal info (`feature/add-personal-info`) → RA-9 HR zones (`feature/hr-zones`).
 
 **Onboarding flow (target):** Signup → Health permission (RA-3) → Personal info form, prefilled from HealthKit (RA-11) → Dashboard.
 

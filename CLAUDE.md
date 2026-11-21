@@ -52,11 +52,13 @@ Palette comes from the Strides Figma file (dark): https://www.figma.com/design/w
 - Pace display: `fmtPace(secPerKm)` from `src/utils/format.ts`.
 - Chart data is deterministic: same run always produces same chart via seeded LCG in `src/utils/chart.ts`.
 - Run type colors: `oklch(0.66 0.17 <hue>)` where hue comes from `RunType.hue`.
-- HR zones: always `effectiveHrMax(profile, runs, today)` from `src/utils/profile.ts` (self-check `node src/utils/profile.check.ts`); never a hardcoded HRmax.
+- HR zones: zone starts always come from `useZoneStarts()` (`src/store/useProfileStore.ts`); time-in-zone = `zoneTimes(run.hrHist, starts)` from `src/utils/zones.ts` (self-check `node src/utils/zones.check.ts`). Runs store an HR histogram, never zone totals. HRmax always via `effectiveHrMax(profile, runs, today)` (`node src/utils/profile.check.ts`); never a hardcoded HRmax.
 
 ## Git
 
-Never run any git commands (git add, git commit, git push, git checkout, etc.). Bar handles all git operations himself. When files are ready to commit, say so and list what changed — nothing more.
+Never run any git commands (git add, git commit, git push, git checkout, etc.). Bar handles all git operations himself. When files are ready to commit, say so and list what changed.
+
+When Bar says the work is ready to commit, write out the git commands for him to run, in order and one per code block. Split the changes into several commits by subject (data/schema, logic, screens, docs…), never one big commit. For each commit, write `git add` with its files and then `git commit` with a message. Then push, and when the task is finished, merge into `main`. Don't run them yourself.
 
 ## Branch-per-task rule
 

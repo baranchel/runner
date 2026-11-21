@@ -30,7 +30,7 @@ Read this first, together with `CLAUDE.md` and `architecture.md`. It captures th
 | 2 | `feature/manage-db` | RA-34 Manage DB | **Done**, merged 2026-11-20 (see RA-34 section) |
 | 3 | `feature/healthkit` | RA-3 Apple Connectivity | **Committed, not merged** — only test left: a new run (2026-11-21) via pull to refresh. Pass → merge into `main`. |
 | 4 | `feature/add-personal-info` | RA-11 Personal Info + RA-10 Edit Profile | **Done 2026-11-21, device-tested, committed** (see section below). Branched from `feature/healthkit`. |
-| 5 | `feature/hr-zones` | RA-9 Custom HR Zones (4 methods + preview) | **Next.** Branched from `feature/add-personal-info` (2026-11-21); builds on the profile's `hr_max`. Own spec. |
+| 5 | `feature/hr-zones` | RA-9 Custom HR Zones (4 methods + preview) + most of RA-21 | **Done 2026-11-21, device-tested (all Task 8 steps), matches Fitness.** Bar commits. Jira edits pending Bar's OK on the draft. Branched from `feature/add-personal-info`. |
 
 **Merge order (stacked branches):** `feature/healthkit` → `main` (Bar, 2026-11-22, after the new-run test), then `feature/add-personal-info` → `main`, then `feature/hr-zones` → `main`. Each branch contains the one before it, so merging in this order keeps every PR small. A fix needed in an earlier branch goes on that branch, then gets merged forward into the later ones.
 
@@ -137,6 +137,19 @@ Claude session name: `feature/add-personal-info`.
 - **Bar to do:** (1) run `supabase/migrations/2026-11-21-profile.sql` in the SQL Editor **before** opening the new code — a profile push rejected for missing columns is marked `failed` for good and the edit is lost; (2) JS only, no rebuild: `npx expo start --dev-client`; (3) device test = plan Task 10.
 - **Device-tested 2026-11-21 (dev build), all pass:** existing account → form once (name split, Health prefill) → dashboard; edit from Settings + HRmax on the zones screen; new `+alias` signup with first/last name. A second account on the same phone skips the Health screen: iOS shows its Health prompt once per install, not per account (`needsHealthPrompt` = false). Expected; the new account still imports this phone's Health runs (clearAll resets the anchor).
 - **Known limits (accepted):** the first full import runs before the form, so past runs keep zones from 190 / 220 − age until RA-21. In edit mode an optional field left empty is prefilled from Health again. Google names are split from `full_name` at the first space (editable).
+
+## Current task: RA-9 Custom HR Zones — `feature/hr-zones`
+
+Claude session name: `feature/hr-zones`.
+
+- Spec `docs/superpowers/specs/2026-11-21-hr-zones-design.md`, plan `docs/superpowers/plans/2026-11-21-hr-zones.md` (8 tasks). Mockup (gitignored) `.superpowers/brainstorm/372-1795260023/content/zones-full-v6.html`.
+- **Key decision (Bar approved):** runs store `hr_hist` (seconds per bpm) instead of zone totals; zones are computed on screen from it + the profile's zone settings, so changing the method updates every past run instantly (offline, every device). This covers RA-21's recalculation without re-reading Apple Health.
+- **UI decisions with Bar:** always-vertical 4 columns (% Max "Default", Reserve, LTHR, Manual) with radio dots; card shows ranges for presets, "starts at" −/+ controls for Manual (hint text: only "Set the heart rate (bpm) where each zone starts."); confirm pop-up with the ranges + "All your past runs will be updated…". Onboarding: Health + import → Personal info → HR zones → Dashboard.
+- **Refinement vs spec:** resting HR (Reserve) and LTHR fields are always shown, prefilled (else a saved LTHR couldn't be edited).
+- **2026-11-21:** Tasks 1–7 implemented (Sonnet implementers, Opus review per batch). tsc clean; `zones.check`, `import.check`, `sync.check`, `profile.check`, `compare.check` pass. SQLite v5 migration runs in one transaction.
+- **Bar to do:** (1) run `supabase/migrations/2026-11-21-hr-zones.sql` in the SQL Editor **before** opening the new code; (2) `delete from public.runs;` (old runs have no histogram); (3) `npx expo start --dev-client` (JS only), log out and in; (4) device test = plan Task 8.
+- **Fitness match (2026-11-21, device):** first test was ~1 min off per zone. Two fixes in `hrStats` (`mapWorkout.ts`), found with a temp import log comparing 4 counting rules: (1) HR during pauses is not counted (the Watch keeps measuring while paused); (2) bpm is **floored**, not rounded, in `hr_hist` (Watch HR is often fractional; 156.6 must stay below a zone starting at 157). Now within 3 s per zone of Fitness on the 15 Nov 13.51 km run (9:32 / 1:24:44 / 19:27 vs 9:30 / 1:24:41 / 19:26). Forward weighting confirmed. Zone time column widened for times over 1 h.
+- **After the device test:** edit Jira RA-9 + RA-21 per spec §6 (show Bar the draft first).
 
 ## Personal Info feature (RA-11 + RA-9) — earlier notes
 
