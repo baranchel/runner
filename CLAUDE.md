@@ -17,7 +17,7 @@ iOS running tracker app. Reads workouts from Apple HealthKit, lets user classify
 - **Zustand** — global state. Stores in `src/store/`. One store per domain (runs, run types, user).
 - **expo-sqlite** — offline copy + outbox. Schema, queries and sync in `src/db/` (self-check: `node src/db/sync.check.ts`).
 - **Supabase** — auth + cloud Postgres. Client and all calls in `src/api/` only; screens/stores import from `src/api/auth.ts`, never `@supabase/supabase-js`. Keys in `.env` (local) and EAS env (builds).
-- **@kingstinct/react-native-healthkit** — reads HealthKit workouts. Logic in `src/healthkit/`.
+- **@kingstinct/react-native-healthkit** (v16, Nitro) — reads HealthKit workouts. Logic in `src/healthkit/`; the module is lazy-loaded via `src/healthkit/native.ts` (Expo Go has none — never import it at top level). Self-check: `node src/healthkit/import.check.ts`. See `architecture.md` → HealthKit import.
 - **react-native-svg** — SVG area/line charts. Shared `Chart` component in `src/components/`.
 
 ## Development Workflow
@@ -42,7 +42,8 @@ Palette comes from the Strides Figma file (dark): https://www.figma.com/design/w
 - HealthKit is **read-only**. Never write back to it.
 - Supabase Postgres is the source of truth (`supabase/schema.sql`). SQLite is the phone's offline copy of runs + run types plus the outbox (`pending_ops`). Every user change goes through `writeChange` in `src/db/queries.ts`, then `syncNow()` — see `architecture.md` → Sync.
 - Manual edits live in `runs.edits` on top of HealthKit data; HealthKit sync must never overwrite them, nor `type_id` / `notes`.
-- Deduplication: Apple Health runs use the HealthKit workout UUID as `runs.id`; imports use `writeChange('runs', 'insert', …)`, which inserts only if missing.
+- Deduplication: Apple Health runs use the HealthKit workout UUID as `runs.id`; imports use `writeChange('runs', 'insert', …)`, which inserts only if missing. The same run copied into Health by another app (overlapping time) is skipped; the Apple Watch copy wins (`src/healthkit/dedupe.ts`).
+- Cloud schema changes: update `supabase/schema.sql` and add a one-off script in `supabase/migrations/` for the existing DB (Bar runs it in the Supabase SQL Editor).
 - `typeId` is nullable — null means unclassified.
 
 ## Conventions
@@ -63,6 +64,7 @@ Every task is done on its own branch. At the start of every session and every ne
 2. If on `main` or on the wrong branch for the current task, stop and tell Bar which branch to create or switch to before writing any code
 3. Branch names follow the pattern: `feature/<short-task-name>` (e.g. `feature/mock-data`, `feature/app-shell`, `feature/dashboard`)
 4. Never write code until the branch check passes
+5. Rename the Claude session to the branch name (e.g. `feature/healthkit`) so Bar can find it again later
 
 ## Phases
 

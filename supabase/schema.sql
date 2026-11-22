@@ -26,6 +26,7 @@ create table public.runs (
   type_id        uuid references public.run_types on delete set null,  -- null = unclassified
   name           text not null,
   date           date not null,
+  started_at     timestamptz,                    -- full start time (RA-3); null for older rows
   distance_km    double precision not null,
   time_sec       double precision not null,
   avg_hr         double precision,
@@ -33,6 +34,7 @@ create table public.runs (
   min_hr         double precision,
   elev_gain      double precision,
   cadence        double precision,
+  calories       double precision,               -- active kcal from HealthKit (RA-3)
   source         text not null,
   notes          text,
   splits         jsonb not null,

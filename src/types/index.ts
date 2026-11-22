@@ -28,6 +28,7 @@ export interface Run {
   typeId: string | null
   name: string            // default "<TypeName>: <Distance>km", user-editable
   date: string            // 'YYYY-MM-DD'
+  startedAt: string | null  // ISO start time; null for runs saved before RA-3
   distanceKm: number
   timeSec: number
   avgHr: number | null
@@ -35,6 +36,7 @@ export interface Run {
   minHr: number | null          // lowest HR recorded
   elevGain: number | null
   cadence: number | null
+  calories: number | null       // active kcal from HealthKit (RA-3); null for older rows
   source: 'apple_health' | 'strava' | 'garmin'
   notes: string | null
   segments: Segment[] | null

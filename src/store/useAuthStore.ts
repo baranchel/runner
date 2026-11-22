@@ -2,7 +2,8 @@ import { AppState } from 'react-native'
 import { create } from 'zustand'
 import { onSessionChange, type Session } from '../api/auth'
 import { clearAll, getMeta, setMeta } from '../db/queries'
-import { onPulled, syncNow } from '../db/sync'
+import { onPulled } from '../db/sync'
+import { importNewRuns } from '../healthkit/importRuns'
 import { useRunStore } from './useRunStore'
 import { useRunTypeStore } from './useRunTypeStore'
 
@@ -17,7 +18,9 @@ function loadStores() {
 onPulled(loadStores)
 
 // Supabase calls must not run inside its auth callback (it holds a lock) → start sync on the next tick.
-const syncSoon = () => setTimeout(syncNow, 0)
+// importNewRuns() syncs first, then imports from HealthKit (just a sync when Health isn't connected).
+const syncThenImport = () => { importNewRuns() }
+const syncSoon = () => setTimeout(syncThenImport, 0)
 
 let currentUser: string | null | undefined  // undefined = first event not seen yet
 
@@ -43,5 +46,5 @@ onSessionChange(session => {
 })
 
 AppState.addEventListener('change', state => {
-  if (state === 'active' && currentUser) syncNow()
+  if (state === 'active' && currentUser) syncThenImport()
 })

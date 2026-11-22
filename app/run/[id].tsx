@@ -125,7 +125,7 @@ function StatGrid({ run, unit }: { run: Run; unit: 'km' | 'mi' }) {
       sub: 'bpm',
     },
     { icon: ICONS.elevation, label: 'ELEVATION', value: run.elevGain != null ? `${run.elevGain} m` : '—' },
-    { icon: ICONS.calories,  label: 'CALORIES',  value: `${Math.round(run.distanceKm * 62)} kcal` },
+    { icon: ICONS.calories,  label: 'CALORIES',  value: run.calories != null ? `${run.calories} kcal` : '—' },
     {
       icon: ICONS.weather, label: 'WEATHER',
       value: run.weather != null ? `${run.weather.tempC}°C` : '—',

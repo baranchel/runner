@@ -56,7 +56,7 @@ export default function SegmentsScreen() {
                 <View key={i} style={[s.pinRow, i > 0 && s.sep]}>
                   <Text style={s.idx}>{i + 1}</Text>
                   <View style={[s.dot, { backgroundColor: dotColor }]} />
-                  <Text style={[s.name, { color: dotColor }]} numberOfLines={1}>{display.label}</Text>
+                  <Text style={[s.name, { color: dotColor }]} numberOfLines={1}>{seg.label || display.label}</Text>
                 </View>
               )
             })}

@@ -1,0 +1,137 @@
+// Run: node src/healthkit/import.check.ts
+import { mapWorkout, type Sample, type WorkoutInput } from './mapWorkout.ts'
+import { pickNew } from './dedupe.ts'
+
+function eq(actual: unknown, expected: unknown, msg: string) {
+  const a = JSON.stringify(actual), e = JSON.stringify(expected)
+  if (a !== e) throw new Error(`${msg}: expected ${e}, got ${a}`)
+}
+
+const t0 = new Date(2026, 10, 1, 7, 0, 0)            // 1 Nov 2026 07:00 local
+const at = (sec: number) => new Date(t0.getTime() + sec * 1000)
+
+// 2.5 km in 5 distance samples of 500 m, each 150 s → 5:00/km, no pauses
+const dist: Sample[] = [0, 1, 2, 3, 4].map(i => ({ start: at(i * 150), end: at(i * 150 + 150), value: 500 }))
+// HR every 5 s: 140 bpm for the first 300 s (km 1), 160 after
+const hr: Sample[] = Array.from({ length: 150 }, (_, i) => ({ start: at(i * 5), end: at(i * 5), value: i * 5 < 300 ? 140 : 160 }))
+const steps: Sample[] = [{ start: at(0), end: at(750), value: 2125 }]  // 2125 steps / 12.5 min = 170 spm
+
+const w: WorkoutInput = {
+  uuid: 'AAAA-1', start: t0, end: at(750),
+  duration: { unit: 's', quantity: 750 },
+  totalDistance: { unit: 'm', quantity: 2500 },
+  metadata: {
+    HKElevationAscended: { unit: 'cm', quantity: 1250 },
+    HKWeatherTemperature: { unit: 'degF', quantity: 68 },
+    HKWeatherHumidity: { unit: '%', quantity: 55 },
+  },
+}
+
+const run = mapWorkout(w, hr, dist, steps, 190)
+eq(run.id, 'aaaa-1', 'id = workout uuid')
+eq(run.healthkitUuid, 'aaaa-1', 'healthkitUuid = workout uuid')
+eq(mapWorkout({ ...w, uuid: 'E3B0C442-ABCD' }, [], [], [], 190).id, 'e3b0c442-abcd', 'uuid lowercased (Postgres returns lowercase)')
+eq(mapWorkout({ ...w, totalDistance: { unit: 'meters', quantity: 2500 } }, [], [], [], 190).distanceKm, 2.5, "unit 'meters'")
+eq(run.date, '2026-11-01', 'local day')
+eq(run.startedAt, t0.toISOString(), 'startedAt ISO')
+eq(run.distanceKm, 2.5, 'distance km')
+eq(run.timeSec, 750, 'time sec')
+eq(run.name, 'Run: 2.5km', 'default name')
+eq(run.source, 'apple_health', 'source')
+eq([run.typeId, run.notes, run.segments], [null, null, null], 'unclassified, no notes, no steps → no segments')
+eq(run.splits, [
+  { km: 1, timeSec: 300, avgHr: 140 },
+  { km: 2, timeSec: 300, avgHr: 160 },
+  { km: 2.5, timeSec: 150, avgHr: 160 },
+], 'splits incl. partial')
+eq([run.minHr, run.maxHr], [140, 160], 'min/max HR')
+eq(run.avgHr, 152, 'time-weighted avg HR (300 s @140 + 450 s @160)')
+eq(run.cadence, 170, 'cadence')
+eq(run.elevGain, 12, 'elevation cm → m, truncated like Fitness')
+eq(run.calories, null, 'no energy → null calories')
+eq(run.weather, { tempC: 20, humidity: 55 }, 'weather °F → °C')
+// zone bounds at 190: Z2 ≥114, Z3 ≥133, Z4 ≥152 → 140 bpm = Z3, 160 bpm = Z4
+eq(run.zones, [0, 0, 300, 450, 0], 'seconds per zone')
+
+// ─── Real Apple Watch run (Bar, 17 Nov 2026, interval workout with a 30 s pause) ──────────────
+// Expected split times are what the Fitness app shows for this run.
+const T = (s: string) => new Date(`2026-11-17T${s}Z`)
+const seg = (a: string, b: string) => ({ type: 7, start: T(a), end: T(b) })
+const km = ['16:25:57.330', '16:33:57.133', '16:41:15.880', '16:48:30.982', '16:54:21.984', '16:59:47.930',
+  '17:05:34.123', '17:11:03.951', '17:18:38.383', '17:28:30.189', '17:30:34.113']
+const mi = ['16:25:57.330', '16:38:33.028', '16:49:43.628', '16:58:53.885', '17:07:56.491', '17:19:03.809', '17:30:34.113']
+const real = mapWorkout({
+  uuid: 'F2A34FD9-DE69-4033-9F6D-9DA9A82FD9C7', start: T('16:25:57.330'), end: T('17:30:34.113'),
+  duration: { unit: 's', quantity: 3846.6868139505386 },
+  totalDistance: { unit: 'meters', quantity: 9074.991358288127 },
+  totalEnergyBurned: { unit: 'kcal', quantity: 796.9082991013513 },
+  hrSummary: { avg: 158.4, min: 94, max: 188 },
+  events: [
+    ...km.slice(1).map((e, i) => seg(km[i], e)), ...mi.slice(1).map((e, i) => seg(mi[i], e)),
+    { type: 1, start: T('16:43:47.183'), end: T('16:43:47.183') }, { type: 2, start: T('16:44:17.280'), end: T('16:44:17.280') },
+    { type: 1, start: T('17:30:34.113'), end: T('17:30:34.113') },
+  ],
+  metadata: {
+    HKTimeZone: 'Asia/Jerusalem',
+    HKElevationAscended: { unit: 'm', quantity: 14.65 },
+    HKWeatherTemperature: { unit: 'degC', quantity: 19.62826919555431 },
+    HKWeatherHumidity: { unit: '%', quantity: 80 },
+  },
+}, [], [], [], 190)
+eq(real.splits.map(s => s.timeSec), [480, 439, 405, 351, 326, 346, 330, 454, 592, 124], 'Apple km splits, pause excluded (Fitness: 8:00 7:19 6:45 5:51 5:26 5:46 5:30 7:34 9:52 2:04)')
+eq(real.splits.map(s => s.km), [1, 2, 3, 4, 5, 6, 7, 8, 9, 9.07], 'split km labels, last partial')
+eq([real.distanceKm, real.timeSec, real.calories, real.elevGain, real.avgHr], [9.07, 3846, 796, 14, 158], 'Fitness: 9.07 km, 1:04:06, 796 cal, 14 m, 158 bpm')
+eq(real.weather, { tempC: 19, humidity: 80 }, 'Fitness: 19°, 80%')
+eq(real.date, '2026-11-17', "date in the run's time zone")
+eq(mapWorkout({ ...w, start: T('22:30:00.000'), metadata: { HKTimeZone: 'Asia/Jerusalem' } }, [], [], [], 190).date,
+  '2026-11-18', '22:30 UTC = 00:30 next day in Jerusalem')
+
+// ─── custom-workout steps (activities) → segments ──────────────────────────
+const stepDist: Sample[] = [
+  { start: at(0), end: at(300), value: 1000 },   // 5:00/km
+  { start: at(300), end: at(600), value: 500 },  // 10:00/km
+  { start: at(600), end: at(750), value: 500 },  // 5:00/km
+]
+const act = (a: number, b: number) => ({ start: at(a), end: at(b), durationSec: b - a })
+const stepped = mapWorkout({ ...w, end: at(800), activities: [act(0, 300), act(300, 600), act(600, 750)] }, hr, stepDist, [], 190)
+eq(stepped.segments, [
+  { type: 'rep',  label: 'Step 1', timeSec: 300, distanceKm: 1,   avgHr: 140 },
+  { type: 'rest', label: 'Step 2', timeSec: 300, distanceKm: 0.5, avgHr: 160 },
+  { type: 'rep',  label: 'Step 3', timeSec: 150, distanceKm: 0.5, avgHr: 160 },
+  { type: 'rest', label: 'Open',   timeSec: 50,  distanceKm: 0,   avgHr: null },
+], 'steps: fast = rep, slow = rest, leftover time = Open')
+eq(mapWorkout({ ...w, activities: [act(0, 750)] }, hr, stepDist, [], 190).segments, null, 'one activity = no segments')
+eq(mapWorkout({ ...w, activities: [act(0, 300), act(300, 750)] }, hr, dist, [], 190).segments!.map(s => s.type),
+  ['main', 'main'], 'steps at the same pace: no rep/rest split')
+
+// a pause: gap between samples is not counted in split time
+const paused: Sample[] = [{ start: at(0), end: at(300), value: 1000 }, { start: at(600), end: at(900), value: 1000 }]
+eq(mapWorkout({ ...w, totalDistance: { unit: 'm', quantity: 2000 } }, [], paused, [], 190).splits.map(s => s.timeSec),
+  [300, 300], 'pause excluded from split time')
+
+// no HR, no steps, no metadata → nulls
+const bare = mapWorkout({ ...w, metadata: {} }, [], dist, [], 190)
+eq([bare.avgHr, bare.minHr, bare.maxHr, bare.zones, bare.cadence, bare.elevGain, bare.weather],
+  [null, null, null, null, null, null, null], 'missing data → null')
+eq(bare.splits[0].avgHr, null, 'split without HR → null')
+
+// humidity given as a fraction (0–1) → percent
+eq(mapWorkout({ ...w, metadata: { HKWeatherTemperature: { unit: 'degC', quantity: 18 }, HKWeatherHumidity: { unit: '%', quantity: 0.4 } } },
+  [], dist, [], 190).weather, { tempC: 18, humidity: 40 }, 'fraction humidity')
+
+// no totalDistance → sum of distance samples; km in miles unit
+eq(mapWorkout({ ...w, totalDistance: undefined }, [], dist, [], 190).distanceKm, 2.5, 'distance from samples')
+eq(mapWorkout({ ...w, totalDistance: { unit: 'mi', quantity: 1 } }, [], [], [], 190).distanceKm, 1.61, 'miles → km')
+eq(mapWorkout({ ...w, duration: { unit: 'min', quantity: 12.5 } }, [], [], [], 190).timeSec, 750, 'minutes → sec')
+
+// ─── dedupe ─────────────────────────────────────────────────────────────────
+const H = 3600_000
+const c = (uuid: string, startH: number, endH: number, isWatch = false) => ({ uuid, start: startH * H, end: endH * H, isWatch })
+eq(pickNew([c('a', 0, 1)], [{ id: 'a', start: null, end: null }]).map(x => x.uuid), [], 'already saved uuid skipped')
+eq(pickNew([c('a', 0, 1)], [{ id: 'z', start: 0.5 * H, end: 1.5 * H }]).map(x => x.uuid), [], 'overlaps a saved run')
+eq(pickNew([c('strava', 0, 1), c('watch', 0.01, 1.01, true)], []).map(x => x.uuid), ['watch'], 'Watch copy wins')
+eq(pickNew([c('a', 0, 1), c('b', 0.2, 1.2)], []).map(x => x.uuid), ['a'], 'first of two non-Watch copies wins')
+eq(pickNew([c('b', 2, 3), c('a', 0, 1)], []).map(x => x.uuid), ['a', 'b'], 'non-overlapping kept, oldest first')
+eq(pickNew([c('a', 0, 1)], [{ id: 'old', start: null, end: null }]).map(x => x.uuid), ['a'], 'saved run without start time ignored for overlap')
+
+console.log('import.check OK')

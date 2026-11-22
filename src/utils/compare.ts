@@ -21,7 +21,7 @@ export const COMPARE_METRICS: CompareMetric[] = [
   { label: 'Max HR',       get: r => r.maxHr,                                       fmt: v => `${Math.round(v)} bpm`,    better: 'lower' },
   { label: 'Elevation',    get: r => r.elevGain,                                    fmt: v => `${Math.round(v)} m`,      better: 'higher' },
   { label: 'Cadence',      get: r => r.cadence,                                     fmt: v => `${Math.round(v)} spm`,    better: 'higher' },
-  { label: 'Calories',     get: r => Math.round(r.distanceKm * 62),                 fmt: v => `${v} kcal`,               better: 'none' },
+  { label: 'Calories',     get: r => r.calories,                                    fmt: v => `${Math.round(v)} kcal`,               better: 'none' },
   { label: 'Primary Zone', get: r => computePrimaryZone(r)?.zone ?? null,           fmt: v => `Zone ${v}`,               better: 'none' },
   { label: 'Weather',      get: r => r.weather?.tempC ?? null,                      fmt: v => `${v}°C`,                  better: 'none' },
 ]
