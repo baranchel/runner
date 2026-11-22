@@ -1,5 +1,7 @@
 // Run: node src/db/sync.check.ts
+/// <reference types="node" />
 import type { Run } from '../types/index.ts'
+import { readFileSync } from 'node:fs'
 import { cloudKey, diffEdits, filterPulled, fromCloud, rowToRun, runToRow } from './merge.ts'
 
 function eq(actual: unknown, expected: unknown, msg: string) {
@@ -13,6 +15,7 @@ const raw: Run = {
   distanceKm: 10, timeSec: 3600, avgHr: 140, maxHr: 160, minHr: 120,
   elevGain: 30, cadence: 170, calories: 600, source: 'apple_health', notes: null,
   segments: null, splits: [{ km: 1, timeSec: 360, avgHr: 140 }], weather: null, hrHist: null, hrCurve: null,
+  needsType: false,
 }
 
 // rowToRun applies edits on top, keeps the rest
@@ -41,5 +44,18 @@ eq(cloudKey('profiles'), 'user_id', 'profiles keyed by user_id')
 eq(cloudKey('runs'), 'id', 'runs keyed by id')
 eq(fromCloud('profiles', [{ user_id: 'u1', first_name: 'Bar' }]), [{ user_id: 'u1', first_name: 'Bar', id: 'u1' }], 'user_id → id')
 eq(fromCloud('runs', [{ id: 'r1' }]), [{ id: 'r1' }], 'other tables unchanged')
+
+// RA-39: needs_type round-trips; SQLite gives 1/0, the cloud gives booleans
+eq(runToRow({ ...raw, needsType: true }).needs_type, true, 'needsType → needs_type')
+eq(rowToRun({ ...runToRow(raw), needs_type: 1 as unknown as boolean }).needsType, true, 'SQLite 1 → true')
+eq(rowToRun({ ...runToRow(raw), needs_type: 0 as unknown as boolean }).needsType, false, 'SQLite 0 → false')
+eq(rowToRun({ ...runToRow(raw), needs_type: true }).needsType, true, 'cloud true → true')
+eq(rowToRun({ ...runToRow(raw), needs_type: undefined as unknown as boolean }).needsType, false, 'missing → false')
+
+// Tripwire: if any of these change, a HealthKit re-import could overwrite the user's type.
+const src = (p: string) => readFileSync(new URL(p, import.meta.url), 'utf8')
+eq(src('../healthkit/importRuns.ts').includes("writeChange('runs', 'insert'"), true, 'import is insert-only')
+eq(src('./queries.ts').includes('INSERT OR IGNORE INTO ${tbl}'), true, 'local insert ignores existing rows')
+eq(src('../api/sync.ts').includes('ignoreDuplicates: true'), true, 'cloud insert ignores existing rows')
 
 console.log('sync.check: all passed')
