@@ -3,7 +3,7 @@ import * as SQLite from 'expo-sqlite'
 
 export const db = SQLite.openDatabaseSync('chronodrom.db')
 
-const VERSION = 5  // bump + add an `if (v < N)` block to change the schema later
+const VERSION = 6  // bump + add an `if (v < N)` block to change the schema later
 
 const v = db.getFirstSync<{ user_version: number }>('PRAGMA user_version')?.user_version ?? 0
 if (v < 1) {
@@ -51,3 +51,5 @@ if (v < 5) db.withTransactionSync(() => db.execSync(`
   ALTER TABLE profiles ADD COLUMN zone_bounds TEXT;
   PRAGMA user_version = ${VERSION};
 `))
+// Real HR chart line (replaces the fake seeded one).
+if (v < 6) db.execSync(`ALTER TABLE runs ADD COLUMN hr_curve TEXT; PRAGMA user_version = ${VERSION};`)

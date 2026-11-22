@@ -53,6 +53,7 @@ create table public.runs (
   splits         jsonb not null,
   segments       jsonb,
   hr_hist        jsonb,                          -- seconds at each bpm; zones computed from it (RA-9)
+  hr_curve       jsonb,                          -- HR chart: [min, max] bpm per 1/80 of active time
   weather        jsonb,
   edits          jsonb not null default '{}',    -- manual edits on top of HealthKit values
   updated_at     timestamptz not null default now(),

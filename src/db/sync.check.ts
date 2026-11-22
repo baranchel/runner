@@ -12,7 +12,7 @@ const raw: Run = {
   startedAt: '2026-11-01T05:00:00.000Z',
   distanceKm: 10, timeSec: 3600, avgHr: 140, maxHr: 160, minHr: 120,
   elevGain: 30, cadence: 170, calories: 600, source: 'apple_health', notes: null,
-  segments: null, splits: [{ km: 1, timeSec: 360, avgHr: 140 }], weather: null, hrHist: null,
+  segments: null, splits: [{ km: 1, timeSec: 360, avgHr: 140 }], weather: null, hrHist: null, hrCurve: null,
 }
 
 // rowToRun applies edits on top, keeps the rest

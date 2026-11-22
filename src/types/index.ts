@@ -43,6 +43,7 @@ export interface Run {
   splits: Split[]
   weather: { tempC: number; humidity: number } | null
   hrHist: Record<string, number> | null  // seconds at each bpm (rounded); zones are computed from it (RA-9)
+  hrCurve: [number, number][] | null    // HR chart: [min, max] bpm per 1/80 of active time; null = no HR recorded
   edits?: RunEdits        // manual edits; the other fields already include them
 }
 

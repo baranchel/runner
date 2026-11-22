@@ -10,7 +10,7 @@ const base: Run = {
   id: 'x', healthkitUuid: 'x', typeId: null, name: 'x', date: '2026-01-01', startedAt: null,
   distanceKm: 10, timeSec: 3000, avgHr: 150, maxHr: 170, minHr: 120,
   elevGain: 50, cadence: 170, calories: 600, source: 'apple_health', notes: null,
-  segments: null, splits: [], weather: null, hrHist: null,
+  segments: null, splits: [], weather: null, hrHist: null, hrCurve: null,
 }
 const run = (o: Partial<Run>): Run => ({ ...base, ...o })
 const S: [number, number, number, number] = [114, 133, 152, 171]
