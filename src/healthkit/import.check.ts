@@ -63,6 +63,18 @@ const frac = mapWorkout(w, fracHr, dist, [])
 eq(frac.hrHist, { '156': 10 }, 'fractional bpm floored')
 eq(zoneTimes(frac.hrHist, [135, 157, 171, 182]), [0, 10, 0, 0, 0], '156.6 bpm stays in Z2 when Z3 starts at 157 (Fitness)')
 
+// HR curve: 80 slices of 750 / 80 = 9.375 s. Slice 31 ends at 300 s (last 140), slice 32 starts at 300 s (160).
+eq(run.hrCurve?.length, 80, '80 curve slices')
+eq([run.hrCurve![0], run.hrCurve![31], run.hrCurve![32], run.hrCurve![79]], [[140, 140], [140, 140], [160, 160], [160, 160]], 'curve follows the HR')
+// 160 s run → 2 s slices: one slice holds 150 and 130.4 → [130, 150]; the empty slices after it copy it.
+const short = mapWorkout({ ...w, duration: { unit: 's', quantity: 160 } }, [{ start: at(0), end: at(0), value: 150 }, { start: at(1), end: at(1), value: 130.4 }], dist, [])
+eq([short.hrCurve![0], short.hrCurve![79]], [[130, 150], [130, 150]], 'min/max per slice, empty slices filled')
+// HR recorded during a pause (300–400 s, at 200 bpm) stays off the curve; after it, 400 s wall = 300 s active.
+const pauseSpike = hr.map(s => (s.start >= at(300) && s.start < at(400) ? { ...s, value: 200 } : s))
+const pc = mapWorkout({ ...w, events: [{ type: 1, start: at(300), end: at(300) }, { type: 2, start: at(400), end: at(400) }] }, pauseSpike, dist, []).hrCurve!
+eq([Math.max(...pc.map(b => b[1])), pc[32]], [160, [160, 160]], 'paused HR left out, time axis is active time')
+eq(mapWorkout(w, [], dist, []).hrCurve, null, 'no HR → no curve')
+
 // ─── Real Apple Watch run (Bar, 17 Nov 2026, interval workout with a 30 s pause) ──────────────
 // Expected split times are what the Fitness app shows for this run.
 const T = (s: string) => new Date(`2026-11-17T${s}Z`)

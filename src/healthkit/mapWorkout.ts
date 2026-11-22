@@ -77,6 +77,26 @@ function hrStats(hr: Sample[], paused: [number, number][]) {
   }
 }
 
+const CURVE_BUCKETS = 80
+
+/** HR line for the chart: [min, max] bpm per slice of active time. HR while paused is left out, so the
+ *  x axis is the run's (active) time, like the splits. An empty slice copies the one before it. */
+function hrCurve(hr: Sample[], start: number, activeSec: number, paused: [number, number][]): [number, number][] | null {
+  if (activeSec <= 0) return null
+  const lo = Array<number>(CURVE_BUCKETS).fill(Infinity), hi = Array<number>(CURVE_BUCKETS).fill(-Infinity)
+  for (const s of hr) {
+    const t = ms(s.start)
+    if (paused.some(([a, b]) => t >= a && t < b)) continue
+    const active = (t - start - pausedIn(paused, start, t)) / 1000
+    const i = Math.min(CURVE_BUCKETS - 1, Math.max(0, Math.floor((active / activeSec) * CURVE_BUCKETS)))
+    lo[i] = Math.min(lo[i], s.value); hi[i] = Math.max(hi[i], s.value)
+  }
+  const first = lo.findIndex(Number.isFinite)
+  if (first < 0) return null
+  let prev: [number, number] = [Math.round(lo[first]), Math.round(hi[first])]
+  return lo.map((l, i) => (Number.isFinite(l) ? (prev = [Math.round(l), Math.round(hi[i])]) : prev))
+}
+
 /** Paused time ranges (pause/resume, auto-pause). A pause with no resume runs to the end. */
 function pauses(events: WorkoutEvent[], end: number): [number, number][] {
   const out: [number, number][] = []
@@ -188,7 +208,8 @@ export function mapWorkout(w: WorkoutInput, hr: Sample[], dist: Sample[], steps:
   const distM = w.totalDistance ? meters(w.totalDistance) : dist.reduce((a, s) => a + s.value, 0)
   const distanceKm = round2(distM / 1000)
   const timeSec = Math.floor(seconds(w.duration))
-  const stats = hrStats(hr, pauses(w.events ?? [], ms(w.end)))
+  const paused = pauses(w.events ?? [], ms(w.end))
+  const stats = hrStats(hr, paused)
   const sum = w.hrSummary
   const stepTotal = steps.reduce((a, s) => a + s.value, 0)
   const elev = w.metadata.HKElevationAscended
@@ -214,5 +235,6 @@ export function mapWorkout(w: WorkoutInput, hr: Sample[], dist: Sample[], steps:
     splits: appleSplits(w, distanceKm, hr) ?? sampleSplits(dist, hr),
     weather: weather(w.metadata),
     hrHist: stats?.hist ?? null,
+    hrCurve: hrCurve(hr, ms(w.start), timeSec, paused),
   }
 }
