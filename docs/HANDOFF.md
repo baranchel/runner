@@ -4,13 +4,21 @@ Read this first, together with `CLAUDE.md` and `architecture.md`. It captures th
 
 ## Working rules (from Bar — always apply)
 
-- **Never run git commands.** Bar commits himself. When something is ready, list the files + a suggested commit message.
+- **Never run git commands.** Bar commits himself. When he says "ready to commit", write the commands for him to run: several commits split by subject, then push. Changes reach `main` through PRs, never a local merge.
 - **Branch check first:** read `.git/HEAD` (file read, not git). Branch per task, `feature/<name>`. Wrong branch → stop and tell Bar.
 - **Subagents:** Sonnet minimum, never Haiku.
 - **Jira:** write a user story into a ticket only after Bar approves the draft.
 - Keep `architecture.md` and `CLAUDE.md` updated after design decisions.
 - Bar works on Windows (no Mac), tests on his iPhone via Expo Go / EAS dev build. Explain concepts alongside technical decisions.
 - Never generate image assets — ask Bar for them.
+
+## Next session: start here
+
+The branches are stacked: `feature/healthkit` → `feature/add-personal-info` → `feature/hr-zones`. Each one was branched from the one before. Steps:
+
+1. Open a PR into `main` for each branch that isn't in `main` yet, oldest first.
+2. Bar merges them.
+3. Start the next task on a fresh `feature/<name>` branch cut from the updated `main`.
 
 ## Big decisions made (2026-11-08)
 

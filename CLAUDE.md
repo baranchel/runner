@@ -58,7 +58,7 @@ Palette comes from the Strides Figma file (dark): https://www.figma.com/design/w
 
 Never run any git commands (git add, git commit, git push, git checkout, etc.). Bar handles all git operations himself. When files are ready to commit, say so and list what changed.
 
-When Bar says the work is ready to commit, write out the git commands for him to run, in order and one per code block. Split the changes into several commits by subject (data/schema, logic, screens, docs…), never one big commit. For each commit, write `git add` with its files and then `git commit` with a message. Then push, and when the task is finished, merge into `main`. Don't run them yourself.
+When Bar says the work is ready to commit, write out the git commands for him to run, in order and one per code block. Split the changes into several commits by subject (data/schema, logic, screens, docs…), never one big commit. For each commit, write `git add` with its files and then `git commit` with a message. Then push. Never tell him to merge into `main` locally: branches reach `main` through a GitHub PR. Don't run them yourself.
 
 ## Branch-per-task rule
 
