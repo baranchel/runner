@@ -22,6 +22,10 @@ export const SORTS: { key: SortKey; label: string; cmp: (a: Run, b: Run) => numb
   { key: 'time',     label: 'Time',     cmp: (a, b) => b.timeSec - a.timeSec },
 ]
 
+/** Type-filter value for runs with no type (null already means "All types"). */
+export const UNCLASSIFIED = 'unclassified'
+const matchesType = (r: Run, filterId: string) => (filterId === UNCLASSIFIED ? r.typeId === null : r.typeId === filterId)
+
 type SectionStats = { runCount: number; totalDistanceKm: number; totalTimeSec: number }
 
 export type RunSection = {
@@ -54,7 +58,7 @@ export function buildSections(runs: Run[], selectedTypeId: string | null, sort: 
   // months always newest first; sort applies within each month
   for (const key of [...groups.keys()].sort((a, b) => b.localeCompare(a))) {
     const monthRuns = groups.get(key)!
-    const filteredRuns = selectedTypeId ? monthRuns.filter(r => r.typeId === selectedTypeId) : monthRuns
+    const filteredRuns = selectedTypeId ? monthRuns.filter(r => matchesType(r, selectedTypeId)) : monthRuns
 
     // skip month entirely if filter active and no matching runs
     if (selectedTypeId && filteredRuns.length === 0) continue
@@ -77,17 +81,19 @@ function fmtStats(stats: SectionStats): string {
 
 export function MonthHeader({ section, selectedTypeId }: { section: RunSection; selectedTypeId: string | null }) {
   const typeMap = useTypeMap()
-  const filteredType = selectedTypeId ? (typeMap[selectedTypeId] ?? null) : null
+  const t = selectedTypeId && selectedTypeId !== UNCLASSIFIED ? typeMap[selectedTypeId] : null
+  const filtered = selectedTypeId === UNCLASSIFIED ? { name: 'Unclassified', color: colors.textGhost }
+    : t ? { name: t.name, color: runTypeColor(t.hue) } : null
   return (
     <View style={s.monthHeader}>
       <View style={s.rowBetween}>
         <Text style={s.monthTitle}>{section.title}</Text>
         <Text style={s.monthStats}>{fmtStats(section.allStats)}</Text>
       </View>
-      {section.filteredStats && filteredType && (
+      {section.filteredStats && filtered && (
         <View style={s.filteredRow}>
-          <View style={[s.dot, { backgroundColor: runTypeColor(filteredType.hue) }]} />
-          <Text style={[s.filteredLabel, { color: runTypeColor(filteredType.hue) }]}>{filteredType.name}</Text>
+          <View style={[s.dot, { backgroundColor: filtered.color }]} />
+          <Text style={[s.filteredLabel, { color: filtered.color }]}>{filtered.name}</Text>
           <Text style={s.monthStats}>{fmtStats(section.filteredStats)}</Text>
         </View>
       )}
@@ -114,12 +120,22 @@ export function FilterPill({ label, onPress }: { label: string; onPress: () => v
 
 export function pickType(onPick: (typeId: string | null) => void) {
   const types = useRunTypeStore.getState().types
-  pick('Run type', ['All types', ...types.map(t => t.name)],
-    i => onPick(i === 0 ? null : types[i - 1].id))
+  pick('Run type', ['All types', 'Unclassified', ...types.map(t => t.name)],
+    i => onPick(i === 0 ? null : i === 1 ? UNCLASSIFIED : types[i - 2].id))
 }
 
 export function typeLabel(typeId: string | null) {
-  return typeId ? useRunTypeStore.getState().typeMap[typeId]?.name ?? 'All types' : 'All types'
+  if (!typeId) return 'All types'
+  if (typeId === UNCLASSIFIED) return 'Unclassified'
+  return useRunTypeStore.getState().typeMap[typeId]?.name ?? 'All types'
+}
+
+/** RA-39 run-type picker (pill, Dashboard card, bulk; RA-15 "Change"). current undefined = no ✓ (bulk). */
+export function pickRunType(title: string, current: string | null | undefined, onPick: (typeId: string | null) => void) {
+  const types = useRunTypeStore.getState().types
+  const ids: (string | null)[] = [null, ...types.map(t => t.id)]
+  const names = ['Unclassified', ...types.map(t => t.name)]
+  pick(title, names.map((n, i) => (ids[i] === current ? `✓ ${n}` : n)), i => onPick(ids[i]))
 }
 
 // Picker list for choosing a run (compare). disabledIds = runs that can't be picked.
