@@ -38,7 +38,7 @@ The branches are stacked: `feature/healthkit` → `feature/add-personal-info` �
 | 2 | `feature/manage-db` | RA-34 Manage DB | **Done**, merged 2026-11-20 (see RA-34 section) |
 | 3 | `feature/healthkit` | RA-3 Apple Connectivity | **Committed, not merged** — only test left: a new run (2026-11-21) via pull to refresh. Pass → merge into `main`. |
 | 4 | `feature/add-personal-info` | RA-11 Personal Info + RA-10 Edit Profile | **Done 2026-11-21, device-tested, committed** (see section below). Branched from `feature/healthkit`. |
-| 5 | `feature/hr-zones` | RA-9 Custom HR Zones (4 methods + preview) + most of RA-21 | **Done 2026-11-21, device-tested (all Task 8 steps), matches Fitness.** Bar commits. Jira edits pending Bar's OK on the draft. Branched from `feature/add-personal-info`. |
+| 5 | `feature/hr-zones` | RA-9 Custom HR Zones (4 methods + preview) + most of RA-21 | **Done 2026-11-22, device-tested, matches Fitness; real HR chart fix included.** Committed + pushed, Jira updated. PR after `feature/add-personal-info`. |
 
 **Merge order (stacked branches):** `feature/healthkit` → `main` (Bar, 2026-11-22, after the new-run test), then `feature/add-personal-info` → `main`, then `feature/hr-zones` → `main`. Each branch contains the one before it, so merging in this order keeps every PR small. A fix needed in an earlier branch goes on that branch, then gets merged forward into the later ones.
 
