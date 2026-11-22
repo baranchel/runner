@@ -1,6 +1,5 @@
 // Pure: one HealthKit workout + its samples → Run. No React Native imports (node self-check runs it).
 import type { Run, Segment, Split } from '../types/index.ts'
-import { zoneBounds } from '../utils/zones.ts'
 
 export interface Q { unit: string; quantity: number }
 export interface Sample { start: Date; end: Date; value: number }
@@ -48,27 +47,54 @@ function meanHr(hr: Sample[], from: number, to: number): number | null {
   return v.length ? Math.round(v.reduce((a, b) => a + b, 0) / v.length) : null
 }
 
-/** Time-weighted HR stats + seconds per zone. Each sample counts until the next one (capped). */
-function hrStats(hr: Sample[], hrMax: number) {
+/** Time-weighted HR stats + seconds at each bpm. Each sample counts until the next one (capped),
+ *  minus paused time: the Watch keeps measuring HR while paused, Fitness's zone times leave it out. */
+function hrStats(hr: Sample[], paused: [number, number][]) {
   if (hr.length === 0) return null
-  const b = zoneBounds(hrMax)
-  const zones: [number, number, number, number, number] = [0, 0, 0, 0, 0]
+  const hist: Record<string, number> = {}
   let sum = 0, weight = 0
   hr.forEach((s, i) => {
     const next = hr[i + 1]
-    const w = next ? Math.min((ms(next.start) - ms(s.start)) / 1000, HR_GAP_CAP) : LAST_HR_SEC
+    const t = ms(s.start)
+    const span = next ? Math.min((ms(next.start) - t) / 1000, HR_GAP_CAP) : LAST_HR_SEC
+    const w = span - pausedIn(paused, t, t + span * 1000) / 1000
+    if (w <= 0) return
     sum += s.value * w; weight += w
-    let z = 0
-    for (let k = 1; k < 5; k++) if (s.value >= b[k]) z = k
-    zones[z] += w
+    // Floor, not round: zone starts are whole bpm, so floor(v) >= start exactly when v >= start (156.6 stays below 157, as in Fitness).
+    const bpm = String(Math.floor(s.value))
+    hist[bpm] = (hist[bpm] ?? 0) + w
   })
+  for (const k of Object.keys(hist)) {
+    hist[k] = Math.round(hist[k])
+    if (hist[k] === 0) delete hist[k]
+  }
   const values = hr.map(s => s.value)
   return {
     avg: weight ? Math.round(sum / weight) : null,
     min: Math.round(Math.min(...values)),
     max: Math.round(Math.max(...values)),
-    zones: zones.map(Math.round) as [number, number, number, number, number],
+    hist,
   }
+}
+
+const CURVE_BUCKETS = 80
+
+/** HR line for the chart: [min, max] bpm per slice of active time. HR while paused is left out, so the
+ *  x axis is the run's (active) time, like the splits. An empty slice copies the one before it. */
+function hrCurve(hr: Sample[], start: number, activeSec: number, paused: [number, number][]): [number, number][] | null {
+  if (activeSec <= 0) return null
+  const lo = Array<number>(CURVE_BUCKETS).fill(Infinity), hi = Array<number>(CURVE_BUCKETS).fill(-Infinity)
+  for (const s of hr) {
+    const t = ms(s.start)
+    if (paused.some(([a, b]) => t >= a && t < b)) continue
+    const active = (t - start - pausedIn(paused, start, t)) / 1000
+    const i = Math.min(CURVE_BUCKETS - 1, Math.max(0, Math.floor((active / activeSec) * CURVE_BUCKETS)))
+    lo[i] = Math.min(lo[i], s.value); hi[i] = Math.max(hi[i], s.value)
+  }
+  const first = lo.findIndex(Number.isFinite)
+  if (first < 0) return null
+  let prev: [number, number] = [Math.round(lo[first]), Math.round(hi[first])]
+  return lo.map((l, i) => (Number.isFinite(l) ? (prev = [Math.round(l), Math.round(hi[i])]) : prev))
 }
 
 /** Paused time ranges (pause/resume, auto-pause). A pause with no resume runs to the end. */
@@ -178,11 +204,12 @@ function weather(m: WorkoutInput['metadata']): Run['weather'] {
 }
 
 /** hr in bpm, dist in meters, steps in count; all sorted by start, all from this workout's time range. */
-export function mapWorkout(w: WorkoutInput, hr: Sample[], dist: Sample[], steps: Sample[], hrMax: number): Run {
+export function mapWorkout(w: WorkoutInput, hr: Sample[], dist: Sample[], steps: Sample[]): Run {
   const distM = w.totalDistance ? meters(w.totalDistance) : dist.reduce((a, s) => a + s.value, 0)
   const distanceKm = round2(distM / 1000)
   const timeSec = Math.floor(seconds(w.duration))
-  const stats = hrStats(hr, hrMax)
+  const paused = pauses(w.events ?? [], ms(w.end))
+  const stats = hrStats(hr, paused)
   const sum = w.hrSummary
   const stepTotal = steps.reduce((a, s) => a + s.value, 0)
   const elev = w.metadata.HKElevationAscended
@@ -207,6 +234,7 @@ export function mapWorkout(w: WorkoutInput, hr: Sample[], dist: Sample[], steps:
     segments: stepSegments(w, dist, hr),
     splits: appleSplits(w, distanceKm, hr) ?? sampleSplits(dist, hr),
     weather: weather(w.metadata),
-    zones: stats?.zones ?? null,
+    hrHist: stats?.hist ?? null,
+    hrCurve: hrCurve(hr, ms(w.start), timeSec, paused),
   }
 }

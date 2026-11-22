@@ -17,6 +17,9 @@ create table public.profiles (
   vo2max        double precision,
   hr_max        double precision,                       -- user's value, or highest HR from runs
   hr_max_manual boolean not null default false,         -- true = user typed it; auto-updates stop
+  zone_method   text check (zone_method in ('hrmax', 'hrr', 'lthr', 'manual')),  -- RA-9; null = not chosen yet
+  lthr          double precision,                       -- lactate threshold HR (LTHR method)
+  zone_bounds   jsonb,                                  -- Manual: 4 bpm where Z2..Z5 start
   updated_at    timestamptz not null default now()
 );
 
@@ -49,7 +52,8 @@ create table public.runs (
   notes          text,
   splits         jsonb not null,
   segments       jsonb,
-  zones          jsonb,
+  hr_hist        jsonb,                          -- seconds at each bpm; zones computed from it (RA-9)
+  hr_curve       jsonb,                          -- HR chart: [min, max] bpm per 1/80 of active time
   weather        jsonb,
   edits          jsonb not null default '{}',    -- manual edits on top of HealthKit values
   updated_at     timestamptz not null default now(),

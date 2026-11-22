@@ -3,7 +3,7 @@ import * as SQLite from 'expo-sqlite'
 
 export const db = SQLite.openDatabaseSync('chronodrom.db')
 
-const VERSION = 4  // bump + add an `if (v < N)` block to change the schema later
+const VERSION = 6  // bump + add an `if (v < N)` block to change the schema later
 
 const v = db.getFirstSync<{ user_version: number }>('PRAGMA user_version')?.user_version ?? 0
 if (v < 1) {
@@ -40,3 +40,16 @@ if (v < 4) db.execSync(`
   );
   PRAGMA user_version = ${VERSION};
 `)
+// RA-9: HR histogram replaces stored zones; zone settings on the profile.
+// A fresh install runs every block (v = 0), so the v1 tables get altered here too.
+// One transaction: a failure part-way must not leave hr_hist added with user_version still 4 (crash on every launch).
+if (v < 5) db.withTransactionSync(() => db.execSync(`
+  ALTER TABLE runs ADD COLUMN hr_hist TEXT;
+  ALTER TABLE runs DROP COLUMN zones;
+  ALTER TABLE profiles ADD COLUMN zone_method TEXT;
+  ALTER TABLE profiles ADD COLUMN lthr REAL;
+  ALTER TABLE profiles ADD COLUMN zone_bounds TEXT;
+  PRAGMA user_version = ${VERSION};
+`))
+// Real HR chart line (replaces the fake seeded one).
+if (v < 6) db.execSync(`ALTER TABLE runs ADD COLUMN hr_curve TEXT; PRAGMA user_version = ${VERSION};`)

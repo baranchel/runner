@@ -4,6 +4,7 @@ import { Stack, useLocalSearchParams, useRouter } from 'expo-router'
 import { RunCard } from '../../src/components/RunCard'
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useRunStore } from '../../src/store/useRunStore'
+import { useZoneStarts } from '../../src/store/useProfileStore'
 import { useTypeMap } from '../../src/store/useRunTypeStore'
 import type { EditFields, Run, RunEdits, Segment, Split } from '../../src/types'
 import { fmtDateFull, fmtDistance, fmtDuration, fmtMMSS, fmtPace, parseMMSS } from '../../src/utils/format'
@@ -13,7 +14,6 @@ import { Chart, HrRangeBarsChart, PaceBarsChart } from '../../src/components/Cha
 import type { PaceBar, PaceKind } from '../../src/components/Chart'
 import { SplitsTable, tableStyles as st } from '../../src/components/SplitsTable'
 import { SegmentsTable } from '../../src/components/SegmentsTable'
-import { hrSeries } from '../../src/utils/chart'
 
 const UNIT = 'km' as const
 
@@ -112,7 +112,7 @@ function StatCard({ icon, label, value, sub }: StatCardProps) {
 
 function StatGrid({ run, unit }: { run: Run; unit: 'km' | 'mi' }) {
   const paceRange = getPaceRange(run.splits)
-  const zone = computePrimaryZone(run)
+  const zone = computePrimaryZone(run.hrHist, useZoneStarts())
   const cards: StatCardProps[] = [
     {
       icon: ICONS.pace, label: 'PACE RANGE',
@@ -176,7 +176,6 @@ function SectionTitle({ title, link, onPress }: { title: string; link?: string; 
 function ChartsSection({ run, typeColor, unit }: { run: Run; typeColor: string; unit: 'km' | 'mi' }) {
   const router = useRouter()
   const avgPace = run.timeSec / run.distanceKm
-  const hrDots = hrSeries(run)
 
   // pace bars follow the intervals (segments) when available, else the km splits
   let pacePrevKm = 0
@@ -202,15 +201,17 @@ function ChartsSection({ run, typeColor, unit }: { run: Run; typeColor: string; 
           />
         </View>
       </View>
-      <TouchableOpacity activeOpacity={0.7} onPress={() => router.push(`/run/${run.id}/zones`)}>
-        <SectionTitle title="Heart rate" link="Zones" onPress={() => router.push(`/run/${run.id}/zones`)} />
-        <View style={ch.card}>
-          <HrRangeBarsChart
-            dots={hrDots}
-            timeSec={run.timeSec}
-          />
-        </View>
-      </TouchableOpacity>
+      {run.hrCurve && (  // no HR recorded → no HR section (never a fake line)
+        <TouchableOpacity activeOpacity={0.7} onPress={() => router.push(`/run/${run.id}/zones`)}>
+          <SectionTitle title="Heart rate" link="Zones" onPress={() => router.push(`/run/${run.id}/zones`)} />
+          <View style={ch.card}>
+            <HrRangeBarsChart
+              bars={run.hrCurve}
+              timeSec={run.timeSec}
+            />
+          </View>
+        </TouchableOpacity>
+      )}
     </>
   )
 }

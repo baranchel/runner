@@ -1,6 +1,7 @@
 // Pure profile logic (RA-11). No React Native imports: `node src/utils/profile.check.ts` runs it.
 
 export type Sex = 'female' | 'male' | 'undisclosed'  // undisclosed = "Prefer not to say"
+export type ZoneMethod = 'hrmax' | 'hrr' | 'lthr' | 'manual'  // RA-9; hrmax = % of max HR (default)
 
 /** A profile as stored (same snake_case columns locally and in the cloud; local id = user id). */
 export interface ProfileRow {
@@ -16,6 +17,9 @@ export interface ProfileRow {
   vo2max: number | null
   hr_max: number | null       // user's value (manual) or highest HR from runs — never the 220 − age estimate
   hr_max_manual: boolean
+  zone_method: ZoneMethod | null  // null = not chosen yet (onboarding asks); zones use hrmax meanwhile
+  lthr: number | null             // lactate threshold HR, LTHR method only
+  zone_bounds: number[] | null    // Manual: bpm where Z2..Z5 start
   updated_at?: string | null
 }
 

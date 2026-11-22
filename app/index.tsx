@@ -6,7 +6,7 @@ import { useAuthStore } from '../src/store/useAuthStore'
 import { useProfileStore } from '../src/store/useProfileStore'
 import { isComplete } from '../src/utils/profile'
 
-// The one place that picks the screen after login: Health prompt → personal info (RA-11) → Dashboard.
+// The one place that picks the screen after login: Health prompt → personal info (RA-11) → HR zones (RA-9) → Dashboard.
 export default function Index() {
   const session = useAuthStore(s => s.session)
   const loading = useAuthStore(s => s.loading)
@@ -28,5 +28,6 @@ export default function Index() {
   if (askHealth === null) return null
   if (askHealth) return <Redirect href="/health-access" />
   if (!synced) return null
-  return <Redirect href={isComplete(profile) ? '/(tabs)/dashboard' : '/personal-info'} />
+  if (!isComplete(profile)) return <Redirect href="/personal-info" />
+  return <Redirect href={profile!.zone_method == null ? '/hr-zones' : '/(tabs)/dashboard'} />
 }

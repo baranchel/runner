@@ -1,12 +1,12 @@
 import type { Run } from '../types'
 import { fmtDate, fmtDistance, fmtMMSS, fmtPace } from './format'
-import { computePrimaryZone } from './zones'
+import { computePrimaryZone, type Starts } from './zones'
 
 export type Better = 'higher' | 'lower' | 'none'
 
 export interface CompareMetric {
   label: string
-  get: (run: Run) => number | null
+  get: (run: Run, s: Starts) => number | null
   fmt: (value: number, unit: 'km' | 'mi') => string
   better: Better
 }
@@ -22,16 +22,16 @@ export const COMPARE_METRICS: CompareMetric[] = [
   { label: 'Elevation',    get: r => r.elevGain,                                    fmt: v => `${Math.round(v)} m`,      better: 'higher' },
   { label: 'Cadence',      get: r => r.cadence,                                     fmt: v => `${Math.round(v)} spm`,    better: 'higher' },
   { label: 'Calories',     get: r => r.calories,                                    fmt: v => `${Math.round(v)} kcal`,               better: 'none' },
-  { label: 'Primary Zone', get: r => computePrimaryZone(r)?.zone ?? null,           fmt: v => `Zone ${v}`,               better: 'none' },
+  { label: 'Primary Zone', get: (r, s) => computePrimaryZone(r.hrHist, s)?.zone ?? null, fmt: v => `Zone ${v}`,               better: 'none' },
   { label: 'Weather',      get: r => r.weather?.tempC ?? null,                      fmt: v => `${v}°C`,                  better: 'none' },
 ]
 
 // Which side has the better value in this one row. null = no highlight
 // (rule is 'none', a value is missing, or the values are equal).
-export function betterValue(m: CompareMetric, a: Run, b: Run): 'a' | 'b' | null {
+export function betterValue(m: CompareMetric, a: Run, b: Run, s: Starts): 'a' | 'b' | null {
   if (m.better === 'none') return null
-  const va = m.get(a)
-  const vb = m.get(b)
+  const va = m.get(a, s)
+  const vb = m.get(b, s)
   if (va == null || vb == null || va === vb) return null
   return (va > vb) === (m.better === 'higher') ? 'a' : 'b'
 }

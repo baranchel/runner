@@ -62,6 +62,11 @@ export default function Settings() {
         <Text style={s.btnText}>Personal info</Text>
       </TouchableOpacity>
 
+      <TouchableOpacity style={s.btn} activeOpacity={0.82}
+        onPress={() => router.push({ pathname: '/hr-zones', params: { mode: 'edit' } })}>
+        <Text style={s.btnText}>Heart-rate zones</Text>
+      </TouchableOpacity>
+
       <View style={s.healthBox}>
         <Text style={s.healthTitle}>Apple Health</Text>
         {canConnect ? (
