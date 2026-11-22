@@ -7,7 +7,6 @@ import { useZoneStarts } from '../../../src/store/useProfileStore'
 import { fmtMMSS } from '../../../src/utils/format'
 import { colors, fonts, spacing, zoneColor } from '../../../src/utils/tokens'
 import { ZONE_NAMES, zoneRangeLabel, zoneTimes } from '../../../src/utils/zones'
-import { hrSeries } from '../../../src/utils/chart'
 import { HrRangeBarsChart } from '../../../src/components/Chart'
 
 export default function ZonesScreen() {
@@ -39,9 +38,11 @@ export default function ZonesScreen() {
       </View>
 
       <ScrollView style={s.body} contentContainerStyle={{ paddingBottom: insets.bottom + 24, gap: spacing.gap }}>
-        <View style={s.chartCard}>
-          <HrRangeBarsChart dots={hrSeries(run)} timeSec={run.timeSec} plotH={150} />
-        </View>
+        {run.hrCurve && (
+          <View style={s.chartCard}>
+            <HrRangeBarsChart bars={run.hrCurve} timeSec={run.timeSec} plotH={150} />
+          </View>
+        )}
 
         <Text style={s.sectionLabel}>ZONES</Text>
         {zones ? (

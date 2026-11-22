@@ -19,9 +19,9 @@ function fmtElapsed(sec: number) {
   return `${m}:${String(s).padStart(2, '0')}`
 }
 
-// HR range bars — each bar spans min→max bpm of a time window
-export function HrRangeBarsChart({ dots, timeSec, plotH = DOT_H }: {
-  dots: number[]
+// HR range bars — each bar spans min→max bpm of a time window (run.hrCurve)
+export function HrRangeBarsChart({ bars, timeSec, plotH = DOT_H }: {
+  bars: [number, number][]
   timeSec: number
   plotH?: number
 }) {
@@ -32,18 +32,10 @@ export function HrRangeBarsChart({ dots, timeSec, plotH = DOT_H }: {
   const vh = DOT_Y + plotH + DOT_TL
   const renderH = svgWidth * vh / DOT_VW   // aspect-matched: fills width, no letterbox
   const plotW = DOT_VW - R_LABEL
-  const dataMin = Math.min(...dots)
-  const dataMax = Math.max(...dots)
+  const dataMin = Math.min(...bars.map(b => b[0]))
+  const dataMax = Math.max(...bars.map(b => b[1]))
   const range = dataMax - dataMin || 1
   const toY = (v: number) => DOT_Y + plotH - ((v - dataMin) / range) * plotH
-
-  // bucket readings into range bars
-  const bucket = Math.max(1, Math.ceil(dots.length / 80))
-  const bars: [number, number][] = []
-  for (let i = 0; i < dots.length; i += bucket) {
-    const slice = dots.slice(i, i + bucket)
-    bars.push([Math.min(...slice), Math.max(...slice)])
-  }
   const m = bars.length
   const slotW = plotW / m
   const barW = Math.max(1.5, slotW * 0.6)
