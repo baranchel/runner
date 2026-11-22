@@ -1,6 +1,6 @@
 // Run: node src/db/sync.check.ts
 import type { Run } from '../types/index.ts'
-import { diffEdits, filterPulled, rowToRun, runToRow } from './merge.ts'
+import { cloudKey, diffEdits, filterPulled, fromCloud, rowToRun, runToRow } from './merge.ts'
 
 function eq(actual: unknown, expected: unknown, msg: string) {
   const a = JSON.stringify(actual), e = JSON.stringify(expected)
@@ -35,5 +35,11 @@ eq(diffEdits(raw, {}, { avgHr: null }), { avgHr: null }, 'clearing a value is an
 
 // filterPulled skips rows that still have unsent local changes
 eq(filterPulled([{ id: 'a' }, { id: 'b' }], new Set(['b'])).map(r => r.id), ['a'], 'pending row skipped')
+
+// profiles: cloud key is user_id, local key is id
+eq(cloudKey('profiles'), 'user_id', 'profiles keyed by user_id')
+eq(cloudKey('runs'), 'id', 'runs keyed by id')
+eq(fromCloud('profiles', [{ user_id: 'u1', first_name: 'Bar' }]), [{ user_id: 'u1', first_name: 'Bar', id: 'u1' }], 'user_id → id')
+eq(fromCloud('runs', [{ id: 'r1' }]), [{ id: 'r1' }], 'other tables unchanged')
 
 console.log('sync.check: all passed')

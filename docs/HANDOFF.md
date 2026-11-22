@@ -29,7 +29,10 @@ Read this first, together with `CLAUDE.md` and `architecture.md`. It captures th
 | 1 | `feature/user-auth` | RA-18 Login | **Done**, merged |
 | 2 | `feature/manage-db` | RA-34 Manage DB | **Done**, merged 2026-11-20 (see RA-34 section) |
 | 3 | `feature/healthkit` | RA-3 Apple Connectivity | **Committed, not merged** — only test left: a new run (2026-11-21) via pull to refresh. Pass → merge into `main`. |
-| 4 | `feature/add-personal-info` | RA-11 Personal Info + RA-9 Custom HR Zones (+ RA-10 Edit Profile) | **Next.** Branched from `feature/healthkit` (2026-11-21), because it needs `src/healthkit/bodyData.ts` + the Health permissions. Merge `feature/healthkit` into `main` first, then this one. Brainstorm paused; stories not yet written. |
+| 4 | `feature/add-personal-info` | RA-11 Personal Info + RA-10 Edit Profile | **Done 2026-11-21, device-tested, committed** (see section below). Branched from `feature/healthkit`. |
+| 5 | `feature/hr-zones` | RA-9 Custom HR Zones (4 methods + preview) | **Next.** Branched from `feature/add-personal-info` (2026-11-21); builds on the profile's `hr_max`. Own spec. |
+
+**Merge order (stacked branches):** `feature/healthkit` → `main` (Bar, 2026-11-22, after the new-run test), then `feature/add-personal-info` → `main`, then `feature/hr-zones` → `main`. Each branch contains the one before it, so merging in this order keeps every PR small. A fix needed in an earlier branch goes on that branch, then gets merged forward into the later ones.
 
 ## Jira
 
@@ -106,7 +109,7 @@ Claude session name: `feature/healthkit`.
 - **Left as is (minor):** Watch samples that sync after the workout object are missed (anchor moves on; RA-21 re-reads HR); first import pushes one HTTP upsert per run (RA-34 design), fine for now.
 - **Committed 2026-11-20** (6 commits, tree clean; not merged). Device-tested so far: import, Fitness match (17 Nov run), intervals, precise distances, "Not now" reinstall path (2026-11-21; Dashboard shows the cloud runs after login, as it should).
 - **Next:** only a new run via pull to refresh (2026-11-21) is left; Bar is skipping the other Task 9 items (duplicates after reopen, Watch+other-app, offline, older runs' weather, non-Watch run). Edit+type-kept waits for RA-39. If the new run fails, fix it on `feature/healthkit` (switch back), then merge.
-- **For RA-11 (next branch):** `readBodyData()` in `src/healthkit/bodyData.ts` already reads DOB, sex, height, body mass, resting HR, VO2max (permission already asked in RA-3) — not called anywhere yet. `src/utils/zones.ts` still uses `MOCK_HR_MAX = 190`.
+- **For RA-11 (next branch):** `readBodyData()` in `src/healthkit/bodyData.ts` already reads DOB, sex, height, body mass, resting HR, VO2max (permission already asked in RA-3) — now used by the personal-info form. (Done in RA-11: `MOCK_HR_MAX` replaced by `effectiveHrMax`.)
 - **Jira follow-ups (draft wording first, Bar approves):** new ticket for interval **segments** from HealthKit (left null in RA-3); note on **RA-12** about letting the user pick which source wins when the same run is in Health twice.
 - **Untested on device:** shape of workout metadata (elevation/weather), `productType` Watch detection, humidity scale (0–1 vs 0–100 handled both ways).
 
@@ -117,7 +120,7 @@ Inputs that shaped the design (kept for reference):
 - **Replace the dev seed:** remove the `__DEV__` "Load sample runs" button (Settings) + `seedSampleRuns` / `seedRows` / mock import in `useRunStore` — this also drops `MOCK_RUNS` from the prod bundle.
 - **Decide early:** `runs.date` is a `date` (no start time). Consider `timestamptz` before real data arrives — touches every screen that uses `run.date` and needs a Supabase migration (the cloud `runs` table only holds sample data now, so dropping/recreating it is cheap).
 - Metric columns are `double precision`, so fractional HealthKit values are fine. Splits / segments / zones / weather come from HealthKit samples — decide what is computed at import time vs on demand (raw HR/GPS streams are not stored, Phase 3 decision).
-- `src/utils/zones.ts` still uses `MOCK_HR_MAX = 190` (replaced by RA-11/RA-9, not RA-3).
+- (Done in RA-11) `MOCK_HR_MAX` replaced by `effectiveHrMax` in `src/utils/profile.ts`.
 
 Open items carried over: RA-24 white flash on logout (below); first TestFlight build must check offline app start (see RA-34 section).
 
@@ -125,9 +128,19 @@ Open items carried over: RA-24 white flash on logout (below); first TestFlight b
 
 - **White flash on logout (found 2026-11-20).** Logging out shows a white screen for a moment before the login screen. Cause: when the tabs are removed, the app briefly falls back to `app/index.tsx` (which redirects to login); during that switch the bottom layer is React Navigation's default theme background (`#f2f2f2`), because only the screens paint `colors.bgApp`. Fix: in `app/_layout.tsx` wrap the `Stack` in `<ThemeProvider value={{ ...DarkTheme, colors: { ...DarkTheme.colors, background: colors.bgApp, card: colors.bgCard } }}>` (`import { DarkTheme, ThemeProvider } from 'expo-router'` — Expo 58 bundles React Navigation inside expo-router; there is no separate `@react-navigation/native` package). JS-only, no rebuild. Not caused by RA-34 (navigation untouched there).
 
-## Personal Info feature (RA-11 + RA-9) — notes so far
+## Current task: RA-11 + RA-10 — `feature/add-personal-info`
+
+Claude session name: `feature/add-personal-info`.
+
+- Spec `docs/superpowers/specs/2026-11-21-personal-info-design.md`, plan `docs/superpowers/plans/2026-11-21-personal-info.md` (10 tasks). Decisions with Bar: RA-9 gets its own spec; metric only until RA-6; profile goes through the sync layer (offline); signup has First + Last name; required fields marked with a red `*` text (not an icon); Sex dropdown Male / Female / Prefer not to say; label "VO2max (if known)".
+- **2026-11-21:** Tasks 1–9 implemented (Sonnet implementers, Opus review per batch; no Critical/Important left). tsc clean; `profile.check`, `sync.check`, `import.check` pass. Review fixes applied: offline-created profile gets `unit = 'km'`; Health screen opened from Settings goes back instead of stacking a second tab bar; the Health prompt no longer waits for the profile sync; opening the DOB picker no longer fills 1 Jan 1990 by itself.
+- **Bar to do:** (1) run `supabase/migrations/2026-11-21-profile.sql` in the SQL Editor **before** opening the new code — a profile push rejected for missing columns is marked `failed` for good and the edit is lost; (2) JS only, no rebuild: `npx expo start --dev-client`; (3) device test = plan Task 10.
+- **Device-tested 2026-11-21 (dev build), all pass:** existing account → form once (name split, Health prefill) → dashboard; edit from Settings + HRmax on the zones screen; new `+alias` signup with first/last name. A second account on the same phone skips the Health screen: iOS shows its Health prompt once per install, not per account (`needsHealthPrompt` = false). Expected; the new account still imports this phone's Health runs (clearAll resets the anchor).
+- **Known limits (accepted):** the first full import runs before the form, so past runs keep zones from 190 / 220 − age until RA-21. In edit mode an optional field left empty is prefilled from Health again. Google names are split from `full_name` at the first space (editable).
+
+## Personal Info feature (RA-11 + RA-9) — earlier notes
 
 Bar's request: right after signup the user fills a personal-details form. Everything available from Apple Health is prefilled and editable. Includes running HR zones — automatic (from age / HRmax) or built manually. Must be stored in the cloud DB so another device doesn't need to refill it. Many features depend on this data.
 - HealthKit can provide: DOB, biological sex, height, weight, resting HR, VO2max. No HRmax — can estimate from the highest HR in past workouts (often better than `220 − age`).
-- `src/utils/zones.ts` has `MOCK_HR_MAX = 190` — to be replaced by the per-user value.
+- (Done) `MOCK_HR_MAX` replaced by the per-user value (`effectiveHrMax`).
 - Resume this brainstorm only after RA-18, RA-34 and RA-3 are done.

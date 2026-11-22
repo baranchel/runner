@@ -1,4 +1,5 @@
 import type { QuantityTypeIdentifier, UnitForIdentifier } from '@kingstinct/react-native-healthkit'
+import { isoDate } from '../utils/profile'
 import { hk } from './native'
 
 export interface BodyData {
@@ -28,7 +29,7 @@ export async function readBodyData(): Promise<BodyData> {
   ])
   const sexName = { [m.BiologicalSex.female]: 'female', [m.BiologicalSex.male]: 'male', [m.BiologicalSex.other]: 'other' } as const
   return {
-    dob: dob ? dob.toISOString().slice(0, 10) : null,
+    dob: dob ? isoDate(dob) : null,
     sex: sexName[sex as keyof typeof sexName] ?? null,
     heightCm: height != null ? Math.round(height * 100) : null,
     weightKg: weight != null ? Math.round(weight * 10) / 10 : null,

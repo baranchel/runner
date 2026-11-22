@@ -2,8 +2,9 @@
 import type { SQLiteBindValue } from 'expo-sqlite'
 import { db } from './schema'
 import { JSON_COLS, filterPulled, type RunRow } from './merge'
+import type { ProfileRow } from '../utils/profile'
 
-export type Table = 'runs' | 'run_types'
+export type Table = 'runs' | 'run_types' | 'profiles'
 export interface RunTypeRow { id: string; name: string; hue: number; deleted: number }
 export interface PendingOp { seq: number; tbl: Table; row_id: string; kind: 'insert' | 'update'; patch: string }
 
@@ -11,6 +12,8 @@ const COLS: Record<Table, readonly string[]> = {
   runs: ['id', 'healthkit_uuid', 'type_id', 'name', 'date', 'started_at', 'distance_km', 'time_sec', 'avg_hr', 'max_hr',
     'min_hr', 'elev_gain', 'cadence', 'calories','source', 'notes', 'splits', 'segments', 'zones', 'weather', 'edits', 'updated_at'],
   run_types: ['id', 'name', 'hue', 'deleted', 'updated_at'],
+  profiles: ['id', 'unit', 'first_name', 'last_name', 'dob', 'sex', 'height_cm', 'weight_kg', 'resting_hr',
+    'vo2max', 'hr_max', 'hr_max_manual', 'updated_at'],
 }
 
 // JS value → SQLite value: objects/arrays as JSON text, booleans as 0/1
@@ -29,6 +32,12 @@ function parseRun(r: Record<string, unknown>): RunRow {
 
 // ─── Reads ───────────────────────────────────────────────────────────────────
 
+/** The signed-in user's profile (the phone holds one user's data), or null before the first pull. */
+export function loadProfile(): ProfileRow | null {
+  const r = db.getFirstSync<Record<string, unknown>>('SELECT * FROM profiles LIMIT 1')
+  return r ? ({ ...r, hr_max_manual: r.hr_max_manual === 1 } as unknown as ProfileRow) : null
+}
+
 export const loadRuns = (): RunRow[] =>
   db.getAllSync<Record<string, unknown>>('SELECT * FROM runs ORDER BY date DESC, started_at DESC').map(parseRun)
 
@@ -41,6 +50,10 @@ export const loadRunTypes = (): RunTypeRow[] =>
   db.getAllSync<RunTypeRow>('SELECT * FROM run_types WHERE deleted = 0 ORDER BY hue')
 
 // ─── Writes ──────────────────────────────────────────────────────────────────
+
+/** Offline before the first pull there is no local profile row yet; an update needs one. The cloud row always exists (signup trigger). */
+export const ensureProfileRow = (userId: string) =>
+  db.runSync('INSERT OR IGNORE INTO profiles (id, unit) VALUES (?, \'km\')', [userId])
 
 function upsertLocal(tbl: Table, row: Record<string, unknown>) {
   const cols = COLS[tbl].filter(c => c in row)  // drops cloud-only columns such as user_id
@@ -115,5 +128,5 @@ export const getEpoch = () => epoch
 /** Log out: the next user of this phone must see nothing of this one. */
 export function clearAll() {
   epoch++
-  db.execSync('DELETE FROM runs; DELETE FROM run_types; DELETE FROM pending_ops; DELETE FROM sync_state;')
+  db.execSync('DELETE FROM runs; DELETE FROM run_types; DELETE FROM profiles; DELETE FROM pending_ops; DELETE FROM sync_state;')
 }

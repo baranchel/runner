@@ -1,5 +1,6 @@
 // The only code that sends data rows to / reads them from Supabase. src/db/sync.ts drives it.
 import { supabase } from './supabase'
+import { cloudKey, fromCloud } from '../db/merge'
 
 export type PushResult = 'ok' | 'retry' | 'failed'
 
@@ -14,7 +15,9 @@ export async function pushOp(
       // ignoreDuplicates: a run already in the cloud is left as is (never overwrites type/notes/edits)
       res = await supabase.from(tbl).upsert(row, { onConflict: tbl === 'runs' ? 'user_id,id' : 'id', ignoreDuplicates: true })
     } else {
-      res = await supabase.from(tbl).update(row).eq('id', rowId).select('id')
+      const key = cloudKey(tbl)
+      const { id: _id, ...fields } = row  // profiles has no id column in the cloud
+      res = await supabase.from(tbl).update(key === 'id' ? row : fields).eq(key, rowId).select(key)
     }
     const { error, status } = res
     if (!error) {
@@ -37,20 +40,21 @@ const OVERLAP_MS = 60_000   // re-read the last minute: server now() is transact
 
 /** Rows changed after `since` (all rows when null), oldest first. null = request failed. */
 export async function pullSince(tbl: string, since: string | null): Promise<Record<string, unknown>[] | null> {
+  const key = cloudKey(tbl)
   const rows: Record<string, unknown>[] = []
   let after: { t: string; id: string } | null = null
   try {
     for (;;) {
-      let q = supabase.from(tbl).select('*').order('updated_at').order('id').limit(PAGE)
-      if (after) q = q.or(`updated_at.gt."${after.t}",and(updated_at.eq."${after.t}",id.gt.${after.id})`)
+      let q = supabase.from(tbl).select('*').order('updated_at').order(key).limit(PAGE)
+      if (after) q = q.or(`updated_at.gt."${after.t}",and(updated_at.eq."${after.t}",${key}.gt.${after.id})`)
       // Postgres sends microseconds (.123456); trim to ms so Hermes' Date.parse can't return NaN
       else if (since) q = q.gte('updated_at', new Date(Date.parse(since.replace(/(\.\d{3})\d+/, '$1')) - OVERLAP_MS).toISOString())
       const { data, error } = await q
       if (error) return null
       rows.push(...data)
-      if (data.length < PAGE) return rows
+      if (data.length < PAGE) return fromCloud(tbl, rows)
       const last = data[data.length - 1]
-      after = { t: String(last.updated_at), id: String(last.id) }
+      after = { t: String(last.updated_at), id: String(last[key]) }
     }
   } catch {
     return null

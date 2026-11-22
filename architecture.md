@@ -84,10 +84,11 @@ supabase/
   migrations/                  ← one-off changes to an existing cloud DB (run by hand, e.g. 2026-11-20-started-at.sql)
 app/
   _layout.tsx                  ← root layout: splash hold + auth gate (Stack.Protected)
-  index.tsx                    ← redirects by session: login, health-access (prompt not shown yet, not skipped) or dashboard
-  health-access.tsx            ← "Connect Apple Health" → iOS prompt → first import with progress
+  index.tsx                    ← picks the screen after login: login → health-access (prompt not shown, not skipped) → personal-info (profile incomplete) → dashboard
+  health-access.tsx            ← "Connect Apple Health" → iOS prompt → first import with progress → back to index (or back to Settings)
+  personal-info.tsx            ← RA-11 form after onboarding; RA-10 edit from Settings (?mode=edit)
   login.tsx                    ← email/password, Apple, Google
-  signup.tsx                   ← name, email, password → "check your email"
+  signup.tsx                   ← first + last name, email, password → "check your email"
   forgot-password.tsx          ← request reset link
   reset-password.tsx           ← deep-link target: set new password
   auth-callback.tsx            ← deep-link target: email confirmation
@@ -106,11 +107,11 @@ app/
 src/
   components/                  ← RunCard, RunPickerList (shared month-grouped list pieces + run picker), CompareView, Chart, SplitsTable, SegmentsTable
   api/                         ← supabase.ts (client), auth.ts, authErrors.ts, sync.ts (push/pull rows) — the ONLY code that talks to Supabase
-  store/                       ← useAuthStore (also drives the data lifecycle), useRunStore, useRunTypeStore (Zustand)
+  store/                       ← useAuthStore (also drives the data lifecycle), useRunStore, useRunTypeStore, useProfileStore (Zustand)
   db/                          ← schema.ts (SQLite tables), queries.ts (reads/writes + outbox), merge.ts (pure, `node src/db/sync.check.ts`), sync.ts (syncNow)
-  healthkit/                   ← native.ts (lazy module load), permissions.ts, importRuns.ts, bodyData.ts (for RA-11); pure: mapWorkout.ts, dedupe.ts (`node src/healthkit/import.check.ts`)
+  healthkit/                   ← native.ts (lazy module load), permissions.ts, importRuns.ts, bodyData.ts (personal-info prefill); pure: mapWorkout.ts, dedupe.ts (`node src/healthkit/import.check.ts`)
   types/                       ← index.ts (Run, RunType, User interfaces)
-  utils/                       ← format.ts, chart.ts, stats.ts, zones.ts, compare.ts (metrics + per-row "better" rule)
+  utils/                       ← format.ts, chart.ts, stats.ts, zones.ts, compare.ts (metrics + per-row "better" rule), profile.ts (pure profile + HRmax logic, `node src/utils/profile.check.ts`)
 ```
 
 ### Data Model
@@ -178,7 +179,16 @@ const aug = getMonthStats(runs, 2026, 8, today.getDate())  // Aug through today
 const jul = getMonthStats(runs, 2026, 7, today.getDate())  // Jul through same day-of-month
 ```
 
-Supabase Postgres is the source of truth (`supabase/schema.sql`: `profiles`, `run_types`, `runs`, RLS own-rows, server-stamped `updated_at`, new-user trigger creates the profile + 7 default types). SQLite holds the phone's copy of `runs` + `run_types` (same snake_case columns) and the outbox. HealthKit is read-only — never written back to.
+Supabase Postgres is the source of truth (`supabase/schema.sql`: `profiles`, `run_types`, `runs`, RLS own-rows, server-stamped `updated_at`, new-user trigger creates the profile + 7 default types). SQLite holds the phone's copy of `profiles`, `runs` + `run_types` (same snake_case columns) and the outbox. HealthKit is read-only — never written back to.
+
+### Profile (RA-11 / RA-10)
+
+`profiles` (one row per user, created by the signup trigger): `unit`, `first_name`, `last_name`, `dob`, `sex` (`female` / `male` / `undisclosed` = "Prefer not to say"), `height_cm`, `weight_kg`, `resting_hr`, `vo2max`, `hr_max`, `hr_max_manual`. Metric only until RA-6.
+
+- **Form** (`app/personal-info.tsx`): required first name, last name, DOB (red `*`); the rest optional. Prefill per field: saved value → Apple Health (`readBodyData`) → sign-in name (`signInInfo`: `first_name`/`last_name` from signup or Apple, else the old `name` / Google `full_name` split at the first space).
+- **Shown** whenever `isComplete(profile)` is false (first name + last name + DOB). On a phone with no local profile row, `index` waits for one sync first, so a profile filled on another device skips the form.
+- **HRmax:** saved `hr_max` is either the user's own value (`hr_max_manual = true`) or the highest `max_hr` of all runs (never the 220 − age estimate). After each import a higher run raises it unless manual (`nextAutoHrMax`). Zones use `effectiveHrMax` = saved → highest from runs → 220 − age → 190.
+- **Known limit:** zone times are computed at import with the HRmax of that moment; the first full import runs before the form, so old runs keep zones from 190 / 220 − age until RA-21 recalculates them.
 
 ### Manual Run Edits
 
@@ -198,6 +208,7 @@ The Run Detail **Edit** button fixes bad HealthKit readings (name, distance, tim
 - **When:** login, app foreground, after each change. Single-flight; never throws.
 - **Logout:** Settings pushes first and warns if changes are unsent; an explicit logout or account deletion then runs `clearAll()` (an epoch counter stops a sync that was still running). A forced sign-out (e.g. rejected refresh token) only empties the stores, so unsent edits survive and push when the same user logs back in. Local data has an `owner`; a different user logging in starts clean.
 - **Limits:** last write wins per field; `edits` merges as one field.
+- **Tables:** `profiles` → `run_types` → `runs`. `profiles` is keyed by `user_id` in the cloud and by `id` (= user id) locally; `cloudKey` / `fromCloud` in `src/db/merge.ts` map between them. SQLite schema v4.
 
 ### HealthKit import (RA-3)
 
@@ -208,7 +219,7 @@ The Run Detail **Edit** button fixes bad HealthKit readings (name, distance, tim
 - **Sources:** distance and step samples are taken only from the workout's own source (iPhone and Watch both log them); HR from all sources.
 - **Anchor rule:** saved at the end of a successful import, and only if an anchor already existed or the query returned workouts. An interrupted import re-reads and skips what was saved. An anchor saved while access was refused would otherwise hide the whole history once access is turned on.
 - **Expo Go:** the native module is imported lazily (`src/healthkit/native.ts`), so Expo Go runs without it: no Health screen, import is a no-op.
-- **Zones** use `MOCK_HR_MAX` until RA-9; RA-21 recalculates past runs.
+- **Zones** use the profile's `effectiveHrMax` at import time (% of HRmax; methods → RA-9); RA-21 recalculates past runs.
 - **Matches Fitness:** splits = Apple's own km segment events (type 7) minus pauses (fallback: rebuilt from distance samples); HR avg/min/max = the workout's HR statistic; calories = `totalEnergyBurned` (active kcal); time/elevation/temperature/calories truncated like Fitness; `date` in the run's `HKTimeZone`.
 - **Intervals:** custom-workout steps = workout `activities` → `segments` "Step N" (+ "Open"), coloured rep/rest by pace group. HealthKit's API here has no step names.
 - **Re-import:** mapping changes don't touch runs already saved (insert-if-missing). During development, delete cloud runs and log out/in to re-import.

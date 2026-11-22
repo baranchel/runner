@@ -3,6 +3,8 @@ import { ScrollView, StyleSheet, Text, View, TouchableOpacity } from 'react-nati
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useRunStore } from '../../../src/store/useRunStore'
+import { useProfileStore } from '../../../src/store/useProfileStore'
+import { effectiveHrMax } from '../../../src/utils/profile'
 import { fmtMMSS } from '../../../src/utils/format'
 import { colors, fonts, spacing, zoneColor } from '../../../src/utils/tokens'
 import { ZONE_NAMES, zoneRangeLabel } from '../../../src/utils/zones'
@@ -15,6 +17,9 @@ export default function ZonesScreen() {
   const insets = useSafeAreaInsets()
   const [trackW, setTrackW] = useState(0)
   const run = useRunStore(s => s.runs.find(r => r.id === id))
+  const runs = useRunStore(s => s.runs)
+  const profile = useProfileStore(s => s.profile)
+  const hrMax = effectiveHrMax(profile, runs, new Date())
 
   if (!run) {
     return (
@@ -57,7 +62,7 @@ export default function ZonesScreen() {
                     <Text style={[s.zoneNum, { color: zoneColor(i) }]}>{i + 1}</Text>
                     <View style={s.zoneText}>
                       <Text style={s.zoneName} numberOfLines={1}>{ZONE_NAMES[i]}</Text>
-                      <Text style={s.zoneRange} numberOfLines={1}>{zoneRangeLabel(i)}</Text>
+                      <Text style={s.zoneRange} numberOfLines={1}>{zoneRangeLabel(i, hrMax)}</Text>
                     </View>
                   </View>
                   <View

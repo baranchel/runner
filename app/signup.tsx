@@ -19,7 +19,8 @@ const UNMET = colors.danger
 // ─── Screen ───────────────────────────────────────────────────────────────────
 
 export default function SignupScreen() {
-  const [name,        setName]        = useState('')
+  const [firstName,   setFirstName]   = useState('')
+  const [lastName,    setLastName]    = useState('')
   const [email,       setEmail]       = useState('')
   const [password,    setPassword]    = useState('')
   const [confirmPwd,  setConfirmPwd]  = useState('')
@@ -35,7 +36,8 @@ export default function SignupScreen() {
   const hintTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // Field refs for keyboard navigation
-  const nameRef    = useRef<ComponentRef<typeof TextInput>>(null)
+  const firstRef   = useRef<ComponentRef<typeof TextInput>>(null)
+  const lastRef    = useRef<ComponentRef<typeof TextInput>>(null)
   const emailRef   = useRef<ComponentRef<typeof TextInput>>(null)
   const pwdRef     = useRef<ComponentRef<typeof TextInput>>(null)
   const confirmRef = useRef<ComponentRef<typeof TextInput>>(null)
@@ -50,12 +52,12 @@ export default function SignupScreen() {
   }
 
   const passwordsMatch = confirmPwd.length > 0 && confirmPwd === password
-  const canSubmit = name.trim() !== '' && email.trim() !== '' && passwordValid(password) && passwordsMatch && agreed && !busy
+  const canSubmit = firstName.trim() !== '' && lastName.trim() !== '' && email.trim() !== '' && passwordValid(password) && passwordsMatch && agreed && !busy
 
   const submit = async () => {
     if (!canSubmit) return
     setBusy(true); setError(null)
-    const err = await signUp(name.trim(), email.trim(), password)
+    const err = await signUp(firstName.trim(), lastName.trim(), email.trim(), password)
     setBusy(false)
     if (err) setError(err)
     else setSentTo(email.trim())
@@ -107,21 +109,40 @@ export default function SignupScreen() {
         <View style={s.form}>
           <Text style={s.formTitle}>Create account</Text>
 
-          {/* Full name */}
-          <View style={s.fieldGroup}>
-            <Text style={s.fieldLabel}>Full name</Text>
-            <TextInput
-              ref={nameRef}
-              style={s.input}
-              placeholder="John Doe"
-              placeholderTextColor={colors.textGhost}
-              value={name}
-              onChangeText={setName}
-              autoCapitalize="words"
-              returnKeyType="next"
-              onSubmitEditing={() => emailRef.current?.focus()}
-              blurOnSubmit={false}
-            />
+          {/* First + last name */}
+          <View style={s.nameRow}>
+            <View style={[s.fieldGroup, s.nameCol]}>
+              <Text style={s.fieldLabel}>First name</Text>
+              <TextInput
+                ref={firstRef}
+                style={s.input}
+                placeholder="John"
+                placeholderTextColor={colors.textGhost}
+                value={firstName}
+                onChangeText={setFirstName}
+                autoCapitalize="words"
+                textContentType="givenName"
+                returnKeyType="next"
+                onSubmitEditing={() => lastRef.current?.focus()}
+                blurOnSubmit={false}
+              />
+            </View>
+            <View style={[s.fieldGroup, s.nameCol]}>
+              <Text style={s.fieldLabel}>Last name</Text>
+              <TextInput
+                ref={lastRef}
+                style={s.input}
+                placeholder="Doe"
+                placeholderTextColor={colors.textGhost}
+                value={lastName}
+                onChangeText={setLastName}
+                autoCapitalize="words"
+                textContentType="familyName"
+                returnKeyType="next"
+                onSubmitEditing={() => emailRef.current?.focus()}
+                blurOnSubmit={false}
+              />
+            </View>
           </View>
 
           {/* Email */}
@@ -305,6 +326,8 @@ const s = StyleSheet.create({
   form:      { gap: 10 },
   formTitle: { fontSize: 18, fontWeight: '700', color: colors.textPrimary, marginBottom: 2 },
   fieldGroup:{ gap: 4 },
+  nameRow:   { flexDirection: 'row', gap: 10 },
+  nameCol:   { flex: 1 },
   labelRow:  { flexDirection: 'row', alignItems: 'center', gap: 6 },
   fieldLabel:{ fontSize: 12, fontWeight: '500', color: colors.textSecondary },
 

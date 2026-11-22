@@ -4,6 +4,7 @@ import { onSessionChange, type Session } from '../api/auth'
 import { clearAll, getMeta, setMeta } from '../db/queries'
 import { onPulled } from '../db/sync'
 import { importNewRuns } from '../healthkit/importRuns'
+import { useProfileStore } from './useProfileStore'
 import { useRunStore } from './useRunStore'
 import { useRunTypeStore } from './useRunTypeStore'
 
@@ -12,6 +13,7 @@ type AuthState = { session: Session | null; loading: boolean }
 export const useAuthStore = create<AuthState>(() => ({ session: null, loading: true }))
 
 function loadStores() {
+  useProfileStore.getState().load()
   useRunTypeStore.getState().load()
   useRunStore.getState().load()
 }
@@ -40,6 +42,7 @@ onSessionChange(session => {
       // an explicit logout / delete wipes it in Settings, and another user is caught by the owner check.
       useRunStore.getState().reset()
       useRunTypeStore.getState().reset()
+      useProfileStore.getState().reset()
     }
   }
   useAuthStore.setState({ session, loading: false })
