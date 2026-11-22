@@ -156,7 +156,7 @@ interface Run {
   notes: string | null
   segments: Segment[] | null  // null for unstructured runs (easy/long); warmup→reps→cooldown for tempo/interval
   splits: Split[]             // per-km splits, always present
-  weather, hrHist             // hrHist = seconds at each bpm (RA-9); see src/types/index.ts
+  weather, hrHist, hrCurve    // hrHist = seconds at each bpm (RA-9); hrCurve = HR chart line, 80 × [min, max] bpm; see src/types/index.ts
   edits?: RunEdits            // manual edits; the other fields already include them
 }
 ```
@@ -217,18 +217,19 @@ The Run Detail **Edit** button fixes bad HealthKit readings (name, distance, tim
 - **When:** login, app foreground, after each change. Single-flight; never throws.
 - **Logout:** Settings pushes first and warns if changes are unsent; an explicit logout or account deletion then runs `clearAll()` (an epoch counter stops a sync that was still running). A forced sign-out (e.g. rejected refresh token) only empties the stores, so unsent edits survive and push when the same user logs back in. Local data has an `owner`; a different user logging in starts clean.
 - **Limits:** last write wins per field; `edits` merges as one field.
-- **Tables:** `profiles` → `run_types` → `runs`. `profiles` is keyed by `user_id` in the cloud and by `id` (= user id) locally; `cloudKey` / `fromCloud` in `src/db/merge.ts` map between them. SQLite schema v5.
+- **Tables:** `profiles` → `run_types` → `runs`. `profiles` is keyed by `user_id` in the cloud and by `id` (= user id) locally; `cloudKey` / `fromCloud` in `src/db/merge.ts` map between them. SQLite schema v6.
 
 ### HealthKit import (RA-3)
 
 - **Permission:** one read-only prompt for workouts, HR, distance, steps and body data (DOB, sex, height, weight, resting HR, VO2max). `needsHealthPrompt()` asks iOS whether it is still to come (per install). iOS never reveals a refused *read*, so refused = no data. "Not now" is stored as `health_skipped` in `sync_state`; Settings offers Connect while iOS can still prompt.
 - **When:** after the Health screen's Connect, then on login / app foreground (after `syncNow()`, so cloud runs are known) and on pull-to-refresh in All runs. Single-flight; never throws; does nothing until the prompt has been shown.
-- **What:** anchored workout query (running only, anchor `healthkit_anchor` in `sync_state`). Workouts < 0.1 km or < 60 s are skipped. Every detail (splits, HR min/avg/max, HR histogram, cadence, elevation, weather) is computed once at import by `mapWorkout` and stored; `segments` stay null (follow-up ticket).
+- **What:** anchored workout query (running only, anchor `healthkit_anchor` in `sync_state`). Workouts < 0.1 km or < 60 s are skipped. Every detail (splits, HR min/avg/max, HR histogram, HR curve, cadence, elevation, weather) is computed once at import by `mapWorkout` and stored; `segments` stay null (follow-up ticket).
 - **Duplicates:** same UUID already saved → skip. Same run written by several apps (Watch + Strava) → overlapping time range = duplicate; the Apple Watch copy wins, else the earliest (`pickNew`). User source choice → RA-12.
 - **Sources:** distance and step samples are taken only from the workout's own source (iPhone and Watch both log them); HR from all sources.
 - **Anchor rule:** saved at the end of a successful import, and only if an anchor already existed or the query returned workouts. An interrupted import re-reads and skips what was saved. An anchor saved while access was refused would otherwise hide the whole history once access is turned on.
 - **Expo Go:** the native module is imported lazily (`src/healthkit/native.ts`), so Expo Go runs without it: no Health screen, import is a no-op.
 - **Zones** are not stored: the import saves `hr_hist` (seconds per bpm), and zones are computed on screen (see HR zones).
+- **HR chart:** the import saves `hr_curve`: the run's active time cut into 80 slices, [min, max] bpm per slice (~1 KB). HR during pauses is left out, so the x axis is active time like the splits; an empty slice copies the one before. `HrRangeBarsChart` draws it on Run Detail and the Heart Rate screen. No HR → null → no chart (never a generated line).
 - **Matches Fitness:** splits = Apple's own km segment events (type 7) minus pauses (fallback: rebuilt from distance samples); HR avg/min/max = the workout's HR statistic; calories = `totalEnergyBurned` (active kcal); time/elevation/temperature/calories truncated like Fitness; `date` in the run's `HKTimeZone`.
 - **Intervals:** custom-workout steps = workout `activities` → `segments` "Step N" (+ "Open"), coloured rep/rest by pace group. HealthKit's API here has no step names.
 - **Re-import:** mapping changes don't touch runs already saved (insert-if-missing). During development, delete cloud runs and log out/in to re-import.
@@ -241,7 +242,7 @@ The Run Detail **Edit** button fixes bad HealthKit readings (name, distance, tim
 
 - **Supabase** (project `cbbalftydzsfbqategub`, region Frankfurt, free tier)
   - **Auth** — email+password (confirmation required), native Google, native Sign in with Apple (App Store 4.8 requires Apple when Google is offered), in-app account deletion (App Store 5.1.1). Spec: `docs/superpowers/specs/2026-11-08-user-auth-design.md`.
-  - **Postgres** — full copy of every run (summary, splits, segments, HR histogram, weather) + profile, run types, classifications, notes, overrides. All tables reference `auth.users(id) ON DELETE CASCADE` and use RLS. Run summaries kept forever (~1–2 KB/run); raw HR/GPS streams not stored yet. Offline: app works on locally cached data and syncs when back online.
+  - **Postgres** — full copy of every run (summary, splits, segments, HR histogram, weather) + profile, run types, classifications, notes, overrides. All tables reference `auth.users(id) ON DELETE CASCADE` and use RLS. Run summaries kept forever (~1–2 KB/run); raw HR/GPS streams not stored (only the 80-slice HR curve). Offline: app works on locally cached data and syncs when back online.
 - **Boundary rule:** all Supabase calls live in `src/api/`. Screens and stores never import `@supabase/supabase-js`, so swapping to FastAPI later only rewrites `src/api/`.
 - **FastAPI (Python)** — only for `POST /suggest-type` (scikit-learn ML classifier), added next to Supabase later.
 - **Strava OAuth** — register developer app, fetch `GET /athlete/activities`, map to Run schema (needs a server-side secret → Supabase Edge Function or FastAPI)

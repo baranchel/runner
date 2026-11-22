@@ -544,7 +544,7 @@ interface ConnectedApp {
 
 ## Chart Data Generation
 
-Charts are generated client-side from run data (no backend needed for chart series).
+The HR chart draws real data only: `run.hrCurve` (80 × [min, max] bpm, built at import) in `HrRangeBarsChart`; no curve → no chart. `genSeries` below is the original mock-data design and is no longer in the code.
 
 ### Series generator
 ```ts
@@ -556,7 +556,6 @@ function genSeries(seedKey: string, n: number, base: number, variance: number, d
 ### Per run — use these calls
 ```
 pace series:      genSeries(run.id + 'pace', 16, timeSec/distanceKm, 14, 0)
-heart rate:       genSeries(run.id + 'hr',   16, avgHr - 6,          8,  14)
 elevation:        genSeries(run.id + 'elev', 16, 0, elevGain*0.06, elevGain)
 ```
 

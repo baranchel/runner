@@ -50,7 +50,7 @@ Palette comes from the Strides Figma file (dark): https://www.figma.com/design/w
 
 - All monetary/distance/pace display respects `user.unit` ('km' | 'mi') (screens hardcode `'km'` until RA-6 adds the setting; the cloud `profiles.unit` column exists).
 - Pace display: `fmtPace(secPerKm)` from `src/utils/format.ts`.
-- Chart data is deterministic: same run always produces same chart via seeded LCG in `src/utils/chart.ts`.
+- Charts draw real stored data only, never generated series. The HR chart = `run.hrCurve` (80 × [min, max] bpm, built at import); no curve → no HR chart.
 - Run type colors: `oklch(0.66 0.17 <hue>)` where hue comes from `RunType.hue`.
 - HR zones: zone starts always come from `useZoneStarts()` (`src/store/useProfileStore.ts`); time-in-zone = `zoneTimes(run.hrHist, starts)` from `src/utils/zones.ts` (self-check `node src/utils/zones.check.ts`). Runs store an HR histogram, never zone totals. HRmax always via `effectiveHrMax(profile, runs, today)` (`node src/utils/profile.check.ts`); never a hardcoded HRmax.
 

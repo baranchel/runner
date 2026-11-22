@@ -157,7 +157,9 @@ Claude session name: `feature/hr-zones`.
 - **2026-11-21:** Tasks 1–7 implemented (Sonnet implementers, Opus review per batch). tsc clean; `zones.check`, `import.check`, `sync.check`, `profile.check`, `compare.check` pass. SQLite v5 migration runs in one transaction.
 - **Bar to do:** (1) run `supabase/migrations/2026-11-21-hr-zones.sql` in the SQL Editor **before** opening the new code; (2) `delete from public.runs;` (old runs have no histogram); (3) `npx expo start --dev-client` (JS only), log out and in; (4) device test = plan Task 8.
 - **Fitness match (2026-11-21, device):** first test was ~1 min off per zone. Two fixes in `hrStats` (`mapWorkout.ts`), found with a temp import log comparing 4 counting rules: (1) HR during pauses is not counted (the Watch keeps measuring while paused); (2) bpm is **floored**, not rounded, in `hr_hist` (Watch HR is often fractional; 156.6 must stay below a zone starting at 157). Now within 3 s per zone of Fitness on the 15 Nov 13.51 km run (9:32 / 1:24:44 / 19:27 vs 9:30 / 1:24:41 / 19:26). Forward weighting confirmed. Zone time column widened for times over 1 h.
-- **After the device test:** edit Jira RA-9 + RA-21 per spec §6 (show Bar the draft first).
+- **Jira RA-9 + RA-21 edited 2026-11-21** (Bar approved the drafts).
+- **Bug fixed 2026-11-22 — Run Detail HR chart showed fake data:** `hrSeries` (`src/utils/chart.ts`) was a mock-data leftover that stretched a random seeded line between min/max HR, so it looked too low. Now the import saves `hr_curve` (80 × [min, max] bpm over active time, paused HR left out) and both HR charts draw it. No HR → no chart. `hrSeries` / `genSeries` removed. SQLite v6, `supabase/migrations/2026-11-22-hr-curve.sql`; checks in `import.check.ts`.
+  - **Bar to do:** (1) run `2026-11-22-hr-curve.sql` in the SQL Editor before opening the new code; (2) `delete from public.runs;`; (3) `npx expo start --dev-client`, log out and in (re-import); (4) check the HR chart on Run Detail and the Heart Rate screen looks like the Fitness HR chart.
 
 ## Personal Info feature (RA-11 + RA-9) — earlier notes
 
