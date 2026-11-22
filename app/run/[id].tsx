@@ -2,6 +2,7 @@ import { useState, type ComponentProps } from 'react'
 import { FlatList, Image, KeyboardAvoidingView, Modal, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native'
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router'
 import { RunCard } from '../../src/components/RunCard'
+import { pickRunType } from '../../src/components/RunPickerList'
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useRunStore } from '../../src/store/useRunStore'
 import { useZoneStarts } from '../../src/store/useProfileStore'
@@ -403,6 +404,7 @@ export default function RunDetail() {
   const [sheetOpen, setSheetOpen] = useState(false)
   const run = useRunStore(s => s.runs.find(r => r.id === id))
   const editRun = useRunStore(s => s.editRun)
+  const setType = useRunStore(s => s.setType)
   const typeMap = useTypeMap()
 
   if (!run) {
@@ -426,8 +428,16 @@ export default function RunDetail() {
         {/* header */}
         <View style={s.header}>
           <View style={s.kickerRow}>
-            <View style={[s.typeDot, { backgroundColor: typeColor }]} />
-            <Text style={s.kicker}>{(type?.name ?? 'Unclassified').toUpperCase()} · {fmtDateFull(run.date).toUpperCase()}</Text>
+            {/* RA-39: tap to set/change the type (never renames the run) */}
+            <TouchableOpacity
+              style={[s.typePill, { backgroundColor: typeColor + '40' }]}
+              activeOpacity={0.7}
+              onPress={() => pickRunType('Run type', run.needsType ? undefined : run.typeId, typeId => setType([run.id], typeId))}
+            >
+              <View style={[s.typeDot, { backgroundColor: typeColor }]} />
+              <Text style={[s.typePillText, { color: typeColor }]}>{type?.name ?? 'Unclassified'} ▾</Text>
+            </TouchableOpacity>
+            <Text style={s.kicker}>{fmtDateFull(run.date).toUpperCase()}</Text>
           </View>
           <Text style={s.title}>{run.name}</Text>
           <Text style={s.source}>Synced from {SOURCE_LABEL[run.source] ?? run.source}</Text>
@@ -528,7 +538,9 @@ const s = StyleSheet.create({
   editFabText: { fontFamily: fonts.body, fontSize: 14, fontWeight: '600', color: colors.lime },
 
   header:    { gap: 6 },
-  kickerRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  kickerRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  typePill:     { flexDirection: 'row', alignItems: 'center', gap: 7, height: 28, paddingHorizontal: 11, borderRadius: 14 },
+  typePillText: { fontFamily: fonts.body, fontSize: 11, fontWeight: '600' },
   typeDot:   { width: 8, height: 8, borderRadius: 4 },
   kicker:    { fontFamily: fonts.body, fontSize: 10, fontWeight: '600', color: colors.textSecondary, letterSpacing: 0.3 },
   title:     { fontFamily: fonts.body, fontSize: 25, fontWeight: '600', color: colors.textPrimary },
