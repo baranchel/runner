@@ -88,6 +88,7 @@ npx expo start --dev-client
 | 3 | `feature/healthkit` | RA-3 Apple Connectivity | **Committed, not merged** — only test left: a new run (2026-11-21) via pull to refresh. Pass → merge into `main`. |
 | 4 | `feature/add-personal-info` | RA-11 Personal Info + RA-10 Edit Profile | **Done 2026-11-21, device-tested, committed** (see section below). Branched from `feature/healthkit`. |
 | 5 | `feature/hr-zones` | RA-9 Custom HR Zones (4 methods + preview) + most of RA-21 | **Done 2026-11-22, device-tested, matches Fitness; real HR chart fix included.** Committed + pushed, Jira updated. PR after `feature/add-personal-info`. |
+| 6 | `feature/run-type` | RA-39 Set Run Type Manually (+ new-run card, bulk Set type) | **Implemented + device-tested 2026-11-22** (all but a real new Watch run → Monday). Cut from `main` after the 3 stacked PRs were merged. See section below. |
 
 **Merge order (stacked branches):** `feature/healthkit` → `main` (Bar, 2026-11-22, after the new-run test), then `feature/add-personal-info` → `main`, then `feature/hr-zones` → `main`. Each branch contains the one before it, so merging in this order keeps every PR small. A fix needed in an earlier branch goes on that branch, then gets merged forward into the later ones.
 
@@ -194,6 +195,19 @@ Claude session name: `feature/add-personal-info`.
 - **Bar to do:** (1) run `supabase/migrations/2026-11-21-profile.sql` in the SQL Editor **before** opening the new code — a profile push rejected for missing columns is marked `failed` for good and the edit is lost; (2) JS only, no rebuild: `npx expo start --dev-client`; (3) device test = plan Task 10.
 - **Device-tested 2026-11-21 (dev build), all pass:** existing account → form once (name split, Health prefill) → dashboard; edit from Settings + HRmax on the zones screen; new `+alias` signup with first/last name. A second account on the same phone skips the Health screen: iOS shows its Health prompt once per install, not per account (`needsHealthPrompt` = false). Expected; the new account still imports this phone's Health runs (clearAll resets the anchor).
 - **Known limits (accepted):** the first full import runs before the form, so past runs keep zones from 190 / 220 − age until RA-21. In edit mode an optional field left empty is prefilled from Health again. Google names are split from `full_name` at the first space (editable).
+
+## Current task: RA-39 Set Run Type Manually — `feature/run-type`
+
+Claude session name: `feature/run-type`.
+
+- Spec `docs/superpowers/specs/2026-11-22-run-type-design.md`, plan `docs/superpowers/plans/2026-11-22-run-type.md`. Mockups (gitignored) `.superpowers/brainstorm/886-1795350874/content/` (`run-type-picker.html`, `new-run-prompt-v2.html`, `bulk-set-type.html`). Jira RA-39 updated with the added acceptance criteria (Bar approved).
+- **Decisions with Bar:** picker = native iOS sheet (option A, reuses the All runs filter's `pick()`; no colours); classifying old runs is optional; **runs that started after the account was created must be answered** (a type or Unclassified) via a lime Dashboard card (option B, never a forced pop-up); a run made while logged out also asks after the next login; bulk **Select** mode in All runs with Select all + an **Unclassified** filter option, and "Set all N ›" on the card for users back from a long logout.
+- **Implementation (Sonnet implementers, Opus review per batch):** `runs.needs_type` (SQLite v7 + cloud), `needsType()` (trims Supabase microseconds so Hermes can parse), `useRunStore.setType(ids, typeId)`, `pickRunType()`, Run Detail pill, Dashboard `NewRunCard`, All runs mode `none | compare | bulk`. Checks: `sync.check` (needs_type round-trip + re-import tripwire), `import.check` (`needsType` cases), tsc clean.
+- **Bar to do:** (1) run `supabase/migrations/2026-11-22-needs-type.sql` in the SQL Editor **before** opening the new code (a push rejected for the unknown column is marked `failed` for good); (2) `npx expo start --dev-client` (JS only, no rebuild); (3) device test = plan Task 8.
+- **Known limits (accepted):** one outbox op + one HTTP update per run in a bulk set; after `delete from public.runs;` (dev re-import) every run since the account was created asks again.
+- **Device-tested 2026-11-22 (Bar):** pill, Unclassified filter, bulk Set type, offline change, card via faked `needs_type`, re-login: all pass. **Left:** a real new Watch run (Monday) → the card appears by itself. PR stays open until then.
+- **Search** in All runs is a placeholder (RA-35), not an RA-39 bug.
+- **Follow-up:** RA-3's left-over test "an edit and the type are kept after a re-import" can now be run.
 
 ## Current task: RA-9 Custom HR Zones — `feature/hr-zones`
 

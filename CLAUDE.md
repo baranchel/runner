@@ -42,7 +42,8 @@ Palette comes from the Strides Figma file (dark): https://www.figma.com/design/w
 
 - HealthKit is **read-only**. Never write back to it.
 - Supabase Postgres is the source of truth (`supabase/schema.sql`). SQLite is the phone's offline copy of runs + run types plus the outbox (`pending_ops`). Every user change goes through `writeChange` in `src/db/queries.ts`, then `syncNow()` — see `architecture.md` → Sync.
-- Manual edits live in `runs.edits` on top of HealthKit data; HealthKit sync must never overwrite them, nor `type_id` / `notes`.
+- Manual edits live in `runs.edits` on top of HealthKit data; HealthKit sync must never overwrite them, nor `type_id` / `needs_type` / `notes` (tripwire in `src/db/sync.check.ts`).
+- Run types: every change goes through `useRunStore.setType(ids, typeId)` (clears `needs_type`); the picker is `pickRunType()` in `src/components/RunPickerList.tsx`. Runs that started after the account was created import with `needs_type = true` (`needsType()` in `src/healthkit/mapWorkout.ts`) → Dashboard New run card. See `architecture.md` → Run types.
 - Deduplication: Apple Health runs use the HealthKit workout UUID as `runs.id`; imports use `writeChange('runs', 'insert', …)`, which inserts only if missing. The same run copied into Health by another app (overlapping time) is skipped; the Apple Watch copy wins (`src/healthkit/dedupe.ts`).
 - Cloud schema changes: update `supabase/schema.sql` and add a one-off script in `supabase/migrations/` for the existing DB (Bar runs it in the Supabase SQL Editor).
 - `typeId` is nullable — null means unclassified.
