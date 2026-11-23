@@ -16,8 +16,8 @@ Read this first, together with `CLAUDE.md` and `architecture.md`. It captures th
 
 ### Current stage
 
-- **`feature/health-data` (RA-29 Insights tab):** built, reviewed twice (Opus), committed, pushed, PR opened (description written). 25 Apple Health metrics read live in 6 colour groups, detail charts, Edit (native switches + drag reorder) saved in `profiles.insights_layout`. Two device bugs fixed and confirmed by Bar (missing SQLite column, off-centre switches). Details in the RA-29 section below.
-  - **Still open:** rest of the device test (plan `docs/superpowers/plans/2026-11-23-health-data.md`, Task 12): values vs the Health app, detail periods, hide/order after restart + log out/in, "Allow access" message with Health off. Then Bar merges the PR.
+- **`feature/health-data` (RA-29 Insights tab):** built, reviewed twice (Opus), **merged into `main` 2026-11-23**. 25 Apple Health metrics read live in 6 colour groups, detail charts, Edit (native switches + drag reorder) saved in `profiles.insights_layout`. Two device bugs fixed and confirmed by Bar (missing SQLite column, off-centre switches). Details in the RA-29 section below.
+  - **Still open:** rest of the device test (plan `docs/superpowers/plans/2026-11-23-health-data.md`, Task 12): values vs the Health app, detail periods, hide/order after restart + log out/in, "Allow access" message with Health off. Any fix found there goes on a new branch from `main` (e.g. `feature/insights-fixes`).
 - **`feature/run-type`:** not finished. Bar can only check it after his next run (2026-11-24). Independent of `feature/health-data` (that branch was cut from `main` after PR #21).
   - **Possible conflict:** if `feature/run-type` also bumps the SQLite `VERSION` in `src/db/schema.ts` (or edits `queries.ts`, `supabase/schema.sql`, `CLAUDE.md`), whichever merges second takes version 8 and keeps both upgrade blocks.
 - **Jira created 2026-11-23:** RA-43 (cadence + stride on run screen), RA-44 (first-run tour), RA-45 (Smart Insights: running + health insights, lime cards; also holds the tab-restructure idea).
@@ -62,7 +62,7 @@ npx expo start --dev-client
 
 ### Suggested next tasks (in order)
 
-1. **Finish the RA-29 device test → merge the PR.**
+1. **Finish the RA-29 device test** (already merged; fixes on a new branch).
 2. **Run type:** test after the run (2026-11-24), fix, merge. Watch the `schema.ts` version clash above.
 3. **RA-24 white flash on logout:** fix already written up in "Open bugs" below (ThemeProvider in `app/_layout.tsx`), JS only, ~10 min.
 4. **RA-43 cadence + stride length on the run screen:** small branch; cadence from step data the import already reads, stride needs one new Health type (new dev build).
