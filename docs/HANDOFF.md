@@ -161,6 +161,22 @@ Claude session name: `feature/hr-zones`.
 - **Bug fixed 2026-11-22 — Run Detail HR chart showed fake data:** `hrSeries` (`src/utils/chart.ts`) was a mock-data leftover that stretched a random seeded line between min/max HR, so it looked too low. Now the import saves `hr_curve` (80 × [min, max] bpm over active time, paused HR left out) and both HR charts draw it. No HR → no chart. `hrSeries` / `genSeries` removed. SQLite v6, `supabase/migrations/2026-11-22-hr-curve.sql`; checks in `import.check.ts`.
   - **Bar to do:** (1) run `2026-11-22-hr-curve.sql` in the SQL Editor before opening the new code; (2) `delete from public.runs;`; (3) `npx expo start --dev-client`, log out and in (re-import); (4) check the HR chart on Run Detail and the Heart Rate screen looks like the Fitness HR chart.
 
+## Current task: RA-29 Health Data on Insights — `feature/health-data`
+
+Claude session name: `feature/health-data`.
+
+- **2026-11-23 brainstorm with Bar:** spec `docs/superpowers/specs/2026-11-23-health-data-design.md`, mockup `.superpowers/brainstorm/insights/insights-v2.html` (gitignored). 25 Apple Health metrics on the Insights tab, read live (nothing stored except the hide/order choice in `profiles.insights_layout`), all on by default, Edit on the tab hides/reorders. One colour per group from existing tokens; lime kept for future calculated insights. Figma "01 Data & insights" (2:226) is a weekly summary, so only its heading + card style are used; Bar will redesign later.
+- **Jira created 2026-11-23:** RA-43 Cadence + Stride Length on Run Screen (split out of RA-29), RA-44 First-Run App Tour.
+- **Spec approved 2026-11-23.** Plan `docs/superpowers/plans/2026-11-23-health-data.md` (12 tasks; Task 12 = Bar's device test). Its pure code + `summary.check.ts` were dry-run in a scratch copy: all pass. Deliberate simplifications listed at the top of the plan (sleep detail = bars, "All" = 10 years).
+- **Jira 2026-11-23:** RA-45 Smart Insights (subtask of RA-38): two sections, Running insights + Health insights, lime cards, facts only. Calculated metrics moved there from RA-29 (comment on RA-29).
+- **Tab restructure idea (Bar, 2026-11-23, not decided; noted in RA-45):** Insights = insights only (RA-45) · Dashboard = health data (the RA-29 cards) + basic running data · Running = extended running data + last runs · More (replaces You) = Compare, Settings, the rest. If adopted, the RA-29 cards move from the Insights tab to the Dashboard. This branch still builds them on the Insights tab.
+- **Execution (subagent-driven):** tasks 1–11 done (screens, docs), Opus review fixes applied; tsc clean, all self-checks pass. Task 12 (device test) is Bar's.
+- **Device fixes 2026-11-23 (Bar confirmed both):** (1) Edit → Done failed with `no such column: insights_layout` — the phone was at user_version 7 without the column (fast refresh mid-edit); `schema.ts` now checks the real column (`PRAGMA table_info`) and adds it if missing. (2) Native iOS `Switch` hung from the top of each Edit row; it now sits in a fixed-height centred box (`switchBox`). Bar wants the native iOS switch, not a custom toggle.
+- **Bar to do:**
+  1. Run `supabase/migrations/2026-11-23-insights-layout.sql` in the Supabase SQL Editor **before** opening the new code.
+  2. Build a new dev client: `eas build --profile development --platform ios` (new Health types in `app.json`), install, `npx expo start --dev-client`.
+  3. Device test: plan Task 12 steps 3–8 (`docs/superpowers/plans/2026-11-23-health-data.md`).
+
 ## Personal Info feature (RA-11 + RA-9) — earlier notes
 
 Bar's request: right after signup the user fills a personal-details form. Everything available from Apple Health is prefilled and editable. Includes running HR zones — automatic (from age / HRmax) or built manually. Must be stored in the cloud DB so another device doesn't need to refill it. Many features depend on this data.

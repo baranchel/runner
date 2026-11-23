@@ -19,6 +19,7 @@ iOS running tracker app. Reads workouts from Apple HealthKit, lets user classify
 - **Supabase** — auth + cloud Postgres. Client and all calls in `src/api/` only; screens/stores import from `src/api/auth.ts`, never `@supabase/supabase-js`. Keys in `.env` (local) and EAS env (builds).
 - **@kingstinct/react-native-healthkit** (v16, Nitro) — reads HealthKit workouts. Logic in `src/healthkit/`; the module is lazy-loaded via `src/healthkit/native.ts` (Expo Go has none — never import it at top level). Self-check: `node src/healthkit/import.check.ts`. See `architecture.md` → HealthKit import.
 - **react-native-svg** — SVG area/line charts. Shared `Chart` component in `src/components/`.
+- **Insights (RA-29)** — `src/insights/` is pure (metric catalogue, summary maths; self-check `node src/insights/summary.check.ts`); the HealthKit reader is `src/healthkit/insights.ts`, in-memory cache in `useInsightsStore`.
 
 ## Development Workflow
 
@@ -53,12 +54,13 @@ Palette comes from the Strides Figma file (dark): https://www.figma.com/design/w
 - Charts draw real stored data only, never generated series. The HR chart = `run.hrCurve` (80 × [min, max] bpm, built at import); no curve → no HR chart.
 - Run type colors: `oklch(0.66 0.17 <hue>)` where hue comes from `RunType.hue`.
 - HR zones: zone starts always come from `useZoneStarts()` (`src/store/useProfileStore.ts`); time-in-zone = `zoneTimes(run.hrHist, starts)` from `src/utils/zones.ts` (self-check `node src/utils/zones.check.ts`). Runs store an HR histogram, never zone totals. HRmax always via `effectiveHrMax(profile, runs, today)` (`node src/utils/profile.check.ts`); never a hardcoded HRmax.
+- Insights read Apple Health live — never store Health metrics (only the hide/order layout in `profiles.insights_layout`). Group colours come from `groupColors` in `src/utils/tokens.ts`; lime is reserved for insight cards.
 
 ## Git
 
 Never run any git commands (git add, git commit, git push, git checkout, etc.). Bar handles all git operations himself. When files are ready to commit, say so and list what changed.
 
-When Bar says the work is ready to commit, write out the git commands for him to run, in order and one per code block. Split the changes into several commits by subject (data/schema, logic, screens, docs…), never one big commit. For each commit, write `git add` with its files and then `git commit` with a message. Then push. Never tell him to merge into `main` locally: branches reach `main` through a GitHub PR. Don't run them yourself.
+When Bar says the work is ready to commit, write out the git commands for him to run, in order and one per code block. Split the changes into several commits by subject (data/schema, logic, screens, docs…), never one big commit. For each commit, write `git add` with its files and then `git commit` with a message. Commit messages never get a `Co-Authored-By` line or any other AI attribution (also not in PR descriptions). Then push. Never tell him to merge into `main` locally: branches reach `main` through a GitHub PR. Don't run them yourself.
 
 ## Branch-per-task rule
 
