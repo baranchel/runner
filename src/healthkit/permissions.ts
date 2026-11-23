@@ -1,8 +1,11 @@
 import { getMeta, setMeta } from '../db/queries'
+import type { ObjectTypeIdentifier } from '@kingstinct/react-native-healthkit'
+import { METRICS } from '../insights/metrics'
 import { hk } from './native'
 
-// One prompt for everything RA-3 and RA-11 read. iOS shows it once per install.
-const READ = [
+// One prompt for everything the app reads (RA-3 runs, RA-11 body data, RA-29 Insights).
+// iOS shows it once per install; types added later are asked about once more (only the new ones).
+const BASE = [
   'HKWorkoutTypeIdentifier',
   'HKQuantityTypeIdentifierHeartRate',
   'HKQuantityTypeIdentifierDistanceWalkingRunning',
@@ -13,7 +16,8 @@ const READ = [
   'HKQuantityTypeIdentifierBodyMass',
   'HKQuantityTypeIdentifierRestingHeartRate',
   'HKQuantityTypeIdentifierVO2Max',
-] as const
+]
+const READ = [...new Set([...BASE, ...METRICS.flatMap(m => m.hk)])] as ObjectTypeIdentifier[]
 
 /** True while iOS has not shown the prompt yet (iOS remembers per install, so no flag of ours). */
 export async function needsHealthPrompt(): Promise<boolean> {

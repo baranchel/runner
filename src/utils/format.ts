@@ -52,3 +52,9 @@ export function fmtMMSS(sec: number): string {
   }
   return `${m}:${String(s).padStart(2, '0')}`
 }
+
+/** Seconds → "h:mm" (sleep, workout time). 25 920 → "7:12". */
+export function fmtHMM(sec: number): string {
+  const m = Math.round(sec / 60)
+  return `${Math.floor(m / 60)}:${String(m % 60).padStart(2, '0')}`
+}

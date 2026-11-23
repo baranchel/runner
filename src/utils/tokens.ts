@@ -88,3 +88,22 @@ export const buttons = {
   outline:     { borderWidth: 1, borderColor: colors.lime, borderRadius: 14, paddingVertical: 6, paddingHorizontal: 12, alignItems: 'center', justifyContent: 'center' },
   outlineText: { fontFamily: fonts.body, fontSize: 11, fontWeight: '600', color: colors.lime },
 } as const
+
+// Insights (RA-29): one colour per metric group, all reused from the palette above.
+// Lime is not used here: it is kept for the calculated insight cards (later).
+export const groupColors = {
+  heart: colors.hrLine,       // #d74f49
+  fitness: colors.elevLine,   // #3bac68
+  form: colors.iconOrange,    // #dc6600
+  sleep: colors.iconSky,      // #6db8e8
+  body: colors.iconTeal,      // #00a6b8
+  activity: colors.iconGold,  // #e8a900
+} as const
+
+// Card labels: 70 % group colour + 30 % lavender, pre-blended (RN has no color-mix).
+export const groupLabelColors = {
+  heart: '#d16880', fitness: '#64a995', form: '#d5784c', sleep: '#87b2ef', body: '#3ba5cd', activity: '#dda74c',
+} as const
+
+// Sleep stages on the Sleep card (sky shades).
+export const sleepColors = { awake: '#3a4a6b', core: '#4f86b8', deep: '#6db8e8', rem: '#a6d8f5' } as const
