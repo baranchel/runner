@@ -20,6 +20,7 @@ create table public.profiles (
   zone_method   text check (zone_method in ('hrmax', 'hrr', 'lthr', 'manual')),  -- RA-9; null = not chosen yet
   lthr          double precision,                       -- lactate threshold HR (LTHR method)
   zone_bounds   jsonb,                                  -- Manual: 4 bpm where Z2..Z5 start
+  insights_layout jsonb,                                  -- RA-29: { hidden: [...], order: [...] }; null = defaults
   updated_at    timestamptz not null default now()
 );
 
