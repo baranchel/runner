@@ -1,5 +1,6 @@
 import { useEffect } from 'react'
 import { Stack } from 'expo-router'
+import { GestureHandlerRootView } from 'react-native-gesture-handler'
 import { StatusBar } from 'expo-status-bar'
 import * as SplashScreen from 'expo-splash-screen'
 import { colors } from '../src/utils/tokens'
@@ -19,7 +20,7 @@ export default function RootLayout() {
   const loading = useAuthStore(s => s.loading)
 
   return (
-    <>
+    <GestureHandlerRootView style={{ flex: 1, backgroundColor: colors.bgApp }}>
       <StatusBar style="light" />
       <SplashGate />
       <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.bgApp } }}>
@@ -43,8 +44,10 @@ export default function RootLayout() {
           <Stack.Screen name="run/[id]/segments" options={{ presentation: 'modal' }} />
           <Stack.Screen name="run/[id]/splits" options={{ presentation: 'modal' }} />
           <Stack.Screen name="run/[id]/zones" options={{ presentation: 'modal' }} />
+          <Stack.Screen name="insight/[key]" />
+          <Stack.Screen name="insights-edit" />
         </Stack.Protected>
       </Stack>
-    </>
+    </GestureHandlerRootView>
   )
 }

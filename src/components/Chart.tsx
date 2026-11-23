@@ -2,7 +2,7 @@ import React, { useRef, useState } from 'react'
 import { PanResponder, View } from 'react-native'
 import { Circle, Line, Path, Polyline, Rect, Svg, Text as SvgText } from 'react-native-svg'
 import { buildChartPaths } from '../utils/chart'
-import { fmtMMSS, fmtPace } from '../utils/format'
+import { fmtDate, fmtMMSS, fmtPace } from '../utils/format'
 import { colors, fonts } from '../utils/tokens'
 
 const R_LABEL = 28   // right-side label column
@@ -418,6 +418,97 @@ export function Chart({ series, strokeColor, formatValue }: ChartProps) {
           )}
         </Svg>
       )}
+    </View>
+  )
+}
+
+// ─── Insights (RA-29) ────────────────────────────────────────────────────────
+// Real data only. line = readings (group colour line + 12 % fill, last point dotted);
+// bars = totals (past buckets 40 % opacity, latest solid).
+
+type TrendPoint = { date: string; value: number }
+
+export function Sparkline({ points, kind, color, height = 30 }: {
+  points: TrendPoint[]; kind: 'line' | 'bars'; color: string; height?: number
+}) {
+  const [w, setW] = useState(0)
+  const n = points.length
+  let body: React.ReactNode = null
+  if (w > 0 && n > 0) {
+    const v = points.map(p => p.value)
+    if (kind === 'bars') {
+      const gap = Math.min(3, w / n * 0.3), bw = Math.max(1, (w - gap * (n - 1)) / n), max = Math.max(...v) || 1
+      body = v.map((x, i) => {
+        const bh = Math.max(2, (height - 2) * x / max)
+        return <Rect key={i} x={i * (bw + gap)} y={height - bh} width={bw} height={bh} rx={2} fill={color} opacity={i === n - 1 ? 1 : 0.4} />
+      })
+    } else {
+      const p = 4, min = Math.min(...v), range = (Math.max(...v) - min) || 1
+      const X = (i: number) => (n === 1 ? w / 2 : p + i * (w - 2 * p) / (n - 1))
+      const Y = (x: number) => p + (height - 2 * p) * (1 - (x - min) / range)
+      const d = v.map((x, i) => `${i ? 'L' : 'M'}${X(i).toFixed(1)} ${Y(x).toFixed(1)}`).join(' ')
+      body = <>
+        {n > 1 && <Path d={`${d} L${X(n - 1)} ${height} L${X(0)} ${height} Z`} fill={color} opacity={0.12} />}
+        {n > 1 && <Path d={d} fill="none" stroke={color} strokeWidth={1.6} strokeLinejoin="round" strokeLinecap="round" />}
+        <Circle cx={X(n - 1)} cy={Y(v[n - 1])} r={3.2} fill={color} stroke={colors.bgSurface} strokeWidth={2} />
+      </>
+    }
+  }
+  return (
+    <View style={{ height }} onLayout={e => setW(e.nativeEvent.layout.width)}>
+      {body && <Svg width={w} height={height}>{body}</Svg>}
+    </View>
+  )
+}
+
+/** Detail chart: 3 dashed gridlines with values on the right, 3 date labels below. */
+export function TrendChart({ points, kind, color, format, height = 170 }: {
+  points: TrendPoint[]; kind: 'line' | 'bars'; color: string; format: (v: number) => string; height?: number
+}) {
+  const [w, setW] = useState(0)
+  const n = points.length
+  const pl = 4, pr = 34, pt = 8, pb = 20
+  let body: React.ReactNode = null
+  if (w > 0 && n > 0) {
+    const v = points.map(p => p.value)
+    const lo = kind === 'bars' ? 0 : Math.min(...v), hi = Math.max(...v)
+    const pad = kind === 'bars' ? 0 : ((hi - lo) || 1) * 0.1
+    const min = lo - pad, max = hi + pad, range = (max - min) || 1
+    const plotW = w - pl - pr, plotH = height - pt - pb
+    const Y = (x: number) => pt + plotH * (1 - (x - min) / range)
+    const grid = [min, (min + max) / 2, max].map((g, i) => (
+      <React.Fragment key={`g${i}`}>
+        <Line x1={pl} x2={pl + plotW} y1={Y(g)} y2={Y(g)} stroke={colors.borderSubtle} strokeDasharray="2 4" />
+        <SvgText x={w - pr + 6} y={Y(g) + 4} fill={colors.textFaint} fontSize={10} fontFamily={fonts.mono}>{format(g)}</SvgText>
+      </React.Fragment>
+    ))
+    const idx = n === 1 ? [0] : n === 2 ? [0, 1] : [0, Math.floor((n - 1) / 2), n - 1]
+    const X = (i: number) => (n === 1 ? pl + plotW / 2 : pl + i * plotW / (n - 1))
+    const anchors = (n === 2 ? ['start', 'end'] : ['start', 'middle', 'end']) as ('start' | 'middle' | 'end')[]
+    const dates = idx.map((i, k) => (
+      <SvgText key={`d${k}`} x={X(i)} y={height - 4} fill={colors.textFaint} fontSize={10} fontFamily={fonts.body}
+        textAnchor={n === 1 ? 'middle' : anchors[k]}>{fmtDate(points[i].date)}</SvgText>
+    ))
+    let marks: React.ReactNode
+    if (kind === 'bars') {
+      const slot = plotW / n, bw = Math.max(1.5, slot * 0.6)
+      marks = v.map((x, i) => (
+        <Rect key={i} x={pl + i * slot + (slot - bw) / 2} y={Y(x)} width={bw} height={Math.max(1, Y(0) - Y(x))} rx={1.5}
+          fill={color} opacity={i === n - 1 ? 1 : 0.55} />
+      ))
+    } else {
+      const d = v.map((x, i) => `${i ? 'L' : 'M'}${X(i).toFixed(1)} ${Y(x).toFixed(1)}`).join(' ')
+      marks = <>
+        {n > 1 && <Path d={`${d} L${X(n - 1)} ${pt + plotH} L${X(0)} ${pt + plotH} Z`} fill={color} opacity={0.12} />}
+        {n > 1 && <Path d={d} fill="none" stroke={color} strokeWidth={2} strokeLinejoin="round" />}
+        <Circle cx={X(n - 1)} cy={Y(v[n - 1])} r={4} fill={color} stroke={colors.bgChart} strokeWidth={2} />
+      </>
+    }
+    body = <>{grid}{marks}{dates}</>
+  }
+  return (
+    <View style={{ height }} onLayout={e => setW(e.nativeEvent.layout.width)}>
+      {body && <Svg width={w} height={height}>{body}</Svg>}
     </View>
   )
 }
