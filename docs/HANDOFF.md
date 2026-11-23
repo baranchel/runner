@@ -1,10 +1,10 @@
-# Chronodrom — Session Handoff (2026-11-21)
+# Chronodrom — Session Handoff (2026-11-23)
 
 Read this first, together with `CLAUDE.md` and `architecture.md`. It captures the state of work and the decisions made in the previous Claude Code (CLI) session, which a new session cannot see.
 
 ## Working rules (from Bar — always apply)
 
-- **Never run git commands.** Bar commits himself. When he says "ready to commit", write the commands for him to run: several commits split by subject, then push. Changes reach `main` through PRs, never a local merge.
+- **Never run git commands.** Bar commits himself. When he says "ready to commit", write the commands for him to run: several commits split by subject, then push. Changes reach `main` through PRs, never a local merge. **No `Co-Authored-By` / AI attribution** in commit messages or PR descriptions.
 - **Branch check first:** read `.git/HEAD` (file read, not git). Branch per task, `feature/<name>`. Wrong branch → stop and tell Bar.
 - **Subagents:** Sonnet minimum, never Haiku.
 - **Jira:** write a user story into a ticket only after Bar approves the draft.
@@ -12,13 +12,62 @@ Read this first, together with `CLAUDE.md` and `architecture.md`. It captures th
 - Bar works on Windows (no Mac), tests on his iPhone via Expo Go / EAS dev build. Explain concepts alongside technical decisions.
 - Never generate image assets — ask Bar for them.
 
-## Next session: start here
+## Next session: start here (updated 2026-11-23)
 
-The branches are stacked: `feature/healthkit` → `feature/add-personal-info` → `feature/hr-zones`. Each one was branched from the one before. Steps:
+### Current stage
 
-1. Open a PR into `main` for each branch that isn't in `main` yet, oldest first.
-2. Bar merges them.
-3. Start the next task on a fresh `feature/<name>` branch cut from the updated `main`.
+- **`feature/health-data` (RA-29 Insights tab):** built, reviewed twice (Opus), **merged into `main` 2026-11-23**. 25 Apple Health metrics read live in 6 colour groups, detail charts, Edit (native switches + drag reorder) saved in `profiles.insights_layout`. Two device bugs fixed and confirmed by Bar (missing SQLite column, off-centre switches). Details in the RA-29 section below.
+  - **Still open:** rest of the device test (plan `docs/superpowers/plans/2026-11-23-health-data.md`, Task 12): values vs the Health app, detail periods, hide/order after restart + log out/in, "Allow access" message with Health off. Any fix found there goes on a new branch from `main` (e.g. `feature/insights-fixes`).
+- **`feature/run-type`:** not finished. Bar can only check it after his next run (2026-11-24). Independent of `feature/health-data` (that branch was cut from `main` after PR #21).
+  - **Possible conflict:** if `feature/run-type` also bumps the SQLite `VERSION` in `src/db/schema.ts` (or edits `queries.ts`, `supabase/schema.sql`, `CLAUDE.md`), whichever merges second takes version 8 and keeps both upgrade blocks.
+- **Jira created 2026-11-23:** RA-43 (cadence + stride on run screen), RA-44 (first-run tour), RA-45 (Smart Insights: running + health insights, lime cards; also holds the tab-restructure idea).
+
+### Bar: commands to see the whole Insights page on the iPhone
+
+1. Supabase SQL Editor: run `supabase/migrations/2026-11-23-insights-layout.sql` (once, if not done yet).
+2. Get the code — before the PR is merged:
+   ```powershell
+   git checkout feature/health-data
+   ```
+   after the PR is merged:
+   ```powershell
+   git checkout main
+   ```
+   ```powershell
+   git pull
+   ```
+3. ```powershell
+   npm install
+   ```
+4. New dev build, once (new Health permissions), then install it on the iPhone:
+   ```powershell
+   eas build --profile development --platform ios
+   ```
+5. ```powershell
+   npx expo start --dev-client
+   ```
+6. On the phone: allow the new Health types when asked, open Insights.
+
+Back to run type after the run:
+```powershell
+git checkout feature/run-type
+```
+```powershell
+npm install
+```
+```powershell
+npx expo start --dev-client
+```
+(The new dev build works for that branch too; its JS comes from Metro.)
+
+### Suggested next tasks (in order)
+
+1. **Finish the RA-29 device test** (already merged; fixes on a new branch).
+2. **Run type:** test after the run (2026-11-24), fix, merge. Watch the `schema.ts` version clash above.
+3. **RA-24 white flash on logout:** fix already written up in "Open bugs" below (ThemeProvider in `app/_layout.tsx`), JS only, ~10 min.
+4. **RA-43 cadence + stride length on the run screen:** small branch; cadence from step data the import already reads, stride needs one new Health type (new dev build).
+5. **Decide the tab restructure** before RA-45 (idea in RA-45: Insights = insights only · Dashboard = health data + basic running · Running = extended running + last runs · More replaces You). It decides where the RA-29 cards live. Short brainstorm, then RA-45 Smart Insights.
+6. Later: RA-6 units (km/mi); RA-44 app tour after the tab layout is settled.
 
 ## Big decisions made (2026-11-08)
 
