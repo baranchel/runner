@@ -36,7 +36,7 @@
       [
         "@kingstinct/react-native-healthkit",
         {
-          "NSHealthShareUsageDescription": "Chronodrom reads your runs, heart rate and body data from Apple Health to build your run history. It never writes to Apple Health.",
+          "NSHealthShareUsageDescription": "Chronodrom reads your runs, heart rate, sleep, activity and body data from Apple Health to build your run history and Insights. It never writes to Apple Health.",
           "NSHealthUpdateUsageDescription": false,
           "background": false
         }

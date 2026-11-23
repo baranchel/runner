@@ -1,4 +1,5 @@
 // Pure profile logic (RA-11). No React Native imports: `node src/utils/profile.check.ts` runs it.
+import type { InsightsLayout } from '../insights/metrics.ts'
 
 export type Sex = 'female' | 'male' | 'undisclosed'  // undisclosed = "Prefer not to say"
 export type ZoneMethod = 'hrmax' | 'hrr' | 'lthr' | 'manual'  // RA-9; hrmax = % of max HR (default)
@@ -20,6 +21,7 @@ export interface ProfileRow {
   zone_method: ZoneMethod | null  // null = not chosen yet (onboarding asks); zones use hrmax meanwhile
   lthr: number | null             // lactate threshold HR, LTHR method only
   zone_bounds: number[] | null    // Manual: bpm where Z2..Z5 start
+  insights_layout?: InsightsLayout | null  // RA-29: Insights hide/order; null/missing = defaults
   updated_at?: string | null
 }
 

@@ -630,3 +630,17 @@ Miles conversion:
 8. **Manage Types** — list with edit/delete, add form with color swatches
 9. **Connected Apps** — app rows with sync button + animated toggle switch
 10. **Navigation wiring** — connect all screens, hamburger drawer, back links
+
+---
+
+## Insights tab (RA-29)
+
+Heading + dark card style from Figma "01 Data & insights"; Bar will redesign later. Mockup: `.superpowers/brainstorm/insights/insights-v2.html` (gitignored).
+
+- **Heading:** "Your body, over time." Inter 26 / 700, line 30; sub "From Apple Health · last 30 days" Inter 13 `textDim`. Outline "Edit" button top right (hidden when there is no Health data).
+- **Group header:** 9 × 9 dot (radius 3, group colour) + title Inter 17 / 600; optional note on the right, Inter 11 `textFaint`. Gap between groups 22.
+- **Card:** `bgSurface`, 1 px `borderDefault`, radius 16, padding 12/12/10, two per row (48.5 %, gap 10), min height 128; wide cards (HR notifications, VO2max, Sleep, Other workouts) full width. Label Inter 10 / 600 uppercase, tracking 0.6, `groupLabelColors`. Value JetBrains Mono 26 / 600 + unit Inter 12 `textMuted`. Meta Inter 11 `textFaint`, one line.
+- **Sparkline:** lines for rate-like metrics (resting HR, HRV, weight…), bars for totals (steps, stand hours); group colour, last bar full opacity, the rest 40 %. Height 30 (wide 40). Sleep card has a stage bar (awake / core / deep / REM in `sleepColors`) with a legend instead.
+- **Group colours** (`groupColors`): heart `#d74f49` · fitness `#3bac68` · running form `#dc6600` · sleep `#6db8e8` · body `#00a6b8` · activity `#e8a900`. Lime is reserved for insight cards (RA-45).
+- **Detail (`insight/[key]`):** back button + metric name, big value (Mono 44), segmented control Month / 3 months / Year / All (default 3 months), `TrendChart` in a `bgChart` box, Min / Avg / Max tiles, explanation card, "From Apple Health. Read-only."
+- **Edit (`insights-edit`):** grouped list of rows (48 high): drag handle, name, switch. Drag reorders inside the group only. Metrics with no Health data are dimmed with "No data in Health". Primary "Done" saves.

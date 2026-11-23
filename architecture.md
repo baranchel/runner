@@ -95,11 +95,13 @@ app/
   auth-callback.tsx            ← deep-link target: email confirmation
   (tabs)/
     _layout.tsx                ← bottom tab bar (Insights, Running, All runs, Compare, You)
-    insights.tsx               ← placeholder until Figma "Data & insights" is built
+    insights.tsx               ← Apple Health trend cards (RA-29)
     dashboard.tsx              ← "Running" tab
     runs.tsx                   ← "All runs" tab
     compare.tsx
     settings.tsx
+  insight/[key].tsx           ← RA-29 metric detail (Month / 3 months / Year / All)
+  insights-edit.tsx            ← RA-29 hide / reorder metrics (saved in profiles.insights_layout)
   run/
     [id].tsx                   ← Run Detail screen (+ compare sheet)
   compare/
@@ -108,9 +110,10 @@ app/
 src/
   components/                  ← RunCard, RunPickerList (shared month-grouped list pieces + run picker), CompareView, Chart, SplitsTable, SegmentsTable
   api/                         ← supabase.ts (client), auth.ts, authErrors.ts, sync.ts (push/pull rows) — the ONLY code that talks to Supabase
-  store/                       ← useAuthStore (also drives the data lifecycle), useRunStore, useRunTypeStore, useProfileStore (Zustand)
+  store/                       ← useAuthStore (also drives the data lifecycle), useRunStore, useRunTypeStore, useProfileStore, useInsightsStore (Zustand)
   db/                          ← schema.ts (SQLite tables), queries.ts (reads/writes + outbox), merge.ts (pure, `node src/db/sync.check.ts`), sync.ts (syncNow)
-  healthkit/                   ← native.ts (lazy module load), permissions.ts, importRuns.ts, bodyData.ts (personal-info prefill); pure: mapWorkout.ts, dedupe.ts (`node src/healthkit/import.check.ts`)
+  insights/                    ← RA-29 pure: metrics.ts (catalogue, groups), summary.ts (buckets, compare, sleep nights, card text, layout; `node src/insights/summary.check.ts`)
+  healthkit/                   ← native.ts (lazy module load), permissions.ts, importRuns.ts, insights.ts (live Insights reader), bodyData.ts (personal-info prefill); pure: mapWorkout.ts, dedupe.ts (`node src/healthkit/import.check.ts`)
   types/                       ← index.ts (Run, RunType, User interfaces)
   utils/                       ← format.ts, chart.ts, stats.ts, zones.ts (pure zone math, `node src/utils/zones.check.ts`), compare.ts (metrics + per-row "better" rule), profile.ts (pure profile + HRmax logic, `node src/utils/profile.check.ts`)
 ```
@@ -184,7 +187,7 @@ Supabase Postgres is the source of truth (`supabase/schema.sql`: `profiles`, `ru
 
 ### Profile (RA-11 / RA-10)
 
-`profiles` (one row per user, created by the signup trigger): `unit`, `first_name`, `last_name`, `dob`, `sex` (`female` / `male` / `undisclosed` = "Prefer not to say"), `height_cm`, `weight_kg`, `resting_hr`, `vo2max`, `hr_max`, `hr_max_manual`, `zone_method` / `lthr` / `zone_bounds` (RA-9, see HR zones). Metric only until RA-6.
+`profiles` (one row per user, created by the signup trigger): `unit`, `first_name`, `last_name`, `dob`, `sex` (`female` / `male` / `undisclosed` = "Prefer not to say"), `height_cm`, `weight_kg`, `resting_hr`, `vo2max`, `hr_max`, `hr_max_manual`, `zone_method` / `lthr` / `zone_bounds` (RA-9, see HR zones), `insights_layout` (RA-29: `{hidden, order}` jsonb). Metric only until RA-6.
 
 - **Form** (`app/personal-info.tsx`): required first name, last name, DOB (red `*`); the rest optional. Prefill per field: saved value → Apple Health (`readBodyData`) → sign-in name (`signInInfo`: `first_name`/`last_name` from signup or Apple, else the old `name` / Google `full_name` split at the first space).
 - **Shown** whenever `isComplete(profile)` is false (first name + last name + DOB). On a phone with no local profile row, `index` waits for one sync first, so a profile filled on another device skips the form.
@@ -218,6 +221,14 @@ The Run Detail **Edit** button fixes bad HealthKit readings (name, distance, tim
 - **Logout:** Settings pushes first and warns if changes are unsent; an explicit logout or account deletion then runs `clearAll()` (an epoch counter stops a sync that was still running). A forced sign-out (e.g. rejected refresh token) only empties the stores, so unsent edits survive and push when the same user logs back in. Local data has an `owner`; a different user logging in starts clean.
 - **Limits:** last write wins per field; `edits` merges as one field.
 - **Tables:** `profiles` → `run_types` → `runs`. `profiles` is keyed by `user_id` in the cloud and by `id` (= user id) locally; `cloudKey` / `fromCloud` in `src/db/merge.ts` map between them. SQLite schema v6.
+
+### Insights (RA-29)
+
+The Insights tab shows 25 Apple Health metrics in 6 groups (heart, fitness, running form, sleep, body, activity). Spec: `docs/superpowers/specs/2026-11-23-health-data-design.md`.
+- **Read live, nothing stored.** `src/healthkit/insights.ts` reads HealthKit; `useInsightsStore` caches the last 91 days in memory (re-read on focus/foreground at most every 10 min, pull-to-refresh forces it). The detail screen reads its own period (Month / 3 months / Year / All) directly.
+- **Only the layout is stored:** `profiles.insights_layout` (`{hidden, order}`), changed on the Edit screen through `writeChange` + `syncNow`.
+- A metric with no data is hidden on the tab (and marked "No data in Health" in Edit). Denied permission looks the same as no data, so the tab shows "Allow Apple Health access…".
+- Pure maths (buckets, 30-vs-prior-30 compare, sleep nights, card text) lives in `src/insights/summary.ts`.
 
 ### HealthKit import (RA-3)
 

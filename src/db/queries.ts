@@ -13,7 +13,7 @@ const COLS: Record<Table, readonly string[]> = {
     'min_hr', 'elev_gain', 'cadence', 'calories','source', 'notes', 'splits', 'segments', 'hr_hist', 'hr_curve', 'weather', 'edits', 'updated_at'],
   run_types: ['id', 'name', 'hue', 'deleted', 'updated_at'],
   profiles: ['id', 'unit', 'first_name', 'last_name', 'dob', 'sex', 'height_cm', 'weight_kg', 'resting_hr',
-    'vo2max', 'hr_max', 'hr_max_manual', 'zone_method', 'lthr', 'zone_bounds', 'updated_at'],
+    'vo2max', 'hr_max', 'hr_max_manual', 'zone_method', 'lthr', 'zone_bounds', 'insights_layout', 'updated_at'],
 }
 
 // JS value → SQLite value: objects/arrays as JSON text, booleans as 0/1
@@ -40,6 +40,7 @@ export function loadProfile(): ProfileRow | null {
     ...r,
     hr_max_manual: r.hr_max_manual === 1,
     zone_bounds: r.zone_bounds == null ? null : JSON.parse(r.zone_bounds as string),
+    insights_layout: r.insights_layout == null ? null : JSON.parse(r.insights_layout as string),
   } as unknown as ProfileRow
 }
 
