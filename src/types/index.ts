@@ -2,6 +2,7 @@ export interface RunType {
   id: string
   name: string
   hue: number
+  defaultShoeId: string | null  // RA-8: shoe new runs of this type get
 }
 
 export interface Segment {
@@ -45,6 +46,7 @@ export interface Run {
   hrHist: Record<string, number> | null  // seconds at each bpm (rounded); zones are computed from it (RA-9)
   hrCurve: [number, number][] | null    // HR chart: [min, max] bpm per 1/80 of active time; null = no HR recorded
   needsType: boolean      // RA-39: new run (started after signup) still waiting for the user's type answer
+  shoeId: string | null   // RA-8: shoe worn on this run; null = none
   edits?: RunEdits        // manual edits; the other fields already include them
 }
 

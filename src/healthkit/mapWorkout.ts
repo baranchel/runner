@@ -225,6 +225,7 @@ export function mapWorkout(w: WorkoutInput, hr: Sample[], dist: Sample[], steps:
     healthkitUuid: w.uuid.toLowerCase(),
     typeId: null,
     needsType: false,       // importRuns decides (needsType() above)
+    shoeId: null,           // RA-8: the user picks it (or the type's default when the type is set)
     name: `Run: ${distanceKm.toFixed(1)}km`,
     date: localDay(w.start, w.metadata.HKTimeZone),
     startedAt: w.start.toISOString(),

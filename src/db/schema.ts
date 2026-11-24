@@ -3,7 +3,7 @@ import * as SQLite from 'expo-sqlite'
 
 export const db = SQLite.openDatabaseSync('chronodrom.db')
 
-const VERSION = 8 // bump + add an `if (v < N)` block to change the schema later
+const VERSION = 9// bump + add an `if (v < N)` block to change the schema later
 
 const v = db.getFirstSync<{ user_version: number }>('PRAGMA user_version')?.user_version ?? 0
 if (v < 1) {
@@ -61,4 +61,13 @@ const hasColumn = (table: string, col: string) =>
 if (!hasColumn('profiles', 'insights_layout')) db.execSync('ALTER TABLE profiles ADD COLUMN insights_layout TEXT;')
 // RA-39: new runs wait for the user's type answer (Dashboard card).
 if (!hasColumn('runs', 'needs_type')) db.execSync('ALTER TABLE runs ADD COLUMN needs_type INTEGER NOT NULL DEFAULT 0;')
-if (v < 8) db.execSync(`PRAGMA user_version = ${VERSION};`)
+// RA-8: shoes + the run's shoe + each type's default shoe.
+db.execSync(`CREATE TABLE IF NOT EXISTS shoes (
+  id TEXT PRIMARY KEY, brand TEXT NOT NULL, model TEXT NOT NULL, name TEXT, color TEXT,
+  in_use_from TEXT NOT NULL, limit_km REAL NOT NULL, extra_km REAL NOT NULL DEFAULT 0,
+  retired INTEGER NOT NULL DEFAULT 0, alert_level INTEGER NOT NULL DEFAULT 0,
+  card_dismissed INTEGER NOT NULL DEFAULT 0, updated_at TEXT
+);`)
+if (!hasColumn('runs', 'shoe_id')) db.execSync('ALTER TABLE runs ADD COLUMN shoe_id TEXT;')
+if (!hasColumn('run_types', 'default_shoe_id')) db.execSync('ALTER TABLE run_types ADD COLUMN default_shoe_id TEXT;')
+if (v < 9) db.execSync(`PRAGMA user_version = ${VERSION};`)
