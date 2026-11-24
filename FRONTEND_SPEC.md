@@ -633,6 +633,22 @@ Miles conversion:
 
 ---
 
+## Shoes (RA-8)
+
+Spec: `docs/superpowers/specs/2026-11-23-shoes-design.md`. Entry: Settings → "My shoes" row. All km (no mi until RA-6).
+
+- **Shoe colours** (`shoeColors` in `src/utils/tokens.ts`): black `#1a1a1a` · white `#f2f2f2` · grey `#8c8c8c` · red `#d74f49` · orange `#dc6600` · yellow `#e8c200` · green `#3bac68` · blue `#3d7be0` · purple `#9e6ce7` · pink `#d63f7a` · multi = split dot, lavender `accent` / `lime`. `ColorDot`: round, 2 px `bgSurface` ring; on the logo it sits bottom-right (offset −2).
+- **Logo (`ShoeLogo`):** round, default 38, `bgElevated` fill, brand PNG from the `brand-logos` bucket; missing file → brand initials, Inter 700 `textPrimary`, size × 0.34.
+- **ShoeCard** (My shoes, shoe page): `bgSurface`, 1 px `borderDefault`, radius 16, padding 12. Row: logo + colour dot · name Inter 14 / 600 `textPrimary` (display name = own name, else "Pegasus · Orange") · sub Inter 11 `textMuted` "Brand Model · default: Easy, Long Run". Meter bar 6 high, radius 3, `bgElevated` track, `accent` fill; text "312 / 700 km" mono 12 `textSecondary`. From 90 %: fill and a "92%" tag (mono 11, `iconOrange` on 15 % `iconOrange`, radius 8) turn orange. Retired shoes never turn orange.
+- **My shoes** (`app/shoes/index`): ‹ Back, title "My shoes" 22 / 700, primary "+ Add". Cards gap 10, content padding 18. Empty: "No shoes yet. Add your first pair." Bottom link "Retired (n) ›" (13, `textGhost`, uppercase) opens the same list titled "Retired shoes" (no + Add).
+- **Add / Edit shoe** (`app/shoes/edit`): title 22 / 700 + outline Cancel + primary Save. Fields (label 11 `textMuted`, field `bgElevated`, 1 px `borderStrong`, radius 12, min height 44): Brand (row with logo, ›; opens `ListPicker`, last item "Other…" → text field) · Model (that brand's models, "Other…" last) · Colour (optional): 11 swatches 24, selected = 2 px `lime` ring, tap again clears · Name (optional) · In use from ("Today" default, spinner date picker, max today) · Limit (mono, "km" suffix) with hint 11 `textGhost` "Recommended for Pegasus: 700 km" (typed model: "Typical for running shoes: 700 km"). Offline: orange `iconOrange` note "Catalogue unavailable — type brand and model." and typed fields. Edit adds an outline "Retire shoe" / "Un-retire" button at the bottom (retire asks for confirmation).
+- **ListPicker:** modal list, logo on the left for brands, "Other…" last.
+- **Past runs** (`app/shoes/past-runs`): title "Runs since <date>" 22 / 700, sub 13 `textMuted`. Rows: 20 px checkbox (radius 5; ticked = `accent` fill, `ink` ✓), "date · type" 14, distance mono 13 `textSecondary`; hairline `borderSubtle` dividers; all ticked at start. Then "Distance on this shoe" mono field (follows the ticked sum until typed), hint "From 7 runs. Change it to add km run without the app." Primary "Done".
+- **Shoe page** (`app/shoes/[id]`): ‹ Back, outline Edit. ShoeCard, 2 × 2 stat tiles (`bgSurface`, `borderDefault`, radius 14, padding 12; label 11 `textMuted`, mono 18 value): Total distance · Runs · Average pace · Last used. Note 12 `textGhost`: "In use from <date> · includes N km run without the app"; "Retired" when retired.
+- **Run Detail shoe pill:** under the type pill, `bgElevated`, radius 10, padding 10 / 4, Inter 12 `textSecondary`: "Shoe: Pegasus · Orange ▾" or "Shoe: none ▾". Tap → native sheet: "No shoe" + active shoes (✓ on the current one). After picking a shoe on a run that has a type, unless it is already the type's default: alert "Use <shoe> as the default for <type> runs?" — No / Yes.
+- **Dashboard shoe warning card:** one per active shoe from 90 % (again at 100 %) until dismissed. Fill `#3a2414` (`iconOrange` blended over `bgApp`), 1 px `iconOrange` border, radius 18, padding 14. Title Inter 14 / 700 `#ffd0ad`: "<name> is at 92%" / "<name> has reached its limit"; ✕ right in `#ffb27a`. Body 13 `#ffb27a`: "644 / 700 km · Time to get a new pair." plus an underlined "Retire" link (confirm alert). Tap the card → shoe page. These three oranges are inline in `dashboard.tsx`, not tokens.
+- **Pop-ups (native alerts):** 90 %: title "<name> is at 92%", text "644 / 700 km. Time to get a new pair.", OK. 100 %: "<name> has reached its limit", "702 / 700 km", buttons Close / Retire. One pop-up per level per shoe.
+
 ## Insights tab (RA-29)
 
 Heading + dark card style from Figma "01 Data & insights"; Bar will redesign later. Mockup: `.superpowers/brainstorm/insights/insights-v2.html` (gitignored).

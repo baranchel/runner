@@ -18,12 +18,14 @@ Read this first, together with `CLAUDE.md` and `architecture.md`. It captures th
 
 - **`feature/health-data` (RA-29 Insights tab):** merged into `main` 2026-11-23 and fully device-tested by Bar (2026-11-23). 25 Apple Health metrics read live in 6 colour groups, detail charts, Edit (native switches + drag reorder) saved in `profiles.insights_layout`.
 - **`feature/run-type` (RA-39):** committed, pushed, PR open, not merged. `main` (with RA-29) was rebased into it 2026-11-23: SQLite is now **v8**, and `schema.ts` adds `insights_layout` and `needs_type` by checking the real column (both branches had used v7). Waits for one test: a real new Watch run (2026-11-24) must make the lime "New run · needs a type" card appear by itself after pull to refresh. Pass → Bar merges the PR. Fail → fix on `feature/run-type` (start with the account creation time the import reads, `needsType()` in `src/healthkit/mapWorkout.ts`).
+- **`feature/shoes` (RA-8, 2026-11-24):** built, stacked on `feature/run-type` (contains it). Reviewed by Opus twice, fixes applied. tsc clean, all self-checks pass. **NOT committed, not device-tested.** Details in "Current task: RA-8 Shoes" below.
 - **RA-24 white flash on logout:** no longer happens. `app/_layout.tsx` already paints `colors.bgApp` on the root view and every screen (`contentStyle`), so the ThemeProvider fix isn't needed. Bar handles the ticket.
 - **Jira created:** RA-42 Run Sub-Type (2026-11-22: reps × distance / distance / sets on the run; after RA-39 merges), RA-43 (cadence + stride on run screen), RA-44 (first-run tour), RA-45 (Smart Insights: running + health insights, lime cards; also holds the tab-restructure idea).
 
 ### Suggested next tasks (in order)
 
 1. **Run type:** test after the run (2026-11-24), fix, merge.
+1b. **Shoes (RA-8):** device test (plan Task 13), commit, then merge: the `feature/run-type` PR first, then the `feature/shoes` PR.
 2. **Decide the tab restructure** before RA-45 (idea in RA-45: Insights = insights only · Dashboard = health data + basic running · Running = extended running + last runs · More replaces You). It decides where the RA-29 cards live. Short brainstorm (no code, so no conflict with run-type), then RA-45 Smart Insights.
 3. **RA-43 cadence + stride length on the run screen:** cadence from step data the import already reads, stride needs one new Health type (new dev build). Touches run-type's files → start after RA-39 merges, or stack on `feature/run-type`.
 4. **RA-22 Per Month Zones Summary** (below), after RA-39 merges.
@@ -180,6 +182,24 @@ Claude session name: `feature/run-type`.
 - **Device-tested 2026-11-22 (Bar):** pill, Unclassified filter, bulk Set type, offline change, card via faked `needs_type`, re-login: all pass. **Left:** a real new Watch run (Monday) → the card appears by itself. PR stays open until then.
 - **Search** in All runs is a placeholder (RA-35), not an RA-39 bug.
 - **Follow-up:** RA-3's left-over test "an edit and the type are kept after a re-import" can now be run.
+
+## Current task: RA-8 Shoes — `feature/shoes`
+
+Claude session name: `feature/shoes`. Stacked on `feature/run-type` (needs its SQLite v8 and `setType`).
+
+- Spec `docs/superpowers/specs/2026-11-23-shoes-design.md`, plan `docs/superpowers/plans/2026-11-24-shoes.md` (13 tasks; Task 13 = Bar's device test). Design summary in `architecture.md` → Shoes, UI in `FRONTEND_SPEC.md` → Shoes.
+- **Decisions with Bar (spec):** own catalogue in Supabase, 21 brands / 284 models (brand sites + RunRepeat; Karhu from memory); recommended km by kind of shoe (max-cushion 750, daily 700, trail 650, tempo 550, race 400), editable per shoe; shoe colour for pairs of the same model; alerts: 90% pop-up + Dashboard card, 100% pop-up (Retire / Close) + card; default shoe per run type only fills a run with no shoe; past-runs step with an editable distance → `extra_km`; no delete, no photos.
+- **Changes vs the plan:** `ShoeCard` lives in `src/components/ShoeCard.tsx`. `editShoe()` (`src/shoes/alerts.ts`) is the one save path for editing an existing shoe (lowers remembered alert levels, then runs the 90 / 100% check). The store refuses invalid shoe writes (`shoeProblem` in `shoes.ts`), so a bad op never enters the outbox. `setType` writes the default shoe as its own outbox op. HealthKit inserts leave `shoe_id` out when null. The catalogue fetch times out after 8 s. `compare.check` runs with `npx tsx src/utils/compare.check.ts`.
+- **State (2026-11-24):** implemented, Opus review twice with fixes applied, `npx tsc --noEmit` clean, all self-checks pass. **Not committed, not device-tested.**
+- **Bar to do:**
+  1. Run `supabase/migrations/2026-11-24-shoes.sql`, then `2026-11-24-shoe-catalogue.sql`, in the Supabase SQL Editor **before** opening the new code. The first is **not re-runnable** (creates fail the second time); a push rejected for a missing table / column is marked `failed` for good.
+  2. Optional: upload brand PNGs to Storage bucket `brand-logos` (file = brand name lowercase, non-alphanumerics → `-`: `nike.png`, `new-balance.png`, `inov-8.png`, `la-sportiva.png`). Without them the app shows initials.
+  3. No new dev build (JS only): `npx expo start --dev-client`.
+  4. Device test = plan Task 13.
+- **Merge order:** the `feature/run-type` PR first (normal merge commit, **not squash**, since shoes is stacked on its commits), then the `feature/shoes` PR against `main`.
+- **Device test round 1 (2026-11-24, Bar):** looks good. Changes asked and made: (1) after adding a shoe, a "Default for which runs?" checklist (future runs only), shown again when the shoe on a run changes (replaces the single yes/no prompt); (2) Delete shoe on the Edit screen and by swiping a row left in My Shoes (`ReanimatedSwipeable`; outbox gets a `delete` op kind, shoes only); (3) the keyboard no longer hides the Limit field (`automaticallyAdjustKeyboardInsets`). Opus-reviewed; blank page after deleting from a Dashboard-opened shoe page fixed. Re-test these three.
+- **Round 2 (2026-11-24, Bar):** the red Delete showed behind a tapped card (the card dims on press) → opaque backing, now only visible on swipe; Edit shoe gets a "Default for" row that opens the defaults checklist to add/remove types; full swipe (past half the row) asks to delete on release, iOS-style. Re-test all three.
+- **Follow-ups (minor):** a deleted shoe stays on a second signed-in device until logout/in (no tombstone). Metro "Require cycle" warning between `useRunStore` and `src/shoes/alerts.ts` (harmless). Moving a run off a shoe does not lower the shoe's alert levels.
 
 ## Current task: RA-9 Custom HR Zones — `feature/hr-zones`
 
