@@ -67,6 +67,10 @@ export default function Settings() {
         <Text style={s.btnText}>Heart-rate zones</Text>
       </TouchableOpacity>
 
+      <TouchableOpacity style={s.btn} activeOpacity={0.82} onPress={() => router.push('/shoes')}>
+        <Text style={s.btnText}>My shoes</Text>
+      </TouchableOpacity>
+
       <View style={s.healthBox}>
         <Text style={s.healthTitle}>Apple Health</Text>
         {canConnect ? (
