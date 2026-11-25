@@ -17,14 +17,14 @@ Read this first, together with `CLAUDE.md` and `architecture.md`. It captures th
 ### Current stage
 
 - **`feature/health-data` (RA-29 Insights tab):** merged into `main` 2026-11-23 and fully device-tested by Bar (2026-11-23). 25 Apple Health metrics read live in 6 colour groups, detail charts, Edit (native switches + drag reorder) saved in `profiles.insights_layout`.
-- **`feature/run-type` (RA-39):** committed, pushed, PR open, not merged. `main` (with RA-29) was rebased into it 2026-11-23: SQLite is now **v8**, and `schema.ts` adds `insights_layout` and `needs_type` by checking the real column (both branches had used v7). Waits for one test: a real new Watch run (2026-11-24) must make the lime "New run · needs a type" card appear by itself after pull to refresh. Pass → Bar merges the PR. Fail → fix on `feature/run-type` (start with the account creation time the import reads, `needsType()` in `src/healthkit/mapWorkout.ts`).
+- **`feature/run-type` (RA-39):** committed, pushed, PR open, not merged. `main` (with RA-29) was rebased into it 2026-11-23: SQLite is now **v8**, and `schema.ts` adds `insights_layout` and `needs_type` by checking the real column (both branches had used v7). **Real new Watch run passed 2026-11-24** (card appeared by itself): fully device-tested, ready to merge.
 - **`feature/shoes` (RA-8, 2026-11-24):** built, stacked on `feature/run-type` (contains it). Reviewed by Opus twice, fixes applied. tsc clean, all self-checks pass. **NOT committed, not device-tested.** Details in "Current task: RA-8 Shoes" below.
 - **RA-24 white flash on logout:** no longer happens. `app/_layout.tsx` already paints `colors.bgApp` on the root view and every screen (`contentStyle`), so the ThemeProvider fix isn't needed. Bar handles the ticket.
 - **Jira created:** RA-42 Run Sub-Type (2026-11-22: reps × distance / distance / sets on the run; after RA-39 merges), RA-43 (cadence + stride on run screen), RA-44 (first-run tour), RA-45 (Smart Insights: running + health insights, lime cards; also holds the tab-restructure idea).
 
 ### Suggested next tasks (in order)
 
-1. **Run type:** test after the run (2026-11-24), fix, merge.
+1. **Run type:** tested 2026-11-24, passed → merge the PR.
 1b. **Shoes (RA-8):** device test (plan Task 13), commit, then merge: the `feature/run-type` PR first, then the `feature/shoes` PR.
 2. **Decide the tab restructure** before RA-45 (idea in RA-45: Insights = insights only · Dashboard = health data + basic running · Running = extended running + last runs · More replaces You). It decides where the RA-29 cards live. Short brainstorm (no code, so no conflict with run-type), then RA-45 Smart Insights.
 3. **RA-43 cadence + stride length on the run screen:** cadence from step data the import already reads, stride needs one new Health type (new dev build). Touches run-type's files → start after RA-39 merges, or stack on `feature/run-type`.
@@ -62,7 +62,7 @@ Other open items: RA-35 Search (the All runs search box is a placeholder; wait f
 | 3 | `feature/healthkit` | RA-3 Apple Connectivity | **Committed, not merged** — only test left: a new run (2026-11-21) via pull to refresh. Pass → merge into `main`. |
 | 4 | `feature/add-personal-info` | RA-11 Personal Info + RA-10 Edit Profile | **Done 2026-11-21, device-tested, committed** (see section below). Branched from `feature/healthkit`. |
 | 5 | `feature/hr-zones` | RA-9 Custom HR Zones (4 methods + preview) + most of RA-21 | **Done 2026-11-22, device-tested, matches Fitness; real HR chart fix included.** Committed + pushed, Jira updated. PR after `feature/add-personal-info`. |
-| 6 | `feature/run-type` | RA-39 Set Run Type Manually (+ new-run card, bulk Set type) | **Implemented + device-tested 2026-11-22** (all but a real new Watch run → Monday). Cut from `main` after the 3 stacked PRs were merged. See section below. |
+| 6 | `feature/run-type` | RA-39 Set Run Type Manually (+ new-run card, bulk Set type) | **Done, fully device-tested** (real new Watch run passed 2026-11-24). PR open → Bar merges. Cut from `main` after the 3 stacked PRs were merged. See section below. |
 
 **Merge order (stacked branches):** `feature/healthkit` → `main` (Bar, 2026-11-22, after the new-run test), then `feature/add-personal-info` → `main`, then `feature/hr-zones` → `main`. Each branch contains the one before it, so merging in this order keeps every PR small. A fix needed in an earlier branch goes on that branch, then gets merged forward into the later ones.
 
@@ -179,7 +179,7 @@ Claude session name: `feature/run-type`.
 - **Implementation (Sonnet implementers, Opus review per batch):** `runs.needs_type` (SQLite v7 + cloud), `needsType()` (trims Supabase microseconds so Hermes can parse), `useRunStore.setType(ids, typeId)`, `pickRunType()`, Run Detail pill, Dashboard `NewRunCard`, All runs mode `none | compare | bulk`. Checks: `sync.check` (needs_type round-trip + re-import tripwire), `import.check` (`needsType` cases), tsc clean.
 - **Bar to do:** (1) run `supabase/migrations/2026-11-22-needs-type.sql` in the SQL Editor **before** opening the new code (a push rejected for the unknown column is marked `failed` for good); (2) `npx expo start --dev-client` (JS only, no rebuild); (3) device test = plan Task 8.
 - **Known limits (accepted):** one outbox op + one HTTP update per run in a bulk set; after `delete from public.runs;` (dev re-import) every run since the account was created asks again.
-- **Device-tested 2026-11-22 (Bar):** pill, Unclassified filter, bulk Set type, offline change, card via faked `needs_type`, re-login: all pass. **Left:** a real new Watch run (Monday) → the card appears by itself. PR stays open until then.
+- **Device-tested 2026-11-22 (Bar):** pill, Unclassified filter, bulk Set type, offline change, card via faked `needs_type`, re-login: all pass. Real new Watch run tested 2026-11-24: the card appeared by itself. All tests pass.
 - **Search** in All runs is a placeholder (RA-35), not an RA-39 bug.
 - **Follow-up:** RA-3's left-over test "an edit and the type are kept after a re-import" can now be run.
 
@@ -199,6 +199,7 @@ Claude session name: `feature/shoes`. Stacked on `feature/run-type` (needs its S
 - **Merge order:** the `feature/run-type` PR first (normal merge commit, **not squash**, since shoes is stacked on its commits), then the `feature/shoes` PR against `main`.
 - **Device test round 1 (2026-11-24, Bar):** looks good. Changes asked and made: (1) after adding a shoe, a "Default for which runs?" checklist (future runs only), shown again when the shoe on a run changes (replaces the single yes/no prompt); (2) Delete shoe on the Edit screen and by swiping a row left in My Shoes (`ReanimatedSwipeable`; outbox gets a `delete` op kind, shoes only); (3) the keyboard no longer hides the Limit field (`automaticallyAdjustKeyboardInsets`). Opus-reviewed; blank page after deleting from a Dashboard-opened shoe page fixed. Re-test these three.
 - **Round 2 (2026-11-24, Bar):** the red Delete showed behind a tapped card (the card dims on press) → opaque backing, now only visible on swipe; Edit shoe gets a "Default for" row that opens the defaults checklist to add/remove types; full swipe (past half the row) asks to delete on release, iOS-style. Re-test all three.
+- **Logos (2026-11-25):** 19 brand logos in `assets/brand-logos/` (Hoka and Topo Athletic missing → initials), shown on a white circle (`ShoeLogo`). Bar uploads the folder's PNGs to the `brand-logos` bucket.
 - **Follow-ups (minor):** a deleted shoe stays on a second signed-in device until logout/in (no tombstone). Metro "Require cycle" warning between `useRunStore` and `src/shoes/alerts.ts` (harmless). Moving a run off a shoe does not lower the shoe's alert levels.
 
 ## Current task: RA-9 Custom HR Zones — `feature/hr-zones`
