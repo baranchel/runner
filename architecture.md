@@ -209,8 +209,15 @@ The Run Detail **Edit** button fixes bad HealthKit readings (name, distance, tim
 - Edits live in `runs.edits` (jsonb, e.g. `{"distanceKm":10.02,"avgHr":151}`); HealthKit values stay untouched in their own columns.
 - Displayed run = HealthKit values + `edits` on top (`rowToRun` in `src/db/merge.ts`).
 - Saving a value equal to the HealthKit value removes that edit (`diffEdits`). Revert = `edits = {}` (no UI yet).
-- HealthKit imports insert-if-missing, so they never touch `edits`, `type_id` or `notes`.
+- HealthKit imports insert-if-missing, so they never touch `edits`, `type_id`, `needs_type` or `notes` (tripwire in `src/db/sync.check.ts`).
 - Splits, segments, the HR histogram and charts stay on the recorded HealthKit data (not rescaled by edits).
+
+### Run types (RA-39)
+
+- **Set the type:** every change goes through `useRunStore.setType(ids, typeId)` → `writeChange('runs', 'update', { id, type_id, needs_type: false })` per run → `load()` → `syncNow()` (offline-safe, never renames). One function for one run or many.
+- **Picker:** `pickRunType(title, current, onPick)` in `src/components/RunPickerList.tsx`, the native `ActionSheetIOS` (same `pick()` as the All runs filters): Unclassified + the user's types, `✓` on `current` (`undefined` = no ✓, bulk). RA-15's **Change** button reuses it.
+- **Where:** Run Detail type pill (type colour, "Unclassified ▾" grey); Dashboard New run card; All runs **Select** mode (no limit, separate from Compare's 2-run mode) with Select all / Deselect all and **Set type** on the selected runs the current filter shows. The type filter has an **Unclassified** option (`UNCLASSIFIED` sentinel; `null` = all types).
+- **New runs must be answered:** `runs.needs_type` (bool, default false). The import sets it when the run started after the Supabase account was created (`needsType(startedAt, session.user.created_at)` in `src/healthkit/mapWorkout.ts`), so pre-signup history never asks and a run made while logged out still asks after the next login. While any run has it, a lime card tops the Dashboard (oldest first, "1 of N", **Choose type**; 2+ → **Set all N ›** opens All runs in Select mode with those runs checked, via the `bulk` route param). Any `setType` clears it.
 
 ### Sync (RA-34)
 
@@ -220,7 +227,7 @@ The Run Detail **Edit** button fixes bad HealthKit readings (name, distance, tim
 - **When:** login, app foreground, after each change. Single-flight; never throws.
 - **Logout:** Settings pushes first and warns if changes are unsent; an explicit logout or account deletion then runs `clearAll()` (an epoch counter stops a sync that was still running). A forced sign-out (e.g. rejected refresh token) only empties the stores, so unsent edits survive and push when the same user logs back in. Local data has an `owner`; a different user logging in starts clean.
 - **Limits:** last write wins per field; `edits` merges as one field.
-- **Tables:** `profiles` → `run_types` → `runs`. `profiles` is keyed by `user_id` in the cloud and by `id` (= user id) locally; `cloudKey` / `fromCloud` in `src/db/merge.ts` map between them. SQLite schema v6.
+- **Tables:** `profiles` → `run_types` → `runs`. `profiles` is keyed by `user_id` in the cloud and by `id` (= user id) locally; `cloudKey` / `fromCloud` in `src/db/merge.ts` map between them. SQLite schema v7.
 
 ### Insights (RA-29)
 

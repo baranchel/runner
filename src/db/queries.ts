@@ -10,7 +10,7 @@ export interface PendingOp { seq: number; tbl: Table; row_id: string; kind: 'ins
 
 const COLS: Record<Table, readonly string[]> = {
   runs: ['id', 'healthkit_uuid', 'type_id', 'name', 'date', 'started_at', 'distance_km', 'time_sec', 'avg_hr', 'max_hr',
-    'min_hr', 'elev_gain', 'cadence', 'calories','source', 'notes', 'splits', 'segments', 'hr_hist', 'hr_curve', 'weather', 'edits', 'updated_at'],
+    'min_hr', 'elev_gain', 'cadence', 'calories','source', 'notes', 'splits', 'segments', 'hr_hist', 'hr_curve', 'needs_type', 'weather', 'edits', 'updated_at'],
   run_types: ['id', 'name', 'hue', 'deleted', 'updated_at'],
   profiles: ['id', 'unit', 'first_name', 'last_name', 'dob', 'sex', 'height_cm', 'weight_kg', 'resting_hr',
     'vo2max', 'hr_max', 'hr_max_manual', 'zone_method', 'lthr', 'zone_bounds', 'insights_layout', 'updated_at'],

@@ -1,12 +1,13 @@
 // HealthKit → local DB. Read-only on the Health side. Rows are insert-if-missing,
-// so a re-import never touches the user's type, notes or edits.
+// so a re-import never touches the user's type, needs_type, notes or edits.
 import { runToRow } from '../db/merge'
 import { getEpoch, getMeta, setMeta, writeChange } from '../db/queries'
 import { syncNow } from '../db/sync'
 import { useRunStore } from '../store/useRunStore'
 import { useProfileStore } from '../store/useProfileStore'
+import { useAuthStore } from '../store/useAuthStore'
 import { pickNew, type Candidate } from './dedupe'
-import { mapWorkout, meters, seconds, type Q, type Sample } from './mapWorkout'
+import { mapWorkout, meters, needsType, seconds, type Q, type Sample } from './mapWorkout'
 import { hk } from './native'
 import { needsHealthPrompt } from './permissions'
 
@@ -43,6 +44,8 @@ async function run(epoch: number): Promise<number> {
   const m = await hk()
   if (!m || (await needsHealthPrompt())) return 0  // not asked yet: an anchor saved now would skip history
   const stale = () => getEpoch() !== epoch  // logged out meanwhile: write nothing into the next user's data
+  // Supabase account creation time. useAuthStore imports this file (cycle): only read it here, at call time, never at module top level.
+  const createdAt = useAuthStore.getState().session?.user.created_at ?? null
 
   const anchor = getMeta(ANCHOR) ?? undefined
   const res = await m.queryWorkoutSamplesWithAnchor({
@@ -100,7 +103,7 @@ async function run(epoch: number): Promise<number> {
       },
       toSamples(hr), toSamples(own(dist)), toSamples(own(steps)),
     )
-    writeChange('runs', 'insert', { ...runToRow(mapped) })
+    writeChange('runs', 'insert', { ...runToRow({ ...mapped, needsType: needsType(mapped.startedAt, createdAt) }) })
     if ((i + 1) % PROGRESS_EVERY === 0) progress(i + 1)
   }
   progress(todo.length)

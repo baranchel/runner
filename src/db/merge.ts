@@ -26,6 +26,7 @@ export interface RunRow {
   segments: Run['segments']
   hr_hist: Run['hrHist']
   hr_curve: Run['hrCurve']
+  needs_type: boolean
   weather: Run['weather']
   edits: RunEdits
   updated_at?: string | null
@@ -37,7 +38,8 @@ export function rowToRun(r: RunRow): Run {
     id: r.id, healthkitUuid: r.healthkit_uuid ?? '', typeId: r.type_id, name: r.name, date: r.date, startedAt: r.started_at ?? null,
     distanceKm: r.distance_km, timeSec: r.time_sec, avgHr: r.avg_hr, maxHr: r.max_hr, minHr: r.min_hr,
     elevGain: r.elev_gain, cadence: r.cadence, calories: r.calories ?? null, source: r.source, notes: r.notes,
-    splits: r.splits, segments: r.segments, hrHist: r.hr_hist ?? null, hrCurve: r.hr_curve ?? null, weather: r.weather,
+    splits: r.splits, segments: r.segments, hrHist: r.hr_hist ?? null, hrCurve: r.hr_curve ?? null,
+    needsType: (r.needs_type as unknown) === 1 || r.needs_type === true, weather: r.weather,
     ...r.edits,
     edits: r.edits,
   }
@@ -49,7 +51,7 @@ export function runToRow(r: Run): RunRow {
     id: r.id, healthkit_uuid: r.healthkitUuid || null, type_id: r.typeId, name: r.name, date: r.date, started_at: r.startedAt,
     distance_km: r.distanceKm, time_sec: r.timeSec, avg_hr: r.avgHr, max_hr: r.maxHr, min_hr: r.minHr,
     elev_gain: r.elevGain, cadence: r.cadence, calories: r.calories, source: r.source, notes: r.notes,
-    splits: r.splits, segments: r.segments, hr_hist: r.hrHist, hr_curve: r.hrCurve, weather: r.weather,
+    splits: r.splits, segments: r.segments, hr_hist: r.hrHist, hr_curve: r.hrCurve, needs_type: r.needsType, weather: r.weather,
     edits: {},
   }
 }

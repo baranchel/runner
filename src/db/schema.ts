@@ -3,7 +3,7 @@ import * as SQLite from 'expo-sqlite'
 
 export const db = SQLite.openDatabaseSync('chronodrom.db')
 
-const VERSION = 7  // bump + add an `if (v < N)` block to change the schema later
+const VERSION = 8 // bump + add an `if (v < N)` block to change the schema later
 
 const v = db.getFirstSync<{ user_version: number }>('PRAGMA user_version')?.user_version ?? 0
 if (v < 1) {
@@ -53,10 +53,12 @@ if (v < 5) db.withTransactionSync(() => db.execSync(`
 `))
 // Real HR chart line (replaces the fake seeded one).
 if (v < 6) db.execSync(`ALTER TABLE runs ADD COLUMN hr_curve TEXT; PRAGMA user_version = ${VERSION};`)
-// RA-29: Insights hide/order choice (JSON text, like zone_bounds).
-// Checks the real column, not only user_version: a dev phone can already be at v7 without it
-// (a fast refresh mid-edit, another branch), and then every profile write fails with "no such column".
+// v7 and v8 check the real column, not only user_version: RA-29 and RA-39 were built in parallel and
+// both used v7, so a dev phone can be at v7 with either column missing ("no such column" on every write).
 const hasColumn = (table: string, col: string) =>
   db.getAllSync<{ name: string }>(`PRAGMA table_info(${table})`).some(c => c.name === col)
+// RA-29: Insights hide/order choice (JSON text, like zone_bounds).
 if (!hasColumn('profiles', 'insights_layout')) db.execSync('ALTER TABLE profiles ADD COLUMN insights_layout TEXT;')
-if (v < 7) db.execSync(`PRAGMA user_version = ${VERSION};`)
+// RA-39: new runs wait for the user's type answer (Dashboard card).
+if (!hasColumn('runs', 'needs_type')) db.execSync('ALTER TABLE runs ADD COLUMN needs_type INTEGER NOT NULL DEFAULT 0;')
+if (v < 8) db.execSync(`PRAGMA user_version = ${VERSION};`)

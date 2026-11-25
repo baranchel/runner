@@ -11,6 +11,7 @@ const base: Run = {
   distanceKm: 10, timeSec: 3000, avgHr: 150, maxHr: 170, minHr: 120,
   elevGain: 50, cadence: 170, calories: 600, source: 'apple_health', notes: null,
   segments: null, splits: [], weather: null, hrHist: null, hrCurve: null,
+  needsType: false,
 }
 const run = (o: Partial<Run>): Run => ({ ...base, ...o })
 const S: [number, number, number, number] = [114, 133, 152, 171]

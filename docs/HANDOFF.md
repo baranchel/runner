@@ -16,58 +16,30 @@ Read this first, together with `CLAUDE.md` and `architecture.md`. It captures th
 
 ### Current stage
 
-- **`feature/health-data` (RA-29 Insights tab):** built, reviewed twice (Opus), **merged into `main` 2026-11-23**. 25 Apple Health metrics read live in 6 colour groups, detail charts, Edit (native switches + drag reorder) saved in `profiles.insights_layout`. Two device bugs fixed and confirmed by Bar (missing SQLite column, off-centre switches). Details in the RA-29 section below.
-  - **Still open:** rest of the device test (plan `docs/superpowers/plans/2026-11-23-health-data.md`, Task 12): values vs the Health app, detail periods, hide/order after restart + log out/in, "Allow access" message with Health off. Any fix found there goes on a new branch from `main` (e.g. `feature/insights-fixes`).
-- **`feature/run-type`:** not finished. Bar can only check it after his next run (2026-11-24). Independent of `feature/health-data` (that branch was cut from `main` after PR #21).
-  - **Possible conflict:** if `feature/run-type` also bumps the SQLite `VERSION` in `src/db/schema.ts` (or edits `queries.ts`, `supabase/schema.sql`, `CLAUDE.md`), whichever merges second takes version 8 and keeps both upgrade blocks.
-- **Jira created 2026-11-23:** RA-43 (cadence + stride on run screen), RA-44 (first-run tour), RA-45 (Smart Insights: running + health insights, lime cards; also holds the tab-restructure idea).
-
-### Bar: commands to see the whole Insights page on the iPhone
-
-1. Supabase SQL Editor: run `supabase/migrations/2026-11-23-insights-layout.sql` (once, if not done yet).
-2. Get the code — before the PR is merged:
-   ```powershell
-   git checkout feature/health-data
-   ```
-   after the PR is merged:
-   ```powershell
-   git checkout main
-   ```
-   ```powershell
-   git pull
-   ```
-3. ```powershell
-   npm install
-   ```
-4. New dev build, once (new Health permissions), then install it on the iPhone:
-   ```powershell
-   eas build --profile development --platform ios
-   ```
-5. ```powershell
-   npx expo start --dev-client
-   ```
-6. On the phone: allow the new Health types when asked, open Insights.
-
-Back to run type after the run:
-```powershell
-git checkout feature/run-type
-```
-```powershell
-npm install
-```
-```powershell
-npx expo start --dev-client
-```
-(The new dev build works for that branch too; its JS comes from Metro.)
+- **`feature/health-data` (RA-29 Insights tab):** merged into `main` 2026-11-23 and fully device-tested by Bar (2026-11-23). 25 Apple Health metrics read live in 6 colour groups, detail charts, Edit (native switches + drag reorder) saved in `profiles.insights_layout`.
+- **`feature/run-type` (RA-39):** committed, pushed, PR open, not merged. `main` (with RA-29) was rebased into it 2026-11-23: SQLite is now **v8**, and `schema.ts` adds `insights_layout` and `needs_type` by checking the real column (both branches had used v7). Waits for one test: a real new Watch run (2026-11-24) must make the lime "New run · needs a type" card appear by itself after pull to refresh. Pass → Bar merges the PR. Fail → fix on `feature/run-type` (start with the account creation time the import reads, `needsType()` in `src/healthkit/mapWorkout.ts`).
+- **RA-24 white flash on logout:** no longer happens. `app/_layout.tsx` already paints `colors.bgApp` on the root view and every screen (`contentStyle`), so the ThemeProvider fix isn't needed. Bar handles the ticket.
+- **Jira created:** RA-42 Run Sub-Type (2026-11-22: reps × distance / distance / sets on the run; after RA-39 merges), RA-43 (cadence + stride on run screen), RA-44 (first-run tour), RA-45 (Smart Insights: running + health insights, lime cards; also holds the tab-restructure idea).
 
 ### Suggested next tasks (in order)
 
-1. **Finish the RA-29 device test** (already merged; fixes on a new branch).
-2. **Run type:** test after the run (2026-11-24), fix, merge. Watch the `schema.ts` version clash above.
-3. **RA-24 white flash on logout:** fix already written up in "Open bugs" below (ThemeProvider in `app/_layout.tsx`), JS only, ~10 min.
-4. **RA-43 cadence + stride length on the run screen:** small branch; cadence from step data the import already reads, stride needs one new Health type (new dev build).
-5. **Decide the tab restructure** before RA-45 (idea in RA-45: Insights = insights only · Dashboard = health data + basic running · Running = extended running + last runs · More replaces You). It decides where the RA-29 cards live. Short brainstorm, then RA-45 Smart Insights.
-6. Later: RA-6 units (km/mi); RA-44 app tour after the tab layout is settled.
+1. **Run type:** test after the run (2026-11-24), fix, merge.
+2. **Decide the tab restructure** before RA-45 (idea in RA-45: Insights = insights only · Dashboard = health data + basic running · Running = extended running + last runs · More replaces You). It decides where the RA-29 cards live. Short brainstorm (no code, so no conflict with run-type), then RA-45 Smart Insights.
+3. **RA-43 cadence + stride length on the run screen:** cadence from step data the import already reads, stride needs one new Health type (new dev build). Touches run-type's files → start after RA-39 merges, or stack on `feature/run-type`.
+4. **RA-22 Per Month Zones Summary** (below), after RA-39 merges.
+5. Later: RA-6 units (km/mi); RA-44 app tour after the tab layout is settled; RA-40 interval step names spike; RA-8 Shoes.
+
+### Later: RA-22 Per Month Zones Summary (Bar postponed it 2026-11-22)
+
+Parent RA-1 Zones and HR. Branch `feature/month-zones`.
+- **Branch timing:** cut it from `main` only **after the RA-39 PR is merged**. RA-22 edits the same files RA-39 changed (`app/(tabs)/dashboard.tsx`, `MonthHeader` / `buildSections` in `src/components/RunPickerList.tsx`, `app/(tabs)/runs.tsx`), so starting earlier means a merge conflict. Brainstorm + spec can start before that (no code). Never stack it on `feature/run-type`.
+- **Ticket (Jira RA-22):** Dashboard "Zones this month" card: % of time per zone for all runs in the current calendar month (no browsing back), with its own run-type pill (default "All types"). All runs: each month header shows the top 2 zones with % (e.g. "Z2 64% · Z3 22%"), following the active type filter (and later search / sub-filter, RA-35 / RA-17). % = share of total time in zones, so longer runs count more. Runs without HR are left out; a month with no HR → card says "No heart-rate data this month", header shows no zones. Facts only, no target / good-bad judgement.
+- **What already exists:** each run stores `hrHist` (seconds per bpm). Zone starts come from `useZoneStarts()` (`src/store/useProfileStore.ts`), time per zone = `zoneTimes(run.hrHist, starts)` (`src/utils/zones.ts`, self-check `node src/utils/zones.check.ts`). Zone names and colours: `src/utils/zones.ts` / `ZONE_COLORS` in `src/utils/tokens.ts`. Changing the zone method already updates every run, so monthly totals follow automatically. The type filter (`pickType`, with All types / Unclassified / types) can be reused for the card's pill.
+- **Likely shape (to confirm in brainstorm):** one pure helper next to `zoneTimes` that sums zone seconds over a list of runs → % per zone, with a self-check in `zones.check.ts`. The Dashboard card and the month header both call it. `MonthHeader` already gets the section's filtered runs.
+- **Open questions for Bar:** card design (bar per zone like the run's Heart Rate screen, or one stacked bar?); where the card sits on the Dashboard (below the New run card, above or below the week card?); show seconds as well as %, or % only; month header when the top zone is ~100% (one zone or still two?).
+- **How we work:** brainstorm with mockups in the visual companion first → spec → plan → subagent-driven implementation (Sonnet minimum, Opus reviews). Show Jira wording before writing it.
+
+Other open items: RA-35 Search (the All runs search box is a placeholder; wait for RA-39 merge, same file); RA-15 auto-suggest (reuses `pickRunType` and the Dashboard card, needs RA-39 in `main`).
 
 ## Big decisions made (2026-11-08)
 
@@ -88,6 +60,7 @@ npx expo start --dev-client
 | 3 | `feature/healthkit` | RA-3 Apple Connectivity | **Committed, not merged** — only test left: a new run (2026-11-21) via pull to refresh. Pass → merge into `main`. |
 | 4 | `feature/add-personal-info` | RA-11 Personal Info + RA-10 Edit Profile | **Done 2026-11-21, device-tested, committed** (see section below). Branched from `feature/healthkit`. |
 | 5 | `feature/hr-zones` | RA-9 Custom HR Zones (4 methods + preview) + most of RA-21 | **Done 2026-11-22, device-tested, matches Fitness; real HR chart fix included.** Committed + pushed, Jira updated. PR after `feature/add-personal-info`. |
+| 6 | `feature/run-type` | RA-39 Set Run Type Manually (+ new-run card, bulk Set type) | **Implemented + device-tested 2026-11-22** (all but a real new Watch run → Monday). Cut from `main` after the 3 stacked PRs were merged. See section below. |
 
 **Merge order (stacked branches):** `feature/healthkit` → `main` (Bar, 2026-11-22, after the new-run test), then `feature/add-personal-info` → `main`, then `feature/hr-zones` → `main`. Each branch contains the one before it, so merging in this order keeps every PR small. A fix needed in an earlier branch goes on that branch, then gets merged forward into the later ones.
 
@@ -194,6 +167,19 @@ Claude session name: `feature/add-personal-info`.
 - **Bar to do:** (1) run `supabase/migrations/2026-11-21-profile.sql` in the SQL Editor **before** opening the new code — a profile push rejected for missing columns is marked `failed` for good and the edit is lost; (2) JS only, no rebuild: `npx expo start --dev-client`; (3) device test = plan Task 10.
 - **Device-tested 2026-11-21 (dev build), all pass:** existing account → form once (name split, Health prefill) → dashboard; edit from Settings + HRmax on the zones screen; new `+alias` signup with first/last name. A second account on the same phone skips the Health screen: iOS shows its Health prompt once per install, not per account (`needsHealthPrompt` = false). Expected; the new account still imports this phone's Health runs (clearAll resets the anchor).
 - **Known limits (accepted):** the first full import runs before the form, so past runs keep zones from 190 / 220 − age until RA-21. In edit mode an optional field left empty is prefilled from Health again. Google names are split from `full_name` at the first space (editable).
+
+## Current task: RA-39 Set Run Type Manually — `feature/run-type`
+
+Claude session name: `feature/run-type`.
+
+- Spec `docs/superpowers/specs/2026-11-22-run-type-design.md`, plan `docs/superpowers/plans/2026-11-22-run-type.md`. Mockups (gitignored) `.superpowers/brainstorm/886-1795350874/content/` (`run-type-picker.html`, `new-run-prompt-v2.html`, `bulk-set-type.html`). Jira RA-39 updated with the added acceptance criteria (Bar approved).
+- **Decisions with Bar:** picker = native iOS sheet (option A, reuses the All runs filter's `pick()`; no colours); classifying old runs is optional; **runs that started after the account was created must be answered** (a type or Unclassified) via a lime Dashboard card (option B, never a forced pop-up); a run made while logged out also asks after the next login; bulk **Select** mode in All runs with Select all + an **Unclassified** filter option, and "Set all N ›" on the card for users back from a long logout.
+- **Implementation (Sonnet implementers, Opus review per batch):** `runs.needs_type` (SQLite v7 + cloud), `needsType()` (trims Supabase microseconds so Hermes can parse), `useRunStore.setType(ids, typeId)`, `pickRunType()`, Run Detail pill, Dashboard `NewRunCard`, All runs mode `none | compare | bulk`. Checks: `sync.check` (needs_type round-trip + re-import tripwire), `import.check` (`needsType` cases), tsc clean.
+- **Bar to do:** (1) run `supabase/migrations/2026-11-22-needs-type.sql` in the SQL Editor **before** opening the new code (a push rejected for the unknown column is marked `failed` for good); (2) `npx expo start --dev-client` (JS only, no rebuild); (3) device test = plan Task 8.
+- **Known limits (accepted):** one outbox op + one HTTP update per run in a bulk set; after `delete from public.runs;` (dev re-import) every run since the account was created asks again.
+- **Device-tested 2026-11-22 (Bar):** pill, Unclassified filter, bulk Set type, offline change, card via faked `needs_type`, re-login: all pass. **Left:** a real new Watch run (Monday) → the card appears by itself. PR stays open until then.
+- **Search** in All runs is a placeholder (RA-35), not an RA-39 bug.
+- **Follow-up:** RA-3's left-over test "an edit and the type are kept after a re-import" can now be run.
 
 ## Current task: RA-9 Custom HR Zones — `feature/hr-zones`
 

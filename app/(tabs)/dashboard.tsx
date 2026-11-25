@@ -2,6 +2,7 @@ import { Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'rea
 import { useRouter } from 'expo-router'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { RunCard } from '../../src/components/RunCard'
+import { pickRunType } from '../../src/components/RunPickerList'
 import { useRunStore } from '../../src/store/useRunStore'
 import type { Run } from '../../src/types'
 import { fmtDate, fmtDistance, fmtDuration, fmtPace } from '../../src/utils/format'
@@ -213,6 +214,37 @@ function RecentRuns({ router }: { router: ReturnType<typeof useRouter> }) {
   )
 }
 
+// ─── New run card (RA-39) ─────────────────────────────────────────────────────
+// Runs that started after signup wait here until the user answers (a type or Unclassified).
+
+function NewRunCard({ router }: { router: ReturnType<typeof useRouter> }) {
+  const runs = useRunStore(s => s.runs)
+  const setType = useRunStore(s => s.setType)
+  const waiting = runs.filter(r => r.needsType)  // store is newest first
+  if (waiting.length === 0) return null
+  const run = waiting[waiting.length - 1]        // oldest first
+  return (
+    <TouchableOpacity style={s.newRun} activeOpacity={0.8} onPress={() => router.push(`/run/${run.id}`)}>
+      <View style={s.newRunKickerRow}>
+        <Text style={s.newRunKicker}>NEW RUN · NEEDS A TYPE</Text>
+        {waiting.length > 1 && <Text style={s.newRunBadge}>1 of {waiting.length}</Text>}
+      </View>
+      <Text style={s.newRunName} numberOfLines={1}>{run.name}</Text>
+      <Text style={s.newRunMeta}>{fmtDate(run.date)} · {fmtDistance(run.distanceKm, UNIT)} · {fmtDuration(run.timeSec)}</Text>
+      <View style={s.newRunActions}>
+        <TouchableOpacity style={s.newRunBtn} onPress={() => pickRunType(run.name, undefined, typeId => setType([run.id], typeId))}>
+          <Text style={s.newRunBtnText}>Choose type ▾</Text>
+        </TouchableOpacity>
+        {waiting.length > 1 && (
+          <TouchableOpacity hitSlop={8} onPress={() => router.navigate({ pathname: '/runs', params: { bulk: '1' } })}>
+            <Text style={s.newRunLink}>Set all {waiting.length} ›</Text>
+          </TouchableOpacity>
+        )}
+      </View>
+    </TouchableOpacity>
+  )
+}
+
 // ─── Screen ───────────────────────────────────────────────────────────────────
 
 export default function Dashboard() {
@@ -220,6 +252,7 @@ export default function Dashboard() {
   return (
     <SafeAreaView style={s.safe} edges={['top', 'left', 'right']}>
       <ScrollView contentContainerStyle={s.content}>
+        <NewRunCard router={router} />
         <WeekCard />
         <ThirtyDayCard />
         <RecentRuns router={router} />
@@ -231,6 +264,19 @@ export default function Dashboard() {
 // ─── Styles ───────────────────────────────────────────────────────────────────
 
 const s = StyleSheet.create({
+  // New run card (lime) — RA-39
+  newRun:          { backgroundColor: colors.lime, borderRadius: 18, padding: 14, gap: 3 },
+  newRunKickerRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  newRunKicker:    { fontFamily: fonts.body, fontSize: 10, fontWeight: '700', letterSpacing: 0.4, color: colors.ink },
+  newRunBadge:     { fontFamily: fonts.body, fontSize: 9, fontWeight: '700', color: colors.ink, backgroundColor: colors.ink + '22',
+                     borderRadius: 8, paddingHorizontal: 6, paddingVertical: 2, overflow: 'hidden' },
+  newRunName:      { fontFamily: fonts.body, fontSize: 14, fontWeight: '700', color: colors.ink },
+  newRunMeta:      { fontFamily: fonts.mono, fontSize: 10, color: colors.ink },
+  newRunActions:   { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 9 },
+  newRunBtn:       { backgroundColor: colors.ink, borderRadius: 12, paddingHorizontal: 12, paddingVertical: 6 },
+  newRunBtnText:   { fontFamily: fonts.body, fontSize: 11, fontWeight: '600', color: colors.lime },
+  newRunLink:      { fontFamily: fonts.body, fontSize: 11, fontWeight: '700', color: colors.ink, textDecorationLine: 'underline' },
+
   safe:    { flex: 1, backgroundColor: colors.bgApp },
   content: { paddingHorizontal: 24, paddingVertical: spacing.screenH, gap: 22 },
 

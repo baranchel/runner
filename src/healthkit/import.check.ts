@@ -1,5 +1,5 @@
 // Run: node src/healthkit/import.check.ts
-import { mapWorkout, type Sample, type WorkoutInput } from './mapWorkout.ts'
+import { mapWorkout, needsType, type Sample, type WorkoutInput } from './mapWorkout.ts'
 import { pickNew } from './dedupe.ts'
 import { zoneStarts, zoneTimes } from '../utils/zones.ts'
 
@@ -155,5 +155,15 @@ eq(pickNew([c('strava', 0, 1), c('watch', 0.01, 1.01, true)], []).map(x => x.uui
 eq(pickNew([c('a', 0, 1), c('b', 0.2, 1.2)], []).map(x => x.uuid), ['a'], 'first of two non-Watch copies wins')
 eq(pickNew([c('b', 2, 3), c('a', 0, 1)], []).map(x => x.uuid), ['a', 'b'], 'non-overlapping kept, oldest first')
 eq(pickNew([c('a', 0, 1)], [{ id: 'old', start: null, end: null }]).map(x => x.uuid), ['a'], 'saved run without start time ignored for overlap')
+
+// RA-39: only runs that started after the account was created need a type answer
+const signup = '2026-11-08T10:00:00.000Z'
+eq(needsType('2026-11-09T06:00:00.000Z', signup), true, 'after signup → asks')
+eq(needsType('2026-11-01T06:00:00.000Z', signup), false, 'before signup → never asks')
+eq(needsType(signup, signup), false, 'same instant → no')
+eq(needsType(null, signup), false, 'no start time → no')
+eq(needsType('2026-11-09T06:00:00.000Z', null), false, 'no account time → no')
+eq(needsType('2026-11-08T10:00:00.124Z', '2026-11-08T10:00:00.123456Z'), true, 'Supabase microseconds format')
+eq(run.needsType, false, 'mapWorkout leaves it to the import')
 
 console.log('import.check OK')

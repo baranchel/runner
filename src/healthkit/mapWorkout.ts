@@ -28,6 +28,12 @@ const SEC_PER: Record<string, number> = { s: 1, ms: 0.001, min: 60, hr: 3600, h:
 const KCAL_PER: Record<string, number> = { kcal: 1, Cal: 1, cal: 0.001, kJ: 0.239006, J: 0.000239006 }
 export const meters = (q: Q) => q.quantity * (M_PER[q.unit] ?? 1)
 export const seconds = (q: Q) => q.quantity * (SEC_PER[q.unit] ?? 1)
+
+/** RA-39: a run that started after the account was created must get a type answer from the user. */
+// Supabase sends microseconds (.123456); trim to ms so Hermes' Date.parse can't return NaN (as in api/sync.ts)
+const parseIso = (s: string) => Date.parse(s.replace(/(\.\d{3})\d+/, '$1'))
+export const needsType = (startedAt: string | null, accountCreatedAt: string | null): boolean =>
+  !!startedAt && !!accountCreatedAt && parseIso(startedAt) > parseIso(accountCreatedAt)
 const round2 = (n: number) => Math.round(n * 100) / 100
 const ms = (d: Date) => d.getTime()
 
@@ -218,6 +224,7 @@ export function mapWorkout(w: WorkoutInput, hr: Sample[], dist: Sample[], steps:
     id: w.uuid.toLowerCase(),             // HealthKit gives uppercase; Postgres uuids come back lowercase
     healthkitUuid: w.uuid.toLowerCase(),
     typeId: null,
+    needsType: false,       // importRuns decides (needsType() above)
     name: `Run: ${distanceKm.toFixed(1)}km`,
     date: localDay(w.start, w.metadata.HKTimeZone),
     startedAt: w.start.toISOString(),
