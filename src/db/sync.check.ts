@@ -16,6 +16,7 @@ const raw: Run = {
   elevGain: 30, cadence: 170, calories: 600, source: 'apple_health', notes: null,
   segments: null, splits: [{ km: 1, timeSec: 360, avgHr: 140 }], weather: null, hrHist: null, hrCurve: null,
   needsType: false,
+  shoeId: null,
 }
 
 // rowToRun applies edits on top, keeps the rest
@@ -51,6 +52,12 @@ eq(rowToRun({ ...runToRow(raw), needs_type: 1 as unknown as boolean }).needsType
 eq(rowToRun({ ...runToRow(raw), needs_type: 0 as unknown as boolean }).needsType, false, 'SQLite 0 → false')
 eq(rowToRun({ ...runToRow(raw), needs_type: true }).needsType, true, 'cloud true → true')
 eq(rowToRun({ ...runToRow(raw), needs_type: undefined as unknown as boolean }).needsType, false, 'missing → false')
+
+// RA-8: shoe_id round-trips
+eq(runToRow({ ...raw, shoeId: 's1' }).shoe_id, 's1', 'shoeId → shoe_id')
+eq(rowToRun({ ...runToRow(raw), shoe_id: 's1' }).shoeId, 's1', 'shoe_id → shoeId')
+eq('shoe_id' in runToRow(raw), false, 'no shoe → column left out of the insert')
+eq(rowToRun({ ...runToRow(raw), shoe_id: undefined as unknown as null }).shoeId, null, 'missing shoe_id → null')
 
 // Tripwire: if any of these change, a HealthKit re-import could overwrite the user's type.
 const src = (p: string) => readFileSync(new URL(p, import.meta.url), 'utf8')

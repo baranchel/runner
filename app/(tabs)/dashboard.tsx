@@ -1,9 +1,11 @@
-import { Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native'
+import { Alert, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native'
 import { useRouter } from 'expo-router'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { RunCard } from '../../src/components/RunCard'
 import { pickRunType } from '../../src/components/RunPickerList'
 import { useRunStore } from '../../src/store/useRunStore'
+import { cardLevel, displayName, shoeDistance } from '../../src/shoes/shoes'
+import { useShoeStore } from '../../src/store/useShoeStore'
 import type { Run } from '../../src/types'
 import { fmtDate, fmtDistance, fmtDuration, fmtPace } from '../../src/utils/format'
 import { getPeriodStats } from '../../src/utils/stats'
@@ -245,6 +247,45 @@ function NewRunCard({ router }: { router: ReturnType<typeof useRouter> }) {
   )
 }
 
+// ─── Shoe alert (RA-8) ────────────────────────────────────────────────────────
+// Orange card from 90% (and again at 100%) until dismissed; one card per shoe.
+
+function ShoeAlertCards({ router }: { router: ReturnType<typeof useRouter> }) {
+  const shoes = useShoeStore(s => s.shoes)
+  const runs = useRunStore(s => s.runs)
+  const { update, retire } = useShoeStore.getState()
+  return (
+    <>
+      {shoes.map(shoe => {
+        const dist = shoeDistance(shoe, runs)
+        const l = cardLevel(shoe, dist)
+        if (!l) return null
+        const pct = Math.floor((dist / shoe.limit_km) * 100)
+        return (
+          <TouchableOpacity key={shoe.id} style={s.shoeAlert} activeOpacity={0.8} onPress={() => router.push(`/shoes/${shoe.id}`)}>
+            <View style={s.shoeAlertRow}>
+              <Text style={s.shoeAlertTitle} numberOfLines={1}>
+                {displayName(shoe)} {l === 100 ? 'has reached its limit' : `is at ${pct}%`}
+              </Text>
+              <TouchableOpacity hitSlop={10} onPress={() => update(shoe.id, { card_dismissed: l })}>
+                <Text style={s.shoeAlertX}>✕</Text>
+              </TouchableOpacity>
+            </View>
+            <Text style={s.shoeAlertText}>
+              {Math.round(dist)} / {Math.round(shoe.limit_km)} km · Time to get a new pair.{' '}
+              <Text style={s.shoeAlertLink} onPress={() =>
+                Alert.alert(`Retire ${displayName(shoe)}?`, 'It keeps its runs and moves to the Retired list.', [
+                  { text: 'Cancel', style: 'cancel' },
+                  { text: 'Retire', style: 'destructive', onPress: () => retire(shoe.id) },
+                ])}>Retire</Text>
+            </Text>
+          </TouchableOpacity>
+        )
+      })}
+    </>
+  )
+}
+
 // ─── Screen ───────────────────────────────────────────────────────────────────
 
 export default function Dashboard() {
@@ -253,6 +294,7 @@ export default function Dashboard() {
     <SafeAreaView style={s.safe} edges={['top', 'left', 'right']}>
       <ScrollView contentContainerStyle={s.content}>
         <NewRunCard router={router} />
+        <ShoeAlertCards router={router} />
         <WeekCard />
         <ThirtyDayCard />
         <RecentRuns router={router} />
@@ -265,6 +307,12 @@ export default function Dashboard() {
 
 const s = StyleSheet.create({
   // New run card (lime) — RA-39
+  shoeAlert:       { backgroundColor: '#3a2414', borderWidth: 1, borderColor: colors.iconOrange, borderRadius: 18, padding: 14, gap: 4 },
+  shoeAlertRow:    { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  shoeAlertTitle:  { flex: 1, fontFamily: fonts.body, fontSize: 14, fontWeight: '700', color: '#ffd0ad' },
+  shoeAlertX:      { fontSize: 14, color: '#ffb27a' },
+  shoeAlertText:   { fontFamily: fonts.body, fontSize: 13, color: '#ffb27a' },
+  shoeAlertLink:   { textDecorationLine: 'underline', fontWeight: '600' },
   newRun:          { backgroundColor: colors.lime, borderRadius: 18, padding: 14, gap: 3 },
   newRunKickerRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   newRunKicker:    { fontFamily: fonts.body, fontSize: 10, fontWeight: '700', letterSpacing: 0.4, color: colors.ink },

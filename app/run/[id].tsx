@@ -2,11 +2,13 @@ import { useState, type ComponentProps } from 'react'
 import { FlatList, Image, KeyboardAvoidingView, Modal, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native'
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router'
 import { RunCard } from '../../src/components/RunCard'
-import { pickRunType } from '../../src/components/RunPickerList'
+import { pick, pickRunType } from '../../src/components/RunPickerList'
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useRunStore } from '../../src/store/useRunStore'
 import { useZoneStarts } from '../../src/store/useProfileStore'
 import { useTypeMap } from '../../src/store/useRunTypeStore'
+import { displayName } from '../../src/shoes/shoes'
+import { activeShoes, useShoeStore } from '../../src/store/useShoeStore'
 import type { EditFields, Run, RunEdits, Segment, Split } from '../../src/types'
 import { fmtDateFull, fmtDistance, fmtDuration, fmtMMSS, fmtPace, parseMMSS } from '../../src/utils/format'
 import { buttons, colors, fonts, runTypeColor, spacing } from '../../src/utils/tokens'
@@ -405,6 +407,8 @@ export default function RunDetail() {
   const run = useRunStore(s => s.runs.find(r => r.id === id))
   const editRun = useRunStore(s => s.editRun)
   const setType = useRunStore(s => s.setType)
+  const setShoe = useRunStore(s => s.setShoe)
+  const shoes = useShoeStore(s => s.shoes)
   const typeMap = useTypeMap()
 
   if (!run) {
@@ -418,6 +422,19 @@ export default function RunDetail() {
   const type = run.typeId ? typeMap[run.typeId] : null
   const typeColor = type ? runTypeColor(type.hue) : colors.textGhost
   const fast = fastestKm(run.splits)
+  const shoe = shoes.find(x => x.id === run.shoeId)
+
+  // RA-8: pick a shoe; then offer it as this type's default (not if it already is, or the run has no type)
+  const chooseShoe = () => {
+    const list = activeShoes(shoes)
+    pick('Shoe', ['No shoe', ...list.map(x => (x.id === run.shoeId ? `✓ ${displayName(x)}` : displayName(x)))], i => {
+      const picked = i === 0 ? null : list[i - 1]
+      if ((picked?.id ?? null) === (run.shoeId ?? null)) return
+      setShoe([run.id], picked?.id ?? null)
+      // new shoe on this run → ask again which run types should default to it (this run's type pre-ticked)
+      if (picked) router.push({ pathname: '/shoes/defaults', params: { id: picked.id, ...(run.typeId ? { type: run.typeId } : {}) } })
+    })
+  }
 
   return (
     <SafeAreaView style={s.safe} edges={['top', 'left', 'right']}>
@@ -439,6 +456,9 @@ export default function RunDetail() {
             </TouchableOpacity>
             <Text style={s.kicker}>{fmtDateFull(run.date).toUpperCase()}</Text>
           </View>
+          <TouchableOpacity style={s.shoePill} activeOpacity={0.7} onPress={chooseShoe}>
+            <Text style={s.shoePillText}>Shoe: {shoe ? displayName(shoe) : 'none'} ▾</Text>
+          </TouchableOpacity>
           <Text style={s.title}>{run.name}</Text>
           <Text style={s.source}>Synced from {SOURCE_LABEL[run.source] ?? run.source}</Text>
         </View>
@@ -541,6 +561,8 @@ const s = StyleSheet.create({
   kickerRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   typePill:     { flexDirection: 'row', alignItems: 'center', gap: 7, height: 28, paddingHorizontal: 11, borderRadius: 14 },
   typePillText: { fontFamily: fonts.body, fontSize: 11, fontWeight: '600' },
+  shoePill:     { alignSelf: 'flex-start', marginTop: 8, backgroundColor: colors.bgElevated, borderRadius: 10, paddingHorizontal: 10, paddingVertical: 4 },
+  shoePillText: { fontFamily: fonts.body, fontSize: 12, color: colors.textSecondary },
   typeDot:   { width: 8, height: 8, borderRadius: 4 },
   kicker:    { fontFamily: fonts.body, fontSize: 10, fontWeight: '600', color: colors.textSecondary, letterSpacing: 0.3 },
   title:     { fontFamily: fonts.body, fontSize: 25, fontWeight: '600', color: colors.textPrimary },

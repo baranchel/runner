@@ -107,3 +107,9 @@ export const groupLabelColors = {
 
 // Sleep stages on the Sleep card (sky shades).
 export const sleepColors = { awake: '#3a4a6b', core: '#4f86b8', deep: '#6db8e8', rem: '#a6d8f5' } as const
+
+// RA-8 shoe colours (keys in src/shoes/shoes.ts COLOR_KEYS). 'multi' is drawn as a split dot.
+export const shoeColors = {
+  black: '#1a1a1a', white: '#f2f2f2', grey: '#8c8c8c', red: '#d74f49', orange: '#dc6600', yellow: '#e8c200',
+  green: '#3bac68', blue: '#3d7be0', purple: '#9e6ce7', pink: '#d63f7a', multi: '#c4a3ff',
+} as const

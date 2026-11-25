@@ -6,12 +6,15 @@ export type PushResult = 'ok' | 'retry' | 'failed'
 
 /** Send one outbox op. 'retry' = try again later (offline, expired session, server hiccup). */
 export async function pushOp(
-  tbl: string, kind: 'insert' | 'update', rowId: string, patch: Record<string, unknown>,
+  tbl: string, kind: 'insert' | 'update' | 'delete', rowId: string, patch: Record<string, unknown>,
 ): Promise<PushResult> {
   const { updated_at: _ignored, ...row } = patch  // the server stamps updated_at itself
   try {
     let res
-    if (kind === 'insert') {
+    if (kind === 'delete') {
+      // already gone (another device) is fine too; the cloud FKs clear runs.shoe_id / run_types.default_shoe_id
+      res = await supabase.from(tbl).delete().eq('id', rowId)
+    } else if (kind === 'insert') {
       // ignoreDuplicates: a run already in the cloud is left as is (never overwrites type/notes/edits)
       res = await supabase.from(tbl).upsert(row, { onConflict: tbl === 'runs' ? 'user_id,id' : 'id', ignoreDuplicates: true })
     } else {

@@ -2,7 +2,7 @@
 import { pullSince, pushOp } from '../api/sync'
 import { applyPulled, deleteOp, getEpoch, getMeta, markOpFailed, pendingOps, setMeta, type Table } from './queries'
 
-const TABLES: Table[] = ['profiles', 'run_types', 'runs']  // types before runs: runs point at them
+const TABLES: Table[] = ['profiles', 'shoes', 'run_types', 'runs']  // shoes before types/runs: they point at shoes
 
 const listeners = new Set<() => void>()
 /** Called after a pull changed local data (stores reload). */
