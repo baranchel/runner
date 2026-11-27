@@ -1,4 +1,4 @@
-# Chronodrom — Session Handoff (2026-11-23)
+# Chronodrom — Session Handoff (2026-11-25)
 
 Read this first, together with `CLAUDE.md` and `architecture.md`. It captures the state of work and the decisions made in the previous Claude Code (CLI) session, which a new session cannot see.
 
@@ -12,34 +12,38 @@ Read this first, together with `CLAUDE.md` and `architecture.md`. It captures th
 - Bar works on Windows (no Mac), tests on his iPhone via Expo Go / EAS dev build. Explain concepts alongside technical decisions.
 - Never generate image assets — ask Bar for them.
 
-## Next session: start here (updated 2026-11-23)
+## Next session: start here (updated 2026-11-27)
 
 ### Current stage
 
-- **`feature/health-data` (RA-29 Insights tab):** merged into `main` 2026-11-23 and fully device-tested by Bar (2026-11-23). 25 Apple Health metrics read live in 6 colour groups, detail charts, Edit (native switches + drag reorder) saved in `profiles.insights_layout`.
-- **`feature/run-type` (RA-39):** committed, pushed, PR open, not merged. `main` (with RA-29) was rebased into it 2026-11-23: SQLite is now **v8**, and `schema.ts` adds `insights_layout` and `needs_type` by checking the real column (both branches had used v7). **Real new Watch run passed 2026-11-24** (card appeared by itself): fully device-tested, ready to merge.
-- **`feature/shoes` (RA-8, 2026-11-24):** built, stacked on `feature/run-type` (contains it). Reviewed by Opus twice, fixes applied. tsc clean, all self-checks pass. **NOT committed, not device-tested.** Details in "Current task: RA-8 Shoes" below.
-- **RA-24 white flash on logout:** no longer happens. `app/_layout.tsx` already paints `colors.bgApp` on the root view and every screen (`contentStyle`), so the ThemeProvider fix isn't needed. Bar handles the ticket.
-- **Jira created:** RA-42 Run Sub-Type (2026-11-22: reps × distance / distance / sets on the run; after RA-39 merges), RA-43 (cadence + stride on run screen), RA-44 (first-run tour), RA-45 (Smart Insights: running + health insights, lime cards; also holds the tab-restructure idea).
+- **`main` has:** RA-29 Insights, RA-39 run type (`feature/run-type`) and RA-8 Shoes (`feature/shoes`), merged 2026-11-25 and device-tested. SQLite is **v9**.
+- **RA-22 Zones Summary (`feature/month-zones`):** done, device-tested 2026-11-27, pushed; PR to `main` open/next. Start the next branch from `main` **after** that PR is merged (`npm install` after switching).
+- **Shoes left-overs for Bar:** make sure both shoe migrations ran (`2026-11-24-shoes.sql`, then `2026-11-24-shoe-catalogue.sql`) and upload `hoka.png` + `topo-athletic.png` from `assets/brand-logos/` to the `brand-logos` bucket (the other 19 are up).
+- **RA-24 white flash on logout:** no longer happens; Bar handles the ticket.
+- **Git note:** Bar's `git pull` rebases by default. To bring `main` into a pushed branch use `git pull --no-rebase origin main`; never `--amend` a pushed commit.
+- **Jira open:** RA-42 Run Sub-Type (reps × distance / distance / sets on the run), RA-43 cadence + stride on the run screen, RA-44 first-run tour, RA-45 Smart Insights (+ tab-restructure idea), RA-35 Search, RA-15 auto-suggest type, RA-6 units, RA-40 interval step names spike.
 
-### Suggested next tasks (in order)
+### Next task (Bar chose 2026-11-27): tab restructure
 
-1. **Run type:** tested 2026-11-24, passed → merge the PR.
-1b. **Shoes (RA-8):** device test (plan Task 13), commit, then merge: the `feature/run-type` PR first, then the `feature/shoes` PR.
-2. **Decide the tab restructure** before RA-45 (idea in RA-45: Insights = insights only · Dashboard = health data + basic running · Running = extended running + last runs · More replaces You). It decides where the RA-29 cards live. Short brainstorm (no code, so no conflict with run-type), then RA-45 Smart Insights.
-3. **RA-43 cadence + stride length on the run screen:** cadence from step data the import already reads, stride needs one new Health type (new dev build). Touches run-type's files → start after RA-39 merges, or stack on `feature/run-type`.
-4. **RA-22 Per Month Zones Summary** (below), after RA-39 merges.
-5. Later: RA-6 units (km/mi); RA-44 app tour after the tab layout is settled; RA-40 interval step names spike; RA-8 Shoes.
+Brainstorm first (mockups, no code, no branch needed), then branch `feature/tab-layout` from `main` after the RA-22 PR is merged (it edits `dashboard.tsx` again). Then **RA-45 Smart Insights**. Idea in RA-45: Insights = insights only · Dashboard = health data + basic running · Running = extended running + last runs · More replaces You. It decides where the RA-29 cards, the Dashboard cards (New run, shoe alerts) and RA-44's tour go, so it's best settled before more Dashboard work.
 
-### Later: RA-22 Per Month Zones Summary (Bar postponed it 2026-11-22)
+### Other suggested tasks
 
-Parent RA-1 Zones and HR. Branch `feature/month-zones`.
-- **Branch timing:** cut it from `main` only **after the RA-39 PR is merged**. RA-22 edits the same files RA-39 changed (`app/(tabs)/dashboard.tsx`, `MonthHeader` / `buildSections` in `src/components/RunPickerList.tsx`, `app/(tabs)/runs.tsx`), so starting earlier means a merge conflict. Brainstorm + spec can start before that (no code). Never stack it on `feature/run-type`.
-- **Ticket (Jira RA-22):** Dashboard "Zones this month" card: % of time per zone for all runs in the current calendar month (no browsing back), with its own run-type pill (default "All types"). All runs: each month header shows the top 2 zones with % (e.g. "Z2 64% · Z3 22%"), following the active type filter (and later search / sub-filter, RA-35 / RA-17). % = share of total time in zones, so longer runs count more. Runs without HR are left out; a month with no HR → card says "No heart-rate data this month", header shows no zones. Facts only, no target / good-bad judgement.
-- **What already exists:** each run stores `hrHist` (seconds per bpm). Zone starts come from `useZoneStarts()` (`src/store/useProfileStore.ts`), time per zone = `zoneTimes(run.hrHist, starts)` (`src/utils/zones.ts`, self-check `node src/utils/zones.check.ts`). Zone names and colours: `src/utils/zones.ts` / `ZONE_COLORS` in `src/utils/tokens.ts`. Changing the zone method already updates every run, so monthly totals follow automatically. The type filter (`pickType`, with All types / Unclassified / types) can be reused for the card's pill.
-- **Likely shape (to confirm in brainstorm):** one pure helper next to `zoneTimes` that sums zone seconds over a list of runs → % per zone, with a self-check in `zones.check.ts`. The Dashboard card and the month header both call it. `MonthHeader` already gets the section's filtered runs.
-- **Open questions for Bar:** card design (bar per zone like the run's Heart Rate screen, or one stacked bar?); where the card sits on the Dashboard (below the New run card, above or below the week card?); show seconds as well as %, or % only; month header when the top zone is ~100% (one zone or still two?).
-- **How we work:** brainstorm with mockups in the visual companion first → spec → plan → subagent-driven implementation (Sonnet minimum, Opus reviews). Show Jira wording before writing it.
+1. **RA-42 Run Sub-Type**: builds on run types (reps × distance / distance / sets).
+2. **RA-35 Search** in All runs (the box is a placeholder) / **RA-15 auto-suggest run type** (reuses `pickRunType` and the New run card).
+3. **RA-43 cadence + stride**: stride needs a new Health type → new dev build.
+4. Later: RA-6 units (km/mi), RA-44 app tour (after the tab layout is settled), RA-40 spike.
+
+Shoes follow-ups (minor, no ticket yet): a deleted shoe stays on a second signed-in device until logout/in (no tombstone); moving a run off a shoe doesn't lower its alert levels; Metro "Require cycle" warning `useRunStore` ↔ `src/shoes/alerts.ts` (harmless).
+
+## Done: RA-22 Zones Summary — `feature/month-zones` (device-tested 2026-11-27)
+
+Claude session name: `feature/month-zones`.
+
+- Spec `docs/superpowers/specs/2026-11-27-month-zones-design.md`, plan `docs/superpowers/plans/2026-11-27-month-zones.md`. Mockups (gitignored) `.superpowers/brainstorm/1651-1795798211/content/`.
+- **Decisions with Bar (2026-11-27):** Dashboard part lives **inside the Last 30 days card** and covers the **last 30 days** (`inLast30Days`, same window as the card), not the calendar month; no comparison with the previous 30 days. Design C: one bar per zone, % only. Own run-type pill (zones only, resets on restart). All runs month header: new right-aligned line `● Z2 64% · ● Z3 22%` (option A), follows the type filter; second zone only when ≥ 1%. Compare picker shows the same header line.
+- **State:** implemented, `zones.check` / `compare.check` / tsc pass. **Device-tested 2026-11-27 (Bar), all pass.** Committed and pushed; merge via PR.
+- **Jira RA-22:** description updated 2026-11-27 (Bar approved): last 30 days inside the Last 30 days card, ≥ 1% rule, empty-state text.
 
 Other open items: RA-35 Search (the All runs search box is a placeholder; wait for RA-39 merge, same file); RA-15 auto-suggest (reuses `pickRunType` and the Dashboard card, needs RA-39 in `main`).
 
@@ -62,7 +66,8 @@ Other open items: RA-35 Search (the All runs search box is a placeholder; wait f
 | 3 | `feature/healthkit` | RA-3 Apple Connectivity | **Committed, not merged** — only test left: a new run (2026-11-21) via pull to refresh. Pass → merge into `main`. |
 | 4 | `feature/add-personal-info` | RA-11 Personal Info + RA-10 Edit Profile | **Done 2026-11-21, device-tested, committed** (see section below). Branched from `feature/healthkit`. |
 | 5 | `feature/hr-zones` | RA-9 Custom HR Zones (4 methods + preview) + most of RA-21 | **Done 2026-11-22, device-tested, matches Fitness; real HR chart fix included.** Committed + pushed, Jira updated. PR after `feature/add-personal-info`. |
-| 6 | `feature/run-type` | RA-39 Set Run Type Manually (+ new-run card, bulk Set type) | **Done, fully device-tested** (real new Watch run passed 2026-11-24). PR open → Bar merges. Cut from `main` after the 3 stacked PRs were merged. See section below. |
+| 6 | `feature/run-type` | RA-39 Set Run Type Manually (+ new-run card, bulk Set type) | **Done, fully device-tested** (real new Watch run passed 2026-11-24). Merged 2026-11-25. See section below. |
+| 7 | `feature/shoes` | RA-8 Shoes (catalogue, logos, defaults, alerts, delete) | **Done**, merged 2026-11-25, device-tested. See section below. |
 
 **Merge order (stacked branches):** `feature/healthkit` → `main` (Bar, 2026-11-22, after the new-run test), then `feature/add-personal-info` → `main`, then `feature/hr-zones` → `main`. Each branch contains the one before it, so merging in this order keeps every PR small. A fix needed in an earlier branch goes on that branch, then gets merged forward into the later ones.
 
@@ -170,7 +175,7 @@ Claude session name: `feature/add-personal-info`.
 - **Device-tested 2026-11-21 (dev build), all pass:** existing account → form once (name split, Health prefill) → dashboard; edit from Settings + HRmax on the zones screen; new `+alias` signup with first/last name. A second account on the same phone skips the Health screen: iOS shows its Health prompt once per install, not per account (`needsHealthPrompt` = false). Expected; the new account still imports this phone's Health runs (clearAll resets the anchor).
 - **Known limits (accepted):** the first full import runs before the form, so past runs keep zones from 190 / 220 − age until RA-21. In edit mode an optional field left empty is prefilled from Health again. Google names are split from `full_name` at the first space (editable).
 
-## Current task: RA-39 Set Run Type Manually — `feature/run-type`
+## Done: RA-39 Set Run Type Manually — `feature/run-type` (merged 2026-11-25)
 
 Claude session name: `feature/run-type`.
 
@@ -183,7 +188,7 @@ Claude session name: `feature/run-type`.
 - **Search** in All runs is a placeholder (RA-35), not an RA-39 bug.
 - **Follow-up:** RA-3's left-over test "an edit and the type are kept after a re-import" can now be run.
 
-## Current task: RA-8 Shoes — `feature/shoes`
+## Done: RA-8 Shoes — `feature/shoes` (merged 2026-11-25)
 
 Claude session name: `feature/shoes`. Stacked on `feature/run-type` (needs its SQLite v8 and `setType`).
 

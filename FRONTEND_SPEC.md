@@ -237,11 +237,16 @@ Layout:
 - Center: type name (14 px / 600) + date (11 px, `text-faint`); line 2: distance · pace · duration (12 px, `text-muted`)
 - Right: chevron `›` in `text-ghost`
 
+#### 2d. Last 30 days card — Time in zones (RA-22)
+Below the stat grid, after a `limeDivider`: eyebrow "TIME IN ZONES" (as "LAST 30 DAYS") with an ink outline pill on the right (`<type> ▾`, `pickType`: All types / Unclassified / types; filters the zones only, resets on app restart). Then 5 rows, gap 6: zone number (mono 13 / 700, ink) · track 14 px, radius 5, `rgba(29,23,44,0.10)`, fill `zoneColor(i)` at the zone's % · "54%" (mono 11 / 600, ink, right, 36 px). % = share of total time in zones over runs from the last 30 days (`inLast30Days`). No HR → "No heart-rate data in the last 30 days" (12, ink 70%). No comparison with the previous 30 days.
+
 ---
 
 ### 3. Runs (Run List)
 
 **RunCard** (`src/components/RunCard.tsx`, shared by Dashboard recent runs, All runs, the compare picker and Run Detail's compare sheet): `bg-surface`, radius 18, padding 12. Type tile 48×48 (type color at 25% + 14 px dot) · name 13 / 600 · "date · type" 10 `text-dim` · "8.0 km  ·  44m  ·  5:35/km" mono 10 · right: 44 px reserved slot for achievement badges (RA-37, empty for now). Selection mode adds a lime check circle.
+
+**Month header zone line (RA-22):** right-aligned row under the stats (and under the filtered-type row): `● Z2 64% · ● Z3 22%` — 8 px dot in `zoneColor`, mono 10 `textSecondary`. Top 2 zones by time of the runs shown (follows the type filter); second zone only when it rounds to ≥ 1%; no HR in the month → no row. Same header in the Compare run picker.
 
 #### Header
 "Runs (N)" — 17 px / 700, N = filtered count in muted text. "Reset" link at top-right clears all filters.
