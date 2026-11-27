@@ -54,6 +54,29 @@ export function zoneTimes(hist: HrHist | null, s: Starts): ZoneSeconds | null {
   return z
 }
 
+/** RA-22: zone seconds summed over runs. null when no run has any HR time. */
+export function sumZoneTimes(hists: readonly (HrHist | null)[], s: Starts): ZoneSeconds | null {
+  const z: ZoneSeconds = [0, 0, 0, 0, 0]
+  for (const h of hists) zoneTimes(h, s)?.forEach((sec, i) => { z[i] += sec })
+  return z.some(v => v > 0) ? z : null
+}
+
+/** Rounded % per zone of total time in zones (may not add up to exactly 100). */
+export function zonePcts(z: ZoneSeconds): ZoneSeconds {
+  const total = z.reduce((a, b) => a + b, 0)
+  return z.map(v => (total > 0 ? Math.round((v / total) * 100) : 0)) as ZoneSeconds
+}
+
+/** Up to 2 zones by time, biggest first (tie → lower zone), leaving out any that round to 0%. zone = 1..5 */
+export function topZones(z: ZoneSeconds): { zone: number; pct: number }[] {
+  const p = zonePcts(z)
+  return [0, 1, 2, 3, 4]
+    .sort((a, b) => z[b] - z[a] || a - b)
+    .filter(i => p[i] >= 1)
+    .slice(0, 2)
+    .map(i => ({ zone: i + 1, pct: p[i] }))
+}
+
 /** "below 111", "111–129", …, "167 and up" */
 export function zoneRangeLabel(i: number, s: Starts): string {
   if (i === 0) return `below ${s[0]}`
