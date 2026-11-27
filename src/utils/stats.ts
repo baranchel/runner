@@ -53,23 +53,21 @@ function aggregatePeriod(runs: Run[]): PeriodStats {
   }
 }
 
+const DAY = 86400_000
+const dayStart = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime()
+const runDay = (r: Run) => { const [y, m, d] = r.date.split('-').map(Number); return new Date(y, m - 1, d).getTime() }
+
+/** Runs from the last 30 days, today included (same window as the Dashboard's Last 30 days card). */
+export function inLast30Days(runs: Run[], today: Date): Run[] {
+  const t = dayStart(today)
+  return runs.filter(r => { const d = runDay(r); return d >= t - 29 * DAY && d <= t })
+}
+
 export function getPeriodStats(
   runs: Run[],
   today: Date,
 ): { current: PeriodStats; previous: PeriodStats } {
-  const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate()).getTime()
-  const DAY = 86400_000
-
-  const current  = runs.filter(r => {
-    const [ry, rm, rd] = r.date.split('-').map(Number)
-    const d = new Date(ry, rm - 1, rd).getTime()
-    return d >= todayStart - 29 * DAY && d <= todayStart
-  })
-  const previous = runs.filter(r => {
-    const [ry, rm, rd] = r.date.split('-').map(Number)
-    const d = new Date(ry, rm - 1, rd).getTime()
-    return d >= todayStart - 59 * DAY && d < todayStart - 29 * DAY
-  })
-
-  return { current: aggregatePeriod(current), previous: aggregatePeriod(previous) }
+  const t = dayStart(today)
+  const previous = runs.filter(r => { const d = runDay(r); return d >= t - 59 * DAY && d < t - 29 * DAY })
+  return { current: aggregatePeriod(inLast30Days(runs, today)), previous: aggregatePeriod(previous) }
 }

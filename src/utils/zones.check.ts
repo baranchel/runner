@@ -1,6 +1,6 @@
 // Run: node src/utils/zones.check.ts
 import type { ProfileRow } from './profile.ts'
-import { computePrimaryZone, methodStarts, validStarts, zoneRangeLabel, zoneStarts, zoneTimes } from './zones.ts'
+import { computePrimaryZone, methodStarts, sumZoneTimes, topZones, validStarts, zonePcts, zoneRangeLabel, zoneStarts, zoneTimes } from './zones.ts'
 
 function eq(actual: unknown, expected: unknown, msg: string) {
   const a = JSON.stringify(actual), e = JSON.stringify(expected)
@@ -49,5 +49,21 @@ eq([0, 1, 2, 3, 4].map(i => zoneRangeLabel(i, s)), ['below 111', '111–129', '1
 eq(computePrimaryZone({ '140': 300, '160': 450 }, s), { zone: 4, name: 'Threshold', timeSec: 450 }, 'primary zone')
 eq(computePrimaryZone(null, s), null, 'no histogram')
 eq(computePrimaryZone({}, s), null, 'empty histogram')
+
+// RA-22: summaries over many runs (s = [111, 130, 148, 167])
+eq(sumZoneTimes([{ '100': 60, '140': 30 }, null, { '140': 10, '170': 20 }], s), [60, 0, 40, 0, 20],
+  'sums zone seconds over runs; a run without HR is skipped')
+eq(sumZoneTimes([null, null], s), null, 'no run has HR → null')
+eq(sumZoneTimes([{}, null], s), null, 'only empty histograms → null')
+eq(sumZoneTimes([], s), null, 'no runs → null')
+
+eq(zonePcts([60, 0, 40, 0, 20]), [50, 0, 33, 0, 17], 'rounded % of total time in zones')
+eq(zonePcts([0, 0, 0, 0, 0]), [0, 0, 0, 0, 0], 'all zero → all 0%, no NaN')
+
+eq(topZones([60, 0, 40, 0, 20]), [{ zone: 1, pct: 50 }, { zone: 3, pct: 33 }], 'top 2 by time, biggest first')
+eq(topZones([0, 300, 0, 0, 0]), [{ zone: 2, pct: 100 }], 'single zone → one entry, no "0%" second')
+eq(topZones([0, 995, 4, 0, 0]), [{ zone: 2, pct: 100 }], 'second zone rounding to 0% is left out')
+eq(topZones([0, 50, 50, 0, 0]), [{ zone: 2, pct: 50 }, { zone: 3, pct: 50 }], 'tie → lower zone first')
+eq(topZones([0, 0, 0, 0, 0]), [], 'no time → nothing')
 
 console.log('zones.check OK')

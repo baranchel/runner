@@ -1,11 +1,13 @@
-import { useState } from 'react'
+import { Fragment, useState } from 'react'
 import { ActionSheetIOS, SectionList, StyleSheet, Text, TouchableOpacity, View } from 'react-native'
 import { RunCard } from './RunCard'
 import { useRunStore } from '../store/useRunStore'
 import { useRunTypeStore, useTypeMap } from '../store/useRunTypeStore'
 import type { Run } from '../types'
 import { fmtDistance, fmtDuration } from '../utils/format'
-import { buttons, colors, fonts, runTypeColor } from '../utils/tokens'
+import { buttons, colors, fonts, runTypeColor, zoneColor } from '../utils/tokens'
+import { useZoneStarts } from '../store/useProfileStore'
+import { sumZoneTimes, topZones, type HrHist } from '../utils/zones'
 
 // Shared month-grouped run list pieces — used by All runs and the compare run picker.
 
@@ -24,7 +26,7 @@ export const SORTS: { key: SortKey; label: string; cmp: (a: Run, b: Run) => numb
 
 /** Type-filter value for runs with no type (null already means "All types"). */
 export const UNCLASSIFIED = 'unclassified'
-const matchesType = (r: Run, filterId: string) => (filterId === UNCLASSIFIED ? r.typeId === null : r.typeId === filterId)
+export const matchesType = (r: Run, filterId: string) => (filterId === UNCLASSIFIED ? r.typeId === null : r.typeId === filterId)
 
 type SectionStats = { runCount: number; totalDistanceKm: number; totalTimeSec: number }
 
@@ -34,6 +36,8 @@ export type RunSection = {
   allStats: SectionStats
   filteredStats: SectionStats | null
   data: Run[]
+  /** RA-22: HR histograms of the runs shown (after the type filter) → header zone line */
+  zoneHists: (HrHist | null)[]
 }
 
 function computeStats(runs: Run[]): SectionStats {
@@ -70,6 +74,7 @@ export function buildSections(runs: Run[], selectedTypeId: string | null, sort: 
       allStats: computeStats(monthRuns),
       filteredStats: selectedTypeId ? computeStats(filteredRuns) : null,
       data: [...filteredRuns].sort(cmp),
+      zoneHists: filteredRuns.map(r => r.hrHist),
     })
   }
   return sections
@@ -81,6 +86,9 @@ function fmtStats(stats: SectionStats): string {
 
 export function MonthHeader({ section, selectedTypeId }: { section: RunSection; selectedTypeId: string | null }) {
   const typeMap = useTypeMap()
+  const starts = useZoneStarts()
+  const zsec = sumZoneTimes(section.zoneHists, starts)
+  const top = zsec ? topZones(zsec) : []
   const t = selectedTypeId && selectedTypeId !== UNCLASSIFIED ? typeMap[selectedTypeId] : null
   const filtered = selectedTypeId === UNCLASSIFIED ? { name: 'Unclassified', color: colors.textGhost }
     : t ? { name: t.name, color: runTypeColor(t.hue) } : null
@@ -95,6 +103,17 @@ export function MonthHeader({ section, selectedTypeId }: { section: RunSection; 
           <View style={[s.dot, { backgroundColor: filtered.color }]} />
           <Text style={[s.filteredLabel, { color: filtered.color }]}>{filtered.name}</Text>
           <Text style={s.monthStats}>{fmtStats(section.filteredStats)}</Text>
+        </View>
+      )}
+      {top.length > 0 && (
+        <View style={s.filteredRow}>
+          {top.map((z, k) => (
+            <Fragment key={z.zone}>
+              {k > 0 && <Text style={s.monthStats}>·</Text>}
+              <View style={[s.dot, { backgroundColor: zoneColor(z.zone - 1) }]} />
+              <Text style={s.monthStats}>Z{z.zone} {z.pct}%</Text>
+            </Fragment>
+          ))}
         </View>
       )}
     </View>

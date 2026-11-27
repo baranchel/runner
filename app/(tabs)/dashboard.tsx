@@ -1,15 +1,18 @@
+import { useState } from 'react'
 import { Alert, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native'
 import { useRouter } from 'expo-router'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { RunCard } from '../../src/components/RunCard'
-import { pickRunType } from '../../src/components/RunPickerList'
+import { matchesType, pickRunType, pickType, typeLabel } from '../../src/components/RunPickerList'
+import { useZoneStarts } from '../../src/store/useProfileStore'
 import { useRunStore } from '../../src/store/useRunStore'
 import { cardLevel, displayName, shoeDistance } from '../../src/shoes/shoes'
 import { useShoeStore } from '../../src/store/useShoeStore'
 import type { Run } from '../../src/types'
 import { fmtDate, fmtDistance, fmtDuration, fmtPace } from '../../src/utils/format'
-import { getPeriodStats } from '../../src/utils/stats'
-import { colors, fonts, spacing, buttons } from '../../src/utils/tokens'
+import { getPeriodStats, inLast30Days } from '../../src/utils/stats'
+import { colors, fonts, spacing, buttons, zoneColor } from '../../src/utils/tokens'
+import { sumZoneTimes, zonePcts } from '../../src/utils/zones'
 
 // ─── Module-level constants ───────────────────────────────────────────────────
 
@@ -154,6 +157,10 @@ function StatCell({ label, value, dir, delta }: Stat) {
 
 function ThirtyDayCard() {
   const runs = useRunStore(s => s.runs)
+  const [zoneType, setZoneType] = useState<string | null>(null)  // null = All types; resets on app restart
+  const starts = useZoneStarts()
+  const zoneRuns = inLast30Days(runs, TODAY).filter(r => !zoneType || matchesType(r, zoneType))
+  const zoneSec = sumZoneTimes(zoneRuns.map(r => r.hrHist), starts)
   const { current: c, previous: p } = getPeriodStats(runs, TODAY)
   const hasPrev = p.runCount > 0
   const d = (dir: DeltaDir, delta: string) => hasPrev ? { dir, delta } : { dir: 'flat' as DeltaDir, delta: '' }
@@ -195,6 +202,28 @@ function ThirtyDayCard() {
       <View style={s.grid}>
         {stats.map(st => <StatCell key={st.label} {...st} />)}
       </View>
+      <View style={s.limeDivider} />
+      <View style={s.zonesHead}>
+        <Text style={s.limeEyebrow}>TIME IN ZONES</Text>
+        <TouchableOpacity style={s.inkPill} onPress={() => pickType(setZoneType)}>
+          <Text style={s.inkPillText}>{typeLabel(zoneType)} ▾</Text>
+        </TouchableOpacity>
+      </View>
+      {zoneSec ? (
+        <View style={s.zoneRows}>
+          {zonePcts(zoneSec).map((pct, i) => (
+            <View key={i} style={s.zoneRow}>
+              <Text style={s.zoneNum}>{i + 1}</Text>
+              <View style={s.zoneTrack}>
+                {pct > 0 && <View style={[s.zoneFill, { width: `${pct}%`, backgroundColor: zoneColor(i) }]} />}
+              </View>
+              <Text style={s.zonePct}>{pct}%</Text>
+            </View>
+          ))}
+        </View>
+      ) : (
+        <Text style={s.zonesEmpty}>No heart-rate data in the last 30 days</Text>
+      )}
     </View>
   )
 }
@@ -368,6 +397,16 @@ const s = StyleSheet.create({
   deltaRow:    { flexDirection: 'row', alignItems: 'center', gap: 3, marginTop: 3 },
   deltaIcon:   { width: 11, height: 11, tintColor: colors.ink },
   deltaText:   { fontFamily: fonts.body, fontSize: 10, color: colors.ink },
+  zonesHead:   { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },
+  inkPill:     { borderWidth: 1, borderColor: colors.ink, borderRadius: 13, paddingHorizontal: 10, paddingVertical: 4 },
+  inkPillText: { fontFamily: fonts.body, fontSize: 11, fontWeight: '600', color: colors.ink },
+  zoneRows:    { gap: 6 },
+  zoneRow:     { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  zoneNum:     { width: 12, fontFamily: fonts.mono, fontSize: 13, fontWeight: '700', color: colors.ink },
+  zoneTrack:   { flex: 1, height: 14, borderRadius: 5, backgroundColor: 'rgba(29,23,44,0.10)', overflow: 'hidden' },
+  zoneFill:    { height: 14, borderRadius: 5 },
+  zonePct:     { width: 36, textAlign: 'right', fontFamily: fonts.mono, fontSize: 11, fontWeight: '600', color: colors.ink },
+  zonesEmpty:  { fontFamily: fonts.body, fontSize: 12, color: colors.ink, opacity: 0.7 },
 
   // Recent runs
   rowBetween:   { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
