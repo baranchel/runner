@@ -102,10 +102,10 @@ Load from Google Fonts: `Inter` weights 400/500/600/700/800 + `JetBrains Mono` w
 - Right: avatar circle 30 × 30 px, `accent-dim` bg, shows first initial of user name
 
 ### Bottom Tab Bar
-Four equal tabs: **Dashboard · Runs · Compare · Settings**
-- Active: color `accent`, top-border `accent` (2 px)
-- Inactive: color `text-ghost`, no top border
-- Font: 11.5 px / 600
+Five tabs, left → right: **Insights · Health · Dashboard · Runs · More**; the app opens on Dashboard (middle).
+- PNG icons 22 px with `tintColor`: active `accent`, inactive `text-ghost`. Dashboard when active: 18 px `ink` glyph in a 30 px `accent` circle.
+- Labels 11.5 px / 600. Bar `bg-card`, top border `border-subtle`.
+- No Compare tab: compare from Runs (compare button) or Run Detail.
 
 ### Hamburger Side Drawer
 - Overlay: `oklch(0.05 0 0 / 0.55)` covers full screen, z-index 40, tap to close
@@ -174,6 +174,8 @@ hover: accent-hover
 ---
 
 ### 2. Dashboard
+
+_(Order and New run card styling superseded 2026-11-27 — see Tab layout.)_
 
 Main screen after login. Scrollable column, gap 20 px.
 
@@ -346,7 +348,7 @@ Original design: `docs/superpowers/specs/2026-11-01-compare-runs-design.md`. Res
 **Entry points**
 - **All runs tab**: compare button in the Figma "+" slot (46×44, radius 15, `bg-elevated`; lime with ink icon while selecting) toggles selection mode; run cards show check circles (lime when on); max 2 (3rd tap → alert "You can compare only 2 runs. Uncheck one first."). With 2 checked, a bottom bar shows "<date> vs <date>", lime "Compare ›", and ✕. Selection persists until ✕ or button re-tap.
 - **Run Detail**: top-right row of floating buttons — compare icon, then Edit. Compare → page sheet of other runs of the same type (RunCard rows); tap one → comparison. "Choose from all runs ›" → All runs in selection mode with this run checked.
-- **Compare tab** and **`/compare/result?a=&b=`** render the same `CompareView`; result pre-fills both runs (newer run = A) and adds a floating back button.
+- **Compare tab** (removed 2026-11-27 — see Tab layout) and **`/compare/result?a=&b=`** render the same `CompareView`; result pre-fills both runs (newer run = A) and adds a floating back button.
 
 **CompareView** (one screen; results appear once both runs are picked)
 - Header: "See how you’re growing." 25 / 600, subtitle "Two runs. A little more perspective." 12 `text-secondary`.
@@ -654,7 +656,7 @@ Spec: `docs/superpowers/specs/2026-11-23-shoes-design.md`. Entry: Settings → "
 - **Dashboard shoe warning card:** one per active shoe from 90 % (again at 100 %) until dismissed. Fill `#3a2414` (`iconOrange` blended over `bgApp`), 1 px `iconOrange` border, radius 18, padding 14. Title Inter 14 / 700 `#ffd0ad`: "<name> is at 92%" / "<name> has reached its limit"; ✕ right in `#ffb27a`. Body 13 `#ffb27a`: "644 / 700 km · Time to get a new pair." plus an underlined "Retire" link (confirm alert). Tap the card → shoe page. These three oranges are inline in `dashboard.tsx`, not tokens.
 - **Pop-ups (native alerts):** 90 %: title "<name> is at 92%", text "644 / 700 km. Time to get a new pair.", OK. 100 %: "<name> has reached its limit", "702 / 700 km", buttons Close / Retire. One pop-up per level per shoe.
 
-## Insights tab (RA-29)
+## Health tab (RA-29, was the Insights tab)
 
 Heading + dark card style from Figma "01 Data & insights"; Bar will redesign later. Mockup: `.superpowers/brainstorm/insights/insights-v2.html` (gitignored).
 
@@ -662,6 +664,14 @@ Heading + dark card style from Figma "01 Data & insights"; Bar will redesign lat
 - **Group header:** 9 × 9 dot (radius 3, group colour) + title Inter 17 / 600; optional note on the right, Inter 11 `textFaint`. Gap between groups 22.
 - **Card:** `bgSurface`, 1 px `borderDefault`, radius 16, padding 12/12/10, two per row (48.5 %, gap 10), min height 128; wide cards (HR notifications, VO2max, Sleep, Other workouts) full width. Label Inter 10 / 600 uppercase, tracking 0.6, `groupLabelColors`. Value JetBrains Mono 26 / 600 + unit Inter 12 `textMuted`. Meta Inter 11 `textFaint`, one line.
 - **Sparkline:** lines for rate-like metrics (resting HR, HRV, weight…), bars for totals (steps, stand hours); group colour, last bar full opacity, the rest 40 %. Height 30 (wide 40). Sleep card has a stage bar (awake / core / deep / REM in `sleepColors`) with a legend instead.
-- **Group colours** (`groupColors`): heart `#d74f49` · fitness `#3bac68` · running form `#dc6600` · sleep `#6db8e8` · body `#00a6b8` · activity `#e8a900`. Lime is reserved for insight cards (RA-45).
+- **Group colours** (`groupColors`): heart `#d74f49` · fitness `#3bac68` · running form `#dc6600` · sleep `#6db8e8` · body `#00a6b8` · activity `#e8a900`. No lime here (lime = the most important card on a screen).
 - **Detail (`insight/[key]`):** back button + metric name, big value (Mono 44), segmented control Month / 3 months / Year / All (default 3 months), `TrendChart` in a `bgChart` box, Min / Avg / Max tiles, explanation card, "From Apple Health. Read-only."
 - **Edit (`insights-edit`):** grouped list of rows (48 high): ≡ reorder handle (three 18×2 lines, `textDim`), name, native switch. Drag reorders inside the group only, live: the dragged row lifts (`bgElevated`, scale 1.03, shadow) and the other rows slide out of its way while dragging. Metrics with no Health data are dimmed with "No data in Health". Outline "Cancel" drops all changes; primary "Done" saves.
+
+## Tab layout (2026-11-27)
+
+Full design: `docs/superpowers/specs/2026-11-27-tab-layout-design.md`.
+- **Lime rule:** lime marks the most important card(s) on a screen; lavender (`accent` fill, `ink` text) is the second highlight.
+- **Dashboard order:** (target card, RA-23) · New run card · shoe alerts · Last 30 days (lime) · This week (lavender) · Recent runs (4, "All runs ›"). New run card: `bg-surface`, 1 px lime border, lime kicker + "Choose type ▾" (lime fill, ink text) + "Set all N ›" (lime). No runs → "Your first run from Apple Health will show up here." (13, `text-secondary`, centered).
+- **Insights:** Coming soon screen until RA-45 (tile 64, radius 20, `bg-surface`, lime icon; "Coming soon" 18 / 600; body 13 `text-secondary`; note 12 `text-ghost`).
+- **More:** title 25 / 600. Profile card `accent`, radius 20, padding 14: initials circle 46 (`ink` fill, `accent` text 16 / 700), name 15 / 700 `ink`, "Personal info" 11 `ink` 75 %, ›. Groups: label 11 / 600 uppercase `text-ghost`; rows in one `bg-surface` block radius 14, 1 px `border-subtle` dividers, 18 px icon (`accent`), label 14 / 500, value 12 `text-ghost`, ›. Groups: Training · Gear · Connections · (App) · Account; empty groups hidden. Delete account row in `danger`, same type-DELETE confirm.

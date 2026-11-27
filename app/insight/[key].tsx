@@ -32,7 +32,7 @@ export default function InsightDetail() {
     return () => { live = false }
   }, [metric, period])
 
-  if (!metric) return <Redirect href="/insights" />
+  if (!metric) return <Redirect href="/health" />
   const color = groupColors[metric.group]
   const head = hasData(cached) ? cardText(metric, cached, new Date()) : null
   const hours = metric.kind === 'sleep' || metric.kind === 'workouts'   // points are hours → show h:mm

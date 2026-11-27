@@ -236,11 +236,15 @@ function RecentRuns({ router }: { router: ReturnType<typeof useRouter> }) {
     <View style={{ gap: 11 }}>
       <View style={s.rowBetween}>
         <Text style={s.sectionTitle}>Recent runs</Text>
-        <TouchableOpacity style={s.pill} onPress={() => router.push('/(tabs)/runs')}>
-          <Text style={s.pillText}>See all →</Text>
-        </TouchableOpacity>
+        {recent.length > 0 && (
+          <TouchableOpacity style={s.pill} onPress={() => router.push('/(tabs)/runs')}>
+            <Text style={s.pillText}>All runs ›</Text>
+          </TouchableOpacity>
+        )}
       </View>
-      {recent.map(run => <RunCard key={run.id} run={run} unit={UNIT} />)}
+      {recent.length === 0
+        ? <Text style={s.emptyRuns}>Your first run from Apple Health will show up here.</Text>
+        : recent.map(run => <RunCard key={run.id} run={run} unit={UNIT} />)}
     </View>
   )
 }
@@ -324,8 +328,8 @@ export default function Dashboard() {
       <ScrollView contentContainerStyle={s.content}>
         <NewRunCard router={router} />
         <ShoeAlertCards router={router} />
-        <WeekCard />
         <ThirtyDayCard />
+        <WeekCard />
         <RecentRuns router={router} />
       </ScrollView>
     </SafeAreaView>
@@ -335,24 +339,25 @@ export default function Dashboard() {
 // ─── Styles ───────────────────────────────────────────────────────────────────
 
 const s = StyleSheet.create({
-  // New run card (lime) — RA-39
-  shoeAlert:       { backgroundColor: '#3a2414', borderWidth: 1, borderColor: colors.iconOrange, borderRadius: 18, padding: 14, gap: 4 },
+  // Shoe alert (RA-8)
+  shoeAlert:      { backgroundColor: '#3a2414', borderWidth: 1, borderColor: colors.iconOrange, borderRadius: 18, padding: 14, gap: 4 },
   shoeAlertRow:    { flexDirection: 'row', alignItems: 'center', gap: 8 },
   shoeAlertTitle:  { flex: 1, fontFamily: fonts.body, fontSize: 14, fontWeight: '700', color: '#ffd0ad' },
   shoeAlertX:      { fontSize: 14, color: '#ffb27a' },
   shoeAlertText:   { fontFamily: fonts.body, fontSize: 13, color: '#ffb27a' },
   shoeAlertLink:   { textDecorationLine: 'underline', fontWeight: '600' },
-  newRun:          { backgroundColor: colors.lime, borderRadius: 18, padding: 14, gap: 3 },
+  // New run card (dark, lime border) — RA-39; lime stays for the summary
+  newRun:          { backgroundColor: colors.bgSurface, borderWidth: 1, borderColor: colors.lime, borderRadius: 18, padding: 14, gap: 3 },
   newRunKickerRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  newRunKicker:    { fontFamily: fonts.body, fontSize: 10, fontWeight: '700', letterSpacing: 0.4, color: colors.ink },
-  newRunBadge:     { fontFamily: fonts.body, fontSize: 9, fontWeight: '700', color: colors.ink, backgroundColor: colors.ink + '22',
+  newRunKicker:    { fontFamily: fonts.body, fontSize: 10, fontWeight: '700', letterSpacing: 0.4, color: colors.lime },
+  newRunBadge:     { fontFamily: fonts.body, fontSize: 9, fontWeight: '700', color: colors.textPrimary, backgroundColor: colors.textPrimary + '22',
                      borderRadius: 8, paddingHorizontal: 6, paddingVertical: 2, overflow: 'hidden' },
-  newRunName:      { fontFamily: fonts.body, fontSize: 14, fontWeight: '700', color: colors.ink },
-  newRunMeta:      { fontFamily: fonts.mono, fontSize: 10, color: colors.ink },
+  newRunName:      { fontFamily: fonts.body, fontSize: 14, fontWeight: '700', color: colors.textPrimary },
+  newRunMeta:      { fontFamily: fonts.mono, fontSize: 10, color: colors.textSecondary },
   newRunActions:   { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 9 },
-  newRunBtn:       { backgroundColor: colors.ink, borderRadius: 12, paddingHorizontal: 12, paddingVertical: 6 },
-  newRunBtnText:   { fontFamily: fonts.body, fontSize: 11, fontWeight: '600', color: colors.lime },
-  newRunLink:      { fontFamily: fonts.body, fontSize: 11, fontWeight: '700', color: colors.ink, textDecorationLine: 'underline' },
+  newRunBtn:       { backgroundColor: colors.lime, borderRadius: 12, paddingHorizontal: 12, paddingVertical: 6 },
+  newRunBtnText:   { fontFamily: fonts.body, fontSize: 11, fontWeight: '600', color: colors.ink },
+  newRunLink:      { fontFamily: fonts.body, fontSize: 11, fontWeight: '700', color: colors.lime, textDecorationLine: 'underline' },
 
   safe:    { flex: 1, backgroundColor: colors.bgApp },
   content: { paddingHorizontal: 24, paddingVertical: spacing.screenH, gap: 22 },
@@ -413,5 +418,6 @@ const s = StyleSheet.create({
   sectionTitle: { fontFamily: fonts.body, fontSize: 19, fontWeight: '600', color: colors.textPrimary },
   pill:         buttons.outline,
   pillText:     buttons.outlineText,
+  emptyRuns:    { fontFamily: fonts.body, fontSize: 13, color: colors.textSecondary, textAlign: 'center', paddingVertical: 14 },
 
 })

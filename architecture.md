@@ -88,8 +88,8 @@ app/
   _layout.tsx                  ← root layout: splash hold + auth gate (Stack.Protected)
   index.tsx                    ← picks the screen after login: login → health-access (prompt not shown, not skipped) → personal-info (profile incomplete) → dashboard
   health-access.tsx            ← "Connect Apple Health" → iOS prompt → first import with progress → back to index (or back to Settings)
-  personal-info.tsx            ← RA-11 form after onboarding; RA-10 edit from Settings (?mode=edit)
-  hr-zones.tsx                 ← RA-9 zone method picker after personal info; Settings → Heart-rate zones (?mode=edit)
+  personal-info.tsx            ← RA-11 form after onboarding; RA-10 edit from the More profile card (?mode=edit)
+  hr-zones.tsx                 ← RA-9 zone method picker after personal info; More → Heart-rate zones (?mode=edit)
   shoes/                       ← RA-8: index (My shoes, ?retired=1), edit (Add / Edit shoe), past-runs (assign runs after adding), [id] (shoe page)
   login.tsx                    ← email/password, Apple, Google
   signup.tsx                   ← first + last name, email, password → "check your email"
@@ -97,12 +97,12 @@ app/
   reset-password.tsx           ← deep-link target: set new password
   auth-callback.tsx            ← deep-link target: email confirmation
   (tabs)/
-    _layout.tsx                ← bottom tab bar (Insights, Running, All runs, Compare, You)
-    insights.tsx               ← Apple Health trend cards (RA-29)
-    dashboard.tsx              ← "Running" tab
-    runs.tsx                   ← "All runs" tab
-    compare.tsx
-    settings.tsx
+    _layout.tsx                ← bottom tab bar (Insights, Health, Dashboard, Runs, More); opens on Dashboard
+    insights.tsx               ← Coming soon (RA-45 Smart Insights later)
+    health.tsx                 ← Apple Health trend cards (RA-29)
+    dashboard.tsx              ← Dashboard (running only)
+    runs.tsx                   ← Runs tab (screen title "All runs")
+    more.tsx                   ← profile card + settings rows
   insight/[key].tsx           ← RA-29 metric detail (Month / 3 months / Year / All)
   insights-edit.tsx            ← RA-29 hide / reorder metrics (saved in profiles.insights_layout)
   run/
@@ -230,7 +230,7 @@ The Run Detail **Edit** button fixes bad HealthKit readings (name, distance, tim
 - **Push:** ops oldest-first. Insert = upsert ignoring duplicates (runs on `user_id,id`), update = only the patched fields. Network/401/408/429/5xx → stop, retry next sync. Other errors, or an update matching no row → op marked `failed` (kept, skipped).
 - **Pull:** per table, rows with server `updated_at` ≥ last pull − 60 s (keyset paging, 1000/page). Rows with unsent *updates* are skipped (local wins); a pending insert for a row the cloud already has is dropped in favour of the cloud row.
 - **When:** login, app foreground, after each change. Single-flight; never throws.
-- **Logout:** Settings pushes first and warns if changes are unsent; an explicit logout or account deletion then runs `clearAll()` (an epoch counter stops a sync that was still running). A forced sign-out (e.g. rejected refresh token) only empties the stores, so unsent edits survive and push when the same user logs back in. Local data has an `owner`; a different user logging in starts clean.
+- **Logout:** More (Log out) pushes first and warns if changes are unsent; an explicit logout or account deletion then runs `clearAll()` (an epoch counter stops a sync that was still running). A forced sign-out (e.g. rejected refresh token) only empties the stores, so unsent edits survive and push when the same user logs back in. Local data has an `owner`; a different user logging in starts clean.
 - **Limits:** last write wins per field; `edits` merges as one field.
 - **Tables:** `profiles` → `shoes` → `run_types` → `runs` (parents first: `runs.shoe_id` and `run_types.default_shoe_id` point at `shoes`). `profiles` is keyed by `user_id` in the cloud and by `id` (= user id) locally; `cloudKey` / `fromCloud` in `src/db/merge.ts` map between them. SQLite schema v9.
 
