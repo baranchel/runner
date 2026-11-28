@@ -428,8 +428,9 @@ export function Chart({ series, strokeColor, formatValue }: ChartProps) {
 
 type TrendPoint = { date: string; value: number }
 
-export function Sparkline({ points, kind, color, height = 30 }: {
+export function Sparkline({ points, kind, color, height = 30, ring = colors.bgSurface }: {
   points: TrendPoint[]; kind: 'line' | 'bars'; color: string; height?: number
+  ring?: string   // end-dot outline = the card's background (RA-45 lime hero)
 }) {
   const [w, setW] = useState(0)
   const n = points.length
@@ -450,7 +451,7 @@ export function Sparkline({ points, kind, color, height = 30 }: {
       body = <>
         {n > 1 && <Path d={`${d} L${X(n - 1)} ${height} L${X(0)} ${height} Z`} fill={color} opacity={0.12} />}
         {n > 1 && <Path d={d} fill="none" stroke={color} strokeWidth={1.6} strokeLinejoin="round" strokeLinecap="round" />}
-        <Circle cx={X(n - 1)} cy={Y(v[n - 1])} r={3.2} fill={color} stroke={colors.bgSurface} strokeWidth={2} />
+        <Circle cx={X(n - 1)} cy={Y(v[n - 1])} r={3.2} fill={color} stroke={ring} strokeWidth={2} />
       </>
     }
   }
