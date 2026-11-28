@@ -45,6 +45,7 @@ export default function RootLayout() {
           <Stack.Screen name="run/[id]/splits" options={{ presentation: 'modal' }} />
           <Stack.Screen name="run/[id]/zones" options={{ presentation: 'modal' }} />
           <Stack.Screen name="insight/[key]" />
+          <Stack.Screen name="insight-run/[key]" />
           <Stack.Screen name="insights-edit" />
           <Stack.Screen name="shoes/index" />
           <Stack.Screen name="shoes/edit" options={{ presentation: 'modal' }} />

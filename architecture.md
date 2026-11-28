@@ -98,12 +98,13 @@ app/
   auth-callback.tsx            ← deep-link target: email confirmation
   (tabs)/
     _layout.tsx                ← bottom tab bar (Insights, Health, Dashboard, Runs, More); opens on Dashboard
-    insights.tsx               ← Coming soon (RA-45 Smart Insights later)
+    insights.tsx               ← RA-45 Smart Insights feed
     health.tsx                 ← Apple Health trend cards (RA-29)
     dashboard.tsx              ← Dashboard (running only)
     runs.tsx                   ← Runs tab (screen title "All runs")
     more.tsx                   ← profile card + settings rows
   insight/[key].tsx           ← RA-29 metric detail (Month / 3 months / Year / All)
+  insight-run/[key].tsx       ← RA-45 running insight detail
   insights-edit.tsx            ← RA-29 hide / reorder metrics (saved in profiles.insights_layout)
   run/
     [id].tsx                   ← Run Detail screen (+ compare sheet)
@@ -116,7 +117,8 @@ src/
   store/                       ← useAuthStore (also drives the data lifecycle), useRunStore, useRunTypeStore, useProfileStore, useInsightsStore, useShoeStore (Zustand)
   shoes/                       ← RA-8 pure: shoes.ts (distance, percent / level, stats, colours, default fill, past-runs maths, `shoeProblem`; `node src/shoes/shoes.check.ts`); alerts.ts (`checkShoeAlerts`, `editShoe` — uses Alert + stores, not pure)
   db/                          ← schema.ts (SQLite tables), queries.ts (reads/writes + outbox), merge.ts (pure, `node src/db/sync.check.ts`), sync.ts (syncNow)
-  insights/                    ← RA-29 pure: metrics.ts (catalogue, groups), summary.ts (buckets, compare, sleep nights, card text, layout; `node src/insights/summary.check.ts`)
+  facts/                       ← RA-45 pure: runFacts + windows/buckets (`node src/facts/facts.check.ts`); RA-15 features
+  insights/                    ← RA-29 pure: metrics.ts (catalogue, groups), summary.ts (buckets, compare, sleep nights, card text, layout; `node src/insights/summary.check.ts`). RA-45: rules.ts, rank.ts, phrases.ts, useFeed.ts
   healthkit/                   ← native.ts (lazy module load), permissions.ts, importRuns.ts, insights.ts (live Insights reader), bodyData.ts (personal-info prefill); pure: mapWorkout.ts, dedupe.ts (`node src/healthkit/import.check.ts`)
   types/                       ← index.ts (Run, RunType, User interfaces)
   utils/                       ← format.ts, chart.ts, stats.ts, zones.ts (pure zone math, `node src/utils/zones.check.ts`), compare.ts (metrics + per-row "better" rule), profile.ts (pure profile + HRmax logic, `node src/utils/profile.check.ts`)
@@ -256,6 +258,14 @@ The Insights tab shows 25 Apple Health metrics in 6 groups (heart, fitness, runn
 - **Only the layout is stored:** `profiles.insights_layout` (`{hidden, order}`), changed on the Edit screen through `writeChange` + `syncNow`.
 - A metric with no data is hidden on the tab (and marked "No data in Health" in Edit). Denied permission looks the same as no data, so the tab shows "Allow Apple Health access…".
 - Pure maths (buckets, 30-vs-prior-30 compare, sleep nights, card text) lives in `src/insights/summary.ts`.
+
+## Smart Insights (RA-45)
+
+- **Flow:** runs (SQLite) + Health (`useInsightsStore`, 91 days + 365 days of steps) → `src/facts/` → `src/insights/rules.ts` (13 rules → Findings, `null` = too little data) → `rank.ts` (2 linked cards, hero, groups, lime outlines) → `phrases.ts` (daily edition) → `useFeed()`. Computed in memory; nothing stored.
+- **Quiet rules:** the streak card is hidden when the usual week (median of the last 8 full weeks) is 0 runs and there is no streak. The steps record needs a change of at least 10% and says "since you started tracking" unless a full year of steps exists.
+- **Wording (option A):** slot sentences + whole sentences from a fixed table, shuffled by hash(date + insight); openings unique per feed; guideline lines fixed (R2, H3). `BANNED` whole words are rejected by the check.
+- **Later (B):** an LLM (paid cloud or free on-device, e.g. llama.cpp) may replace `word()` only, fed the same Findings, guidelines in its prompt, output checked against `BANNED`, falling back to option A.
+- **RA-15:** a small on-device classifier on `runFacts()` features, not an LLM.
 
 ### HealthKit import (RA-3)
 

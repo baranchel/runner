@@ -664,14 +664,23 @@ Heading + dark card style from Figma "01 Data & insights"; Bar will redesign lat
 - **Group header:** 9 × 9 dot (radius 3, group colour) + title Inter 17 / 600; optional note on the right, Inter 11 `textFaint`. Gap between groups 22.
 - **Card:** `bgSurface`, 1 px `borderDefault`, radius 16, padding 12/12/10, two per row (48.5 %, gap 10), min height 128; wide cards (HR notifications, VO2max, Sleep, Other workouts) full width. Label Inter 10 / 600 uppercase, tracking 0.6, `groupLabelColors`. Value JetBrains Mono 26 / 600 + unit Inter 12 `textMuted`. Meta Inter 11 `textFaint`, one line.
 - **Sparkline:** lines for rate-like metrics (resting HR, HRV, weight…), bars for totals (steps, stand hours); group colour, last bar full opacity, the rest 40 %. Height 30 (wide 40). Sleep card has a stage bar (awake / core / deep / REM in `sleepColors`) with a legend instead.
-- **Group colours** (`groupColors`): heart `#d74f49` · fitness `#3bac68` · running form `#dc6600` · sleep `#6db8e8` · body `#00a6b8` · activity `#e8a900`. No lime here (lime = the most important card on a screen).
+- **Group colours** (`groupColors`): heart `#d74f49` · fitness `#3bac68` · running form `#dc6600` · sleep `#6db8e8` · body `#00a6b8` · activity `#e8a900`. No lime here (lime fill = the single most important card on a screen).
 - **Detail (`insight/[key]`):** back button + metric name, big value (Mono 44), segmented control Month / 3 months / Year / All (default 3 months), `TrendChart` in a `bgChart` box, Min / Avg / Max tiles, explanation card, "From Apple Health. Read-only."
 - **Edit (`insights-edit`):** grouped list of rows (48 high): ≡ reorder handle (three 18×2 lines, `textDim`), name, native switch. Drag reorders inside the group only, live: the dragged row lifts (`bgElevated`, scale 1.03, shadow) and the other rows slide out of its way while dragging. Metrics with no Health data are dimmed with "No data in Health". Outline "Cancel" drops all changes; primary "Done" saves.
+
+## Insights (RA-45)
+
+- **Tab:** title "Insights" (26/700), subtitle "What your data says this week" (13, `textSecondary`). Feed: hero → running group → health group, groups 14 px apart, cards 10 px apart, no headers.
+- **Card:** `bgSurface`, 1 px `borderDefault`, radius 16, padding 14 / 12 / 10. Eyebrow 10/600 letter-spacing 0.6 · headline 15/600 · meaning 12 `textSecondary` · guideline 11 italic `textFaint` · foot row: evidence (JetBrains Mono 12) + sparkline (24 high, flex) + ›.
+- **Hero (one per screen):** `lime` fill and border, all text `ink`, headline 18/24, padding top 16. Its sparkline uses the `Sparkline` `ring` prop (end-dot outline in the card background colour; the hero passes `lime`).
+- **Accent (first card of each group, only when notable):** `lime` border, eyebrow + evidence + sparkline in `lime`.
+- **Empty:** "Insights appear once you have a few weeks of runs and Apple Health data." **No Health:** lime link row "Allow Apple Health to see health insights ›" → iOS Settings.
+- **Running insight (`insight-run/[key]`):** back button + eyebrow, headline 20/700, meaning, guideline, chart in a `bgChart` box (`TrendChart` lavender; the highest-HR insight is a line chart, not bars), "How this is worked out: …" (12 `textFaint`), "RUNS IT'S BASED ON" + `RunCard` rows (newest 20, 10 px apart). Axis labels have no units: pace m:ss, km with 1 decimal.
 
 ## Tab layout (2026-11-27)
 
 Full design: `docs/superpowers/specs/2026-11-27-tab-layout-design.md`.
-- **Lime rule:** lime marks the most important card(s) on a screen; lavender (`accent` fill, `ink` text) is the second highlight.
+- **Lime rule:** lime fill marks the single most important card on a screen; a lime outline marks the next level (Insights group leaders); lavender (`accent` fill, `ink` text) is the second highlight.
 - **Dashboard order:** (target card, RA-23) · New run card · shoe alerts · Last 30 days (lime) · This week (lavender) · Recent runs (4, "All runs ›"). New run card: `bg-surface`, 1 px lime border, lime kicker + "Choose type ▾" (lime fill, ink text) + "Set all N ›" (lime). No runs → "Your first run from Apple Health will show up here." (13, `text-secondary`, centered).
-- **Insights:** Coming soon screen until RA-45 (tile 64, radius 20, `bg-surface`, lime icon; "Coming soon" 18 / 600; body 13 `text-secondary`; note 12 `text-ghost`).
+- **Insights:** see "Insights (RA-45)" above (the Coming soon screen is gone).
 - **More:** title 25 / 600. Profile card `accent`, radius 20, padding 14: initials circle 46 (`ink` fill, `accent` text 16 / 700), name 15 / 700 `ink`, "Personal info" 11 `ink` 75 %, ›. Groups: label 11 / 600 uppercase `text-ghost`; rows in one `bg-surface` block radius 14, 1 px `border-subtle` dividers, 18 px icon (`accent`), label 14 / 500, value 12 `text-ghost`, ›. Groups: Training · Gear · Connections · (App) · Account; empty groups hidden. Delete account row in `danger`, same type-DELETE confirm.
